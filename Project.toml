@@ -1,11 +1,10 @@
 name = "MoneySim"
 uuid = "2c321c3e-df22-4fe8-8a60-238a5a5a30c9"
 authors = ["Stef Kuypers <stef@happonomy.org>, Thomas Goorden <thomas.goorden@gmail.com>"]
-version = "0.1"
+version = "0.1.0"
 
 [deps]
 EconoSim = "cc8cb6e0-4c11-4d04-b964-59e7aacda730"
 
 [compat]
 julia = "1.5"
-EconoSim = "0.1.2"
