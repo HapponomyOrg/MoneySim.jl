@@ -65,6 +65,6 @@ function simulate(M1::Float64, T::Int64, g::Float64, f::Float64)
   # savefig("debt_ratio_$f.png")
 end
 
-for f = 0.1:0.1:1.9
-  simulate(f)
-end
+# for f = 0.1:0.1:1.9
+#   simulate(f)
+# end
