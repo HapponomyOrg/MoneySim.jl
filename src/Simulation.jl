@@ -230,6 +230,9 @@ end
 function plot_money_stock(data::SimData)
     series = .+(data.available, data.saved)
     plot(series, label = "M", title = "Money stock (" * string(length(data)) * " years)")
+    xaxis!("Years")
+    yaxis!("Stock")
+
     return last(series)
 end
 
