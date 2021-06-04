@@ -40,6 +40,16 @@ current_available() = asset_value(available, DEPOSIT)
 current_saved() = asset_value(saved, DEPOSIT)
 current_money_stock() = current_available() + current_saved()
 
+function Base.resize!(data::SimData, size::Integer)
+    if size != length(data)
+        for field in fieldnames(SimData)
+            resize!(getfield(data, field), size)
+        end
+    end
+
+    return data
+end
+
 function process_cycle!(cycle::Integer,
                     data::SimData,
                     mode::Mode,
@@ -156,13 +166,7 @@ function simulate_banks(mode::Mode,
         end
     end
 
-    if num_cycles != cycles
-        for field in fieldnames(SimData)
-            resize!(getfield(data, field), num_cycles)
-        end
-    end
-
-    return data
+    return resize!(data, num_cycles)
 end
 
 function process_data(money_stock::Vector{Real},
