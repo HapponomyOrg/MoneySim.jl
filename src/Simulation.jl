@@ -259,7 +259,7 @@ function plot_data(mode::Mode, m::Real, p::Real, s::Real, maturity::Integer, cyc
         DR = plot_debt_ratio(data)
         savefig("plots/" * string(mode) * "_DR_LR_" * string(m) * "_profit_" * string(p) * "_save_" * string(s) * "_" * string(maturity) * "_" * string(cycles) * ".png")
 
-        return g, DR, last(data.loan_rate)
+        return g, DR
     end
 end
 
