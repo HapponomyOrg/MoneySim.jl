@@ -242,23 +242,23 @@ function plot_money_stock(data::SimData)
     return last(series)
 end
 
-function plot_data(mode::Mode, m::Real, p::Real, s::Real, cycles::Integer = 100)
-    data = simulate_banks(mode, m, 1000000, 1, p, s, 20, cycles)
+function plot_data(mode::Mode, m::Real, p::Real, s::Real, maturity::Integer, cycles::Integer = 100)
+    data = simulate_banks(mode, m, 1000000, 1, p, s, maturity, cycles)
 
     if mode == fixed_growth
         LR = plot_required_loan_ratio(data)
-        savefig("plots/" * string(mode) * "_LR_growth_" * string(m) * "_profit_" * string(p) * "_save_" * string(s) * "_" * string(cycles) * ".png")
+        savefig("plots/" * string(mode) * "_LR_growth_" * string(m) * "_profit_" * string(p) * "_save_" * string(s) * "_" * string(maturity) * "_" * string(cycles) * ".png")
         DR = plot_debt_ratio(data)
-        savefig("plots/" * string(mode) * "_DR_growth_" * string(m) * "_profit_" * string(p) * "_save_" * string(s) * "_" * string(cycles) * ".png")
+        savefig("plots/" * string(mode) * "_DR_growth_" * string(m) * "_profit_" * string(p) * "_save_" * string(s) * "_" * string(maturity) * "_" * string(cycles) * ".png")
 
         return LR, DR
     else
         g = plot_growth(data)
-        savefig("plots/" * string(mode) * "_g_LR_" * string(m) * "_profit_" * string(p) * "_save_" * string(s) * "_" * string(cycles) * ".png")
+        savefig("plots/" * string(mode) * "_g_LR_" * string(m) * "_profit_" * string(p) * "_save_" * string(s) * "_" * string(maturity) * "_" * string(cycles) * ".png")
         M = plot_money_stock(data)
-        savefig("plots/" * string(mode) * "_M_LR_" * string(m) * "_profit_" * string(p) * "_save_" * string(s) * "_" * string(cycles) * ".png")
+        savefig("plots/" * string(mode) * "_M_LR_" * string(m) * "_profit_" * string(p) * "_save_" * string(s) * "_" * string(maturity) * "_" * string(cycles) * ".png")
         DR = plot_debt_ratio(data)
-        savefig("plots/" * string(mode) * "_DR_LR_" * string(m) * "_profit_" * string(p) * "_save_" * string(s) * "_" * string(cycles) * ".png")
+        savefig("plots/" * string(mode) * "_DR_LR_" * string(m) * "_profit_" * string(p) * "_save_" * string(s) * "_" * string(maturity) * "_" * string(cycles) * ".png")
 
         return g, DR
     end
@@ -266,32 +266,37 @@ end
 
 function simulations()
     # No proft, no savings
-    plot_data(fixed_growth, 0, 0, 0)
-    plot_data(fixed_growth, 0.01, 0, 0)
-    plot_data(fixed_growth, 0.05, 0, 0)
+    plot_data(fixed_growth, 0, 0, 0, 20)
+    plot_data(fixed_growth, 0, 0, 0, 1)
+
+    plot_data(fixed_growth, 0.01, 0, 0, 20)
+    plot_data(fixed_growth, 0.05, 0, 0, 20)
 
     # Profit, no savings
-    plot_data(fixed_growth, 0.05, 0.01, 0)
-    plot_data(fixed_growth, 0.05, 0.01, 0, 500)
+    plot_data(fixed_growth, 0.05, 0.01, 0, 20)
+    plot_data(fixed_growth, 0.05, 0.01, 0, 40)
 
-    plot_data(fixed_growth, 0.05, 0.05, 0)
-    plot_data(fixed_growth, 0.05, 0.1, 0)
+    plot_data(fixed_growth, 0.05, 0.01, 0, 20, 500)
+    plot_data(fixed_growth, 0.05, 0.01, 0, 40, 500)
 
-    plot_data(fixed_growth, 0.05, 0.006, 0, 500)
-    plot_data(fixed_growth, 0.05, 0.00577, 0, 500)
-    plot_data(fixed_growth, 0.05, 0.007, 0, 500)
+    plot_data(fixed_growth, 0.05, 0.05, 0, 20)
+    plot_data(fixed_growth, 0.05, 0.1, 0, 20)
 
-    plot_data(fixed_loan_rate, 0.15, 0.006, 0, 500)
-    plot_data(fixed_loan_rate, 0.15, 0.00577, 0, 500)
-    plot_data(fixed_loan_rate, 0.15, 0.007, 0, 500)
+    plot_data(fixed_growth, 0.05, 0.006, 0, 20, 500)
+    plot_data(fixed_growth, 0.0484, 0.006, 0, 20, 500)
+    plot_data(fixed_growth, 0.05, 0.007, 0, 20, 500)
 
-    plot_data(fixed_loan_rate, 0.15, 0.01, 0, 500)
-    plot_data(fixed_loan_rate, 0.149, 0.01, 0, 500)
-    plot_data(fixed_loan_rate, 0.14, 0.01, 0, 500)
-    plot_data(fixed_loan_rate, 0.15, 0.011, 0, 500)
-    plot_data(fixed_loan_rate, 0.15, 0.012, 0, 500)
-    plot_data(fixed_loan_rate, 0.15, 0.013, 0, 500)
-    plot_data(fixed_loan_rate, 0.15, 0.02, 0, 500)
+    plot_data(fixed_loan_rate, 0.15, 0.006, 0, 20, 500)
+    plot_data(fixed_loan_rate, 0.15, 0.00577, 0, 20, 500)
+    plot_data(fixed_loan_rate, 0.15, 0.007, 0, 20, 500)
+
+    plot_data(fixed_loan_rate, 0.15, 0.01, 0, 20, 500)
+    plot_data(fixed_loan_rate, 0.149, 0.01, 0, 20, 500)
+    plot_data(fixed_loan_rate, 0.14, 0.01, 0, 20, 500)
+    plot_data(fixed_loan_rate, 0.15, 0.011, 0, 20, 500)
+    plot_data(fixed_loan_rate, 0.15, 0.012, 0, 20, 500)
+    plot_data(fixed_loan_rate, 0.15, 0.013, 0, 20, 500)
+    plot_data(fixed_loan_rate, 0.15, 0.02, 0, 20, 500)
 end
 
 function process_csv(csv_file::String)
