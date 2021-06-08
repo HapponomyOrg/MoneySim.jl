@@ -12,9 +12,7 @@ struct SimData
     debt::Vector{Currency}
     installment::Vector{Currency}
     required_loan::Vector{Currency}
-    required_loan_rate::Vector{Fixed(4)}
     loan::Vector{Currency}
-    loan_rate::Vector{Fixed(4)}
     bank_equity::Vector{Currency}
     SimData(size::Integer) = new(Vector{Fixed(4)}(undef, size),
                                 Vector{Currency}(undef, size),
@@ -23,9 +21,7 @@ struct SimData
                                 Vector{Currency}(undef, size),
                                 Vector{Currency}(undef, size),
                                 Vector{Currency}(undef, size),
-                                Vector{Fixed(4)}(undef, size),
                                 Vector{Currency}(undef, size),
-                                Vector{Fixed(4)}(undef, size),
                                 Vector{Currency}(undef, size))
 end
 
@@ -80,7 +76,7 @@ function process_cycle!(cycle::Integer,
         target_money_stock = (1 + mode_ratio) * money_stock
         data.required_loan[cycle] = max(0, target_money_stock - current_money_stock())
     else
-        data.required_loan[cycle] = max(0, mode_ratio * money_stock)
+        data.required_loan[cycle] = max(0, (money_stock - data.installment[cycle]) / (1 - mode_ratio) * mode_ratio)
     end
 
     data.loan[cycle] = data.required_loan[cycle] * loan_satisfaction
@@ -93,8 +89,6 @@ function process_cycle!(cycle::Integer,
     transfer_asset!(available, saved, DEPOSIT, max(0, current_available() * save_ratio))
 
     data.growth[cycle] = Fixed(4)((current_money_stock() - money_stock)) / money_stock
-    data.required_loan_rate[cycle] = 100 * data.required_loan[cycle] / money_stock
-    data.loan_rate[cycle] = 100 * data.loan[cycle] / money_stock
     data.available[cycle] = current_available()
     data.saved[cycle] = current_saved()
     data.debt[cycle] = asset_value(bank, DEBT)
@@ -207,11 +201,13 @@ function process_data(money_stock::Vector{Real},
 end
 
 function plot_required_loan_ratio(data::SimData)
-    plot(data.required_loan_rate, label = "LR", title = "Loan ratio (" * string(length(data)) * " years)")
+    money_stock = .+(data.available, data.saved)
+    series = ./(100 * data.required_loan, money_stock)
+    plot(series, label = "LR", title = "Loan ratio (" * string(length(data)) * " years)")
     xaxis!("Years")
     yaxis!("Percentage")
 
-    return last(data.required_loan_rate)
+    return last(series)
 end
 
 function plot_debt_ratio(data::SimData)
@@ -244,6 +240,9 @@ end
 
 function plot_data(mode::Mode, m::Real, p::Real, s::Real, maturity::Integer, cycles::Integer = 100)
     data = simulate_banks(mode, m, 1000000, 1, p, s, maturity, cycles)
+    m = Fixed(4)(m * 100)
+    p = Fixed(4)(p * 100)
+    s = Fixed(4)(s * 100)
 
     if mode == fixed_growth
         LR = plot_required_loan_ratio(data)
@@ -260,43 +259,43 @@ function plot_data(mode::Mode, m::Real, p::Real, s::Real, maturity::Integer, cyc
         DR = plot_debt_ratio(data)
         savefig("plots/" * string(mode) * "_DR_LR_" * string(m) * "_profit_" * string(p) * "_save_" * string(s) * "_" * string(maturity) * "_" * string(cycles) * ".png")
 
-        return g, DR
+        return g, DR, last(data.loan_rate)
     end
 end
 
 function simulations()
-    # No proft, no savings
-    plot_data(fixed_growth, 0, 0, 0, 20)
-    plot_data(fixed_growth, 0, 0, 0, 1)
+    for maturity = 10:10:20
+        # No proft, no savings
+        plot_data(fixed_growth, 0, 0, 0, maturity)
 
-    plot_data(fixed_growth, 0.01, 0, 0, 20)
-    plot_data(fixed_growth, 0.05, 0, 0, 20)
+        plot_data(fixed_growth, 0.01, 0, 0, maturity)
 
-    # Profit, no savings
-    plot_data(fixed_growth, 0.05, 0.01, 0, 20)
-    plot_data(fixed_growth, 0.05, 0.01, 0, 40)
+        # Profit, no savings
+        plot_data(fixed_growth, 0.05, 0.01, 0, maturity)
 
-    plot_data(fixed_growth, 0.05, 0.01, 0, 20, 500)
-    plot_data(fixed_growth, 0.05, 0.01, 0, 40, 500)
+        plot_data(fixed_growth, 0.05, 0.01, 0, maturity, 500)
 
-    plot_data(fixed_growth, 0.05, 0.05, 0, 20)
-    plot_data(fixed_growth, 0.05, 0.1, 0, 20)
+        plot_data(fixed_growth, 0.05, 0.05, 0, maturity)
+        plot_data(fixed_growth, 0.05, 0.1, 0, maturity)
 
-    plot_data(fixed_growth, 0.05, 0.006, 0, 20, 500)
-    plot_data(fixed_growth, 0.0484, 0.006, 0, 20, 500)
-    plot_data(fixed_growth, 0.05, 0.007, 0, 20, 500)
+        plot_data(fixed_growth, 0.05, 0.006, 0, maturity, 500)
 
-    plot_data(fixed_loan_rate, 0.15, 0.006, 0, 20, 500)
-    plot_data(fixed_loan_rate, 0.15, 0.00577, 0, 20, 500)
-    plot_data(fixed_loan_rate, 0.15, 0.007, 0, 20, 500)
+        plot_data(fixed_growth, 0.0484, 0.006, 0, maturity, 500)
 
-    plot_data(fixed_loan_rate, 0.15, 0.01, 0, 20, 500)
-    plot_data(fixed_loan_rate, 0.149, 0.01, 0, 20, 500)
-    plot_data(fixed_loan_rate, 0.14, 0.01, 0, 20, 500)
-    plot_data(fixed_loan_rate, 0.15, 0.011, 0, 20, 500)
-    plot_data(fixed_loan_rate, 0.15, 0.012, 0, 20, 500)
-    plot_data(fixed_loan_rate, 0.15, 0.013, 0, 20, 500)
-    plot_data(fixed_loan_rate, 0.15, 0.02, 0, 20, 500)
+        plot_data(fixed_growth, 0.05, 0.007, 0, maturity, 500)
+
+        plot_data(fixed_loan_rate, 0.15, 0.006, 0, maturity, 500)
+        plot_data(fixed_loan_rate, 0.15, 0.00577, 0, maturity, 500)
+        plot_data(fixed_loan_rate, 0.15, 0.007, 0, maturity, 500)
+
+        plot_data(fixed_loan_rate, 0.15, 0.01, 0, maturity, 500)
+        plot_data(fixed_loan_rate, 0.149, 0.01, 0, maturity, 500)
+        plot_data(fixed_loan_rate, 0.14, 0.01, 0, maturity, 500)
+        plot_data(fixed_loan_rate, 0.15, 0.011, 0, maturity, 500)
+        plot_data(fixed_loan_rate, 0.15, 0.012, 0, maturity, 500)
+        plot_data(fixed_loan_rate, 0.15, 0.013, 0, maturity, 500)
+        plot_data(fixed_loan_rate, 0.15, 0.02, 0, maturity, 500)
+    end
 end
 
 function process_csv(csv_file::String)
