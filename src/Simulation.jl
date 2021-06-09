@@ -38,6 +38,11 @@ current_available() = asset_value(available, DEPOSIT)
 current_saved() = asset_value(saved, DEPOSIT)
 current_money_stock() = current_available() + current_saved()
 
+money_stock(data::SimData) = .+(data.available, data.saved)
+debt_ratio(data::SimData) = ./(100 * data.debt, money_stock(data))
+required_loan_ratio(data::SimData) = ./(100 * data.required_loan, money_stock(data))
+growth(data::SimData) = .*(data.growth, 100)
+
 function Base.resize!(data::SimData, size::Integer)
     if size != length(data)
         for field in fieldnames(SimData)
@@ -201,41 +206,35 @@ function process_data(money_stock::Vector{Real},
 end
 
 function plot_required_loan_ratio(data::SimData)
-    money_stock = .+(data.available, data.saved)
-    series = ./(100 * data.required_loan, money_stock)
+    series = required_loan_ratio(data)
     plot(series, label = "LR", title = "Loan ratio (" * string(length(data)) * " years)")
     xaxis!("Years")
-    yaxis!("Percentage")
 
-    return last(series)
+    return yaxis!("Percentage")
 end
 
 function plot_debt_ratio(data::SimData)
-    money_stock = .+(data.available, data.saved)
-    series = ./(100 * data.debt, money_stock)
+    series = debt_ratio(data)
     plot(series, label = "DR", title = "Debt ratio (" * string(length(data)) * " years)")
     xaxis!("Years")
-    yaxis!("Percentage")
 
-    return last(series)
+    return yaxis!("Percentage")
 end
 
 function plot_growth(data::SimData)
-    series = .*(data.growth, 100)
+    series = growth(data)
     plot(series, label = "g", title = "Growth (" * string(length(data)) * " years)")
     xaxis!("Years")
-    yaxis!("Percentage")
 
-    return last(series)
+    return yaxis!("Percentage")
 end
 
 function plot_money_stock(data::SimData)
-    series = .+(data.available, data.saved)
+    series = money_stock(data)
     plot(series, label = "M", title = "Money stock (" * string(length(data)) * " years)")
     xaxis!("Years")
-    yaxis!("Stock")
 
-    return last(series)
+    return yaxis!("Stock")
 end
 
 function plot_data(mode::Mode, m::Real, p::Real, s::Real, maturity::Integer, cycles::Integer = 100)
@@ -245,21 +244,21 @@ function plot_data(mode::Mode, m::Real, p::Real, s::Real, maturity::Integer, cyc
     s = Fixed(4)(s * 100)
 
     if mode == fixed_growth
-        LR = plot_required_loan_ratio(data)
+        plot_required_loan_ratio(data)
         savefig("plots/" * string(mode) * "_LR_growth_" * string(m) * "_profit_" * string(p) * "_save_" * string(s) * "_" * string(maturity) * "_" * string(cycles) * ".png")
-        DR = plot_debt_ratio(data)
+        plot_debt_ratio(data)
         savefig("plots/" * string(mode) * "_DR_growth_" * string(m) * "_profit_" * string(p) * "_save_" * string(s) * "_" * string(maturity) * "_" * string(cycles) * ".png")
 
-        return LR, DR
+        return last(required_loan_ratio(data)), last(debt_ratio(data))
     else
-        g = plot_growth(data)
+        plot_growth(data)
         savefig("plots/" * string(mode) * "_g_LR_" * string(m) * "_profit_" * string(p) * "_save_" * string(s) * "_" * string(maturity) * "_" * string(cycles) * ".png")
-        M = plot_money_stock(data)
-        savefig("plots/" * string(mode) * "_M_LR_" * string(m) * "_profit_" * string(p) * "_save_" * string(s) * "_" * string(maturity) * "_" * string(cycles) * ".png")
-        DR = plot_debt_ratio(data)
+        plot_money_stock(data)
+        savefig("plots/" * string(mode, false) * "_M_LR_" * string(m) * "_profit_" * string(p) * "_save_" * string(s) * "_" * string(maturity) * "_" * string(cycles) * ".png")
+        plot_debt_ratio(data)
         savefig("plots/" * string(mode) * "_DR_LR_" * string(m) * "_profit_" * string(p) * "_save_" * string(s) * "_" * string(maturity) * "_" * string(cycles) * ".png")
 
-        return g, DR
+        return last(growth(data)), last(debt_ratio(data))
     end
 end
 
