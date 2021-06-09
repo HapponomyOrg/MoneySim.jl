@@ -17,6 +17,7 @@ value(rf::RealFunc) = rf isa Function ? rf() : rf
 struct SimData
     growth_ratio::Vector{Fixed(4)}
     profit_ratio::Vector{Fixed(4)}
+    maturity::Vector{Int32}
     qe_adjustment::Vector{Currency}
     available::Vector{Currency}
     saved::Vector{Currency}
@@ -27,6 +28,7 @@ struct SimData
     bank_equity::Vector{Currency}
     SimData(size::Integer) = new(Vector{Fixed(4)}(undef, size),
                                 Vector{Fixed(4)}(undef, size),
+                                Vector{Int32}(undef, size),
                                 Vector{Currency}(undef, size),
                                 Vector{Currency}(undef, size),
                                 Vector{Currency}(undef, size),
@@ -73,22 +75,33 @@ function process_cycle!(cycle::Integer,
                     loans::Vector{Debt},
                     profit_ratio::Real,
                     save_ratio::Real,
-                    maturity::Integer,
+                    maturity::RealFunc,
                     loan_satisfaction::Real)
     money_stock = current_money_stock()
     mode_ratio = value(mode_ratio)
+    maturity = value(maturity)
 
     # process loans
+    settled_loan_indices = Vector{Integer}()
+    index = 1
+
     for loan in loans
         process_debt!(loan)
+
+        if debt_settled(loan)
+            # Store the index
+            push!(settled_loan_indices, index)
+        end
+
+        index += 1
+    end
+
+    # Delete all settled loans
+    for index in reverse(settled_loan_indices)
+        deleteat!(loans, index)
     end
 
     data.installment[cycle] = money_stock - current_money_stock()
-
-    # Only the first loan can have reached maturity
-    if !isempty(loans) && debt_settled(loans[1])
-        deleteat!(loans, 1)
-    end
 
     # determine required and real loan
     if mode != fixed_loan_ratio
@@ -151,7 +164,7 @@ function simulate_banks(mode::Mode,
                 debt_ratio::Real,
                 profit_ratio::Real,
                 save_ratio::Real,
-                maturity::Integer,
+                maturity::RealFunc,
                 cycles::Integer;
                 loan_satisfaction::Real = 1)
     money_stock = Currency(money_stock)
@@ -164,11 +177,7 @@ function simulate_banks(mode::Mode,
 
     loans = Vector{Debt}()
 
-    if mode == random_growth
-        push!(loans, bank_loan(bank, available, debt, 0, maturity)) # set profit ratio for initial debt to 0
-    else
-        push!(loans, bank_loan(bank, available, debt, 0, maturity)) # create initial debt
-    end
+    push!(loans, bank_loan(bank, available, debt, 0, value(maturity))) # set profit ratio for initial debt to 0
 
     # Adjust for debt ratio's different from 100%
     book_asset!(available, DEPOSIT, money_stock - debt)
@@ -197,6 +206,14 @@ function simulate_banks(mode::Mode,
     end
 
     return resize!(data, num_cycles)
+end
+
+function plot_maturity(data::SimData)
+    series = data.maturity
+    plot(series, label = "m", title = "Maturity (" * string(length(data)) * " years)")
+    xaxis!("Years")
+
+    return yaxis!("Maturity")
 end
 
 function plot_required_loan_ratio(data::SimData)
@@ -239,7 +256,7 @@ function plot_money_stock(data::SimData)
     return yaxis!("Stock")
 end
 
-function plot_data(mode::Mode, m::RealFunc, p::Real, s::Real, maturity::Integer, cycles::Integer = 100)
+function plot_data(mode::Mode, m::RealFunc, p::Real, s::Real, maturity::RealFunc, cycles::Integer = 100)
     data = simulate_banks(mode, m, 1000000, 1, p, s, maturity, cycles)
     m = m isa Function ? m : Fixed(4)(m * 100)
     p = Fixed(4)(p * 100)
@@ -267,10 +284,6 @@ function plot_data(mode::Mode, m::RealFunc, p::Real, s::Real, maturity::Integer,
 
         return last(growth_ratio(data)), last(debt_ratio(data))
     end
-end
-
-function get_random_growth(low, high)
-    return rand() * (high - low) + low
 end
 
 function simulations()
@@ -308,12 +321,17 @@ function simulations()
     end
 end
 
-function random_simulations()
-    grow_func() = get_random_growth(0.02, 0.12)
+random_float(low::Real, high::Real) = rand() * (high - low) + low
+random_int(low::Integer, high::Integer) = rand(low:high)
 
-    plot_data(random_growth, grow_func, -0.05, 0, 20, 500)
-    plot_data(random_growth, grow_func, 0, 0, 20, 500)
-    plot_data(random_growth, grow_func, 0.05, 0, 20, 500)
+function random_simulations()
+    grow_func() = random_float(0.02, 0.12)
+    maturity_func() = random_int(1, 30)
+
+    plot_data(random_growth, grow_func, -0.001, 0, maturity_func, 800)
+    plot_data(random_growth, grow_func, -0.05, 0, maturity_func, 500)
+    plot_data(random_growth, grow_func, 0, 0, maturity_func, 500)
+    plot_data(random_growth, grow_func, 0.05, 0, maturity_func, 500)
 end
 
 function process_csv(csv_file::String)
