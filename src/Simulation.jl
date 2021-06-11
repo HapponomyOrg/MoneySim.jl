@@ -294,6 +294,18 @@ function plot_money_stock(data::SimData)
     return yaxis!("Stock")
 end
 
+function plot_D_over_L(data::SimData)
+    series = ./(data.debt, data.loan)
+    g = last(data.growth_ratio)
+    p = last(data.profit_ratio)
+    LR = Fixed(4)(100 * last(data.loan) / last(money_stock(data))) / 100
+    parameter_str = "g = " * string(g) * " p = " * string(p) * " LR = " * string(LR)
+    plot(series, label = "D/L", title = parameter_str * " (" * string(length(data)) * " years)")
+    xaxis!("Years")
+
+    return yaxis!("D/L")
+end
+
 function plot_data(mode::Mode, m::RealFunc, p::Real, relative_p::Bool, s::Real, maturity::RealFunc, cycles::Integer = 100)
     data = simulate_banks(mode, m, 1000000, 1, p, relative_p, s, maturity, cycles)
     m = m isa Function ? m : Fixed(4)(m * 100)
@@ -327,32 +339,26 @@ function plot_data(mode::Mode, m::RealFunc, p::Real, relative_p::Bool, s::Real, 
 end
 
 function simulations()
-    for maturity = 10:10:20
-        # No proft, no savings
-        plot_data(growth_mode, 0, 0, false, 0, maturity)
-        plot_data(growth_mode, 0.01, 0, false, 0, maturity)
+    maturity = 20
 
-        # Profit, no savings, p < g
-        plot_data(growth_mode, 0.05, 0.01, false, 0, maturity)
-        plot_data(growth_mode, 0.05, 0.01, false, 0, maturity, 500)
+    # No proft, no savings
+    plot_data(growth_mode, 0, 0, false, 0, maturity)
+    plot_data(growth_mode, 0.01, 0, false, 0, maturity)
 
-        # Profit, no savings, p >= g
-        plot_data(growth_mode, 0.05, 0.05, false, 0, maturity)
-        plot_data(growth_mode, 0.05, 0.1, false, 0, maturity)
+    # Profit, no savings, p < g
+    plot_data(growth_mode, 0.05, 0.01, false, 0, maturity)
+    plot_data(growth_mode, 0.05, 0.01, false, 0, maturity, 500)
 
-        plot_data(growth_mode, 0.0475, 0.008, false, 0, maturity, 500)
+    # Profit, no savings, p >= g
+    plot_data(growth_mode, 0.05, 0.05, false, 0, maturity)
+    plot_data(growth_mode, 0.05, 0.1, false, 0, maturity)
 
-        plot_data(loan_ratio_mode, 0.15, 0.008, false, 0, maturity, 500)
-        plot_data(loan_ratio_mode, 0.15, 0.009, false, 0, maturity, 500)
+    plot_data(growth_mode, 0.0475, 0.008, false, 0, maturity, 500)
 
-        plot_data(loan_ratio_mode, 0.15, 0.01, false, 0, maturity, 500)
-        plot_data(loan_ratio_mode, 0.149, 0.01, false, 0, maturity, 500)
-        plot_data(loan_ratio_mode, 0.14, 0.01, false, 0, maturity, 500)
-        plot_data(loan_ratio_mode, 0.15, 0.011, false, 0, maturity, 500)
-        plot_data(loan_ratio_mode, 0.15, 0.012, false, 0, maturity, 500)
-        plot_data(loan_ratio_mode, 0.15, 0.013, false, 0, maturity, 500)
-        plot_data(loan_ratio_mode, 0.15, 0.02, false, 0, maturity, 500)
-    end
+    plot_data(loan_ratio_mode, 0.15, 0.008, false, 0, maturity, 500)
+    plot_data(loan_ratio_mode, 0.15, 0.009, false, 0, maturity, 500)
+    plot_data(loan_ratio_mode, 0.149, 0.008, false, 0, maturity, 500)
+    plot_data(loan_ratio_mode, 0.149, 0.008, false, 0, 30, 500)
 end
 
 random_float(low::Real, high::Real) = rand() * (high - low) + low
@@ -360,18 +366,31 @@ random_int(low::Integer, high::Integer) = rand(low:high)
 
 function random_simulations()
     grow_func() = random_float(0.02, 0.12)
-    maturity_func() = random_int(1, 30)
 
-    plot_data(loan_ratio_mode, grow_func, -0.001, true, 0, maturity_func, 800)
-    plot_data(loan_ratio_mode, grow_func, -0.05, true, 0, maturity_func, 500)
-    plot_data(loan_ratio_mode, grow_func, 0, true, 0, maturity_func, 500)
-    plot_data(loan_ratio_mode, grow_func, 0.05, true, 0, maturity_func, 500)
+    plot_data(growth_mode, grow_func, -0.05, true, 0, 20, 100)
+    plot_data(growth_mode, grow_func, 0, true, 0, 20, 100)
+    plot_data(growth_mode, grow_func, 0.05, true, 0, 20, 100)
 
     loan_func() = random_float(0.01, 0.2)
+    maturity_func() = random_int(1, 30)
     plot_data(loan_ratio_mode, loan_func, -0.001, true, 0, maturity_func, 500)
     plot_data(loan_ratio_mode, loan_func, -0.05, true, 0, maturity_func, 500)
     plot_data(loan_ratio_mode, loan_func, 0, true, 0, maturity_func, 500)
     plot_data(loan_ratio_mode, loan_func, 0.05, true, 0, maturity_func, 500)
+end
+
+function convenience_plots()
+    g = 0.05
+    p = 0.01
+    m = 20
+    data = simulate_banks(growth_mode, g, 1000000, 1, p, false, 0, m, 500)
+    LR = Fixed(4)(100 * last(data.loan) / last(money_stock(data))) / 100
+
+    plot_D_over_L(data)
+
+    data = simulate_banks(loan_ratio_mode, LR, 1000000, 1, p, false, 0, m, 500)
+    plot_D_over_L(data)
+    plot_growth_ratio(data)
 end
 
 function process_csv(csv_file::String)
