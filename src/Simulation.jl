@@ -61,6 +61,8 @@ growth_ratio(data::SimData) = .*(data.growth_ratio, 100)
 profit_ratio(data::SimData) = .*(data.profit_ratio, 100)
 delta_growth_profit(data::SimData) = .-(100 * data.growth_ratio, 100 * data.profit_ratio)
 
+print_last_ratio(ratios, label) = println(label * "(" * string(length(ratios)) * ") = " * string(last(ratios)) * "%")
+
 function Base.resize!(data::SimData, size::Integer)
     if size != length(data)
         for field in fieldnames(SimData)
