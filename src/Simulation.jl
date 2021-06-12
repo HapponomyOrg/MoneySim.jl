@@ -345,6 +345,8 @@ function simulations()
     plot_data(growth_mode, 0, 0, false, 0, maturity)
     plot_data(growth_mode, 0.01, 0, false, 0, maturity)
 
+    plot_data(growth_mode, 0.05, 0.0499, false, 0, maturity, 500)
+
     # Profit, no savings, p < g
     plot_data(growth_mode, 0.05, 0.01, false, 0, maturity)
     plot_data(growth_mode, 0.05, 0.01, false, 0, maturity, 500)
