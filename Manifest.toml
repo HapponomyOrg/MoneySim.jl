@@ -38,6 +38,12 @@ version = "1.0.0"
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
+[[CSV]]
+deps = ["Dates", "Mmap", "Parsers", "PooledArrays", "SentinelArrays", "Tables", "Unicode"]
+git-tree-sha1 = "b83aa3f513be680454437a0eee21001607e5d983"
+uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+version = "0.8.5"
+
 [[CategoricalArrays]]
 deps = ["DataAPI", "Future", "JSON", "Missings", "Printf", "Statistics", "StructTypes", "Unicode"]
 git-tree-sha1 = "9f6101597998e8d8cc8c99b85e4aca144354403b"
@@ -109,7 +115,7 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[EconoSim]]
 deps = ["Agents", "DataStructures", "FixedPointDecimals"]
-git-tree-sha1 = "e82c65dfbb366f3dbbdb34c6a06a667f7e588a39"
+git-tree-sha1 = "f4e1a7152a014e764717191f6acd505ebd4f7d76"
 repo-rev = "main"
 repo-url = "https://github.com/HapponomyOrg/EconoSim.jl"
 uuid = "cc8cb6e0-4c11-4d04-b964-59e7aacda730"
@@ -357,6 +363,12 @@ version = "1.1.3"
 
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+
+[[SentinelArrays]]
+deps = ["Dates", "Random"]
+git-tree-sha1 = "bc967c221ccdb0b85511709bda96ee489396f544"
+uuid = "91c51154-3ec4-41a3-a24f-3f23e20d615c"
+version = "1.3.2"
 
 [[Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
