@@ -260,7 +260,7 @@ function simulate_random_g(M0 = 1000000;
                         fixed_seed = true)
     grow_func() = random_float(min_g, max_g)
 
-    simulate_banks(growth_mode, grow_func, M0, 1, true, relative_p, 0, m, cycles)
+    simulate_banks(growth_mode, grow_func, M0, 1, relative_p, true, 0, m, cycles)
 end
 
 function simulate_fixed_LR(M0 = 1000000;
