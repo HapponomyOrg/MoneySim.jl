@@ -240,6 +240,53 @@ function simulate_banks(mode::Mode,
     return resize!(data, num_cycles)
 end
 
+random_float(low::Real, high::Real) = rand() * (high - low) + low
+random_int(low::Integer, high::Integer) = rand(low:high)
+
+function simulate_fixed_g(;
+                        M0::Real,
+                        g::Real,
+                        p::Real,
+                        m::Integer,
+                        cycles::Integer)
+    simulate_banks(growth_mode, g, M0, 1, p, false, 0, m, cycles)
+end
+
+function simulate_random_g(;
+                        min_g::Real,
+                        max_g::real,
+                        M0::Real,
+                        relative_p::Real,
+                        m::Integer,
+                        cycles::Integer)
+    grow_func() = random_float(min_g, max_g)
+
+    simulate_banks(growth_mode, grow_func, M0, 1, true, relative_p, 0, m, cyvles)
+end
+
+function simulate_fixed_LR(;
+                        M0::Real,
+                        LR::Real,
+                        p::Real,
+                        m::Integer,
+                        cycles::Integer)
+    simulate_banks(loan_ratio_mode, LR, M0, 1, p, false, 0, m, cycles)
+end
+
+function simulate_random_LR(;
+                        M0::Real,
+                        min_LR::Real,
+                        max_LR::Real,
+                        relative_p::Real,
+                        min_m::Integer,
+                        max_m::Integer,
+                        cycles::Integer)
+    loan_func() = random_float(min_LR, max_LR)
+    maturity_func() = random_int(min_m, max_m)
+
+    simulate_banks(loan_ratio_mode, loan_func, M0, 1, relative_p, true, 0, maturity_func, cycles)
+end
+
 function plot_maturity(data::SimData)
     series = data.maturity
     plot(series, label = "m", title = "Maturity (" * string(length(data)) * " years)")
@@ -364,9 +411,6 @@ function simulations()
     plot_data(loan_ratio_mode, 0.149, 0.008, false, 0, maturity, 500)
     plot_data(loan_ratio_mode, 0.149, 0.008, false, 0, 30, 500)
 end
-
-random_float(low::Real, high::Real) = rand() * (high - low) + low
-random_int(low::Integer, high::Integer) = rand(low:high)
 
 function random_simulations()
     grow_func() = random_float(0.02, 0.12)
