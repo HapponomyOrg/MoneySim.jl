@@ -1,6 +1,7 @@
 using EconoSim # EconoSim 0.1.2 or https://github.com/HapponomyOrg/EconoSim.jl
 using Plots
 using CSV
+using Random
 
 """
     Mode in which the simulation is run.
@@ -240,8 +241,21 @@ function simulate_banks(mode::Mode,
     return resize!(data, num_cycles)
 end
 
-random_float(low::Real, high::Real) = rand() * (high - low) + low
-random_int(low::Integer, high::Integer) = rand(low:high)
+function random_float(low::Real, high::Real, rng = nothing)
+    if isnothing(rng)
+        return rand() * (high - low) + low
+    else
+        return rand(rng) * (high - low) + low
+    end
+end
+
+function random_int(low::Integer, high::Integer, rng = nothing)
+    if isnothing(rng)
+        return rand(low:high)
+    else
+        return rand(rng, low:high)
+    end
+end
 
 function simulate_fixed_g(M0 = 1000000;
                         g::Real,
@@ -258,7 +272,8 @@ function simulate_random_g(M0 = 1000000;
                         m::Integer,
                         cycles::Integer,
                         fixed_seed = true)
-    grow_func() = random_float(min_g, max_g)
+    rng = fixed_seed ? MersenneTwister(12345) : nothing
+    grow_func() = random_float(min_g, max_g, rng)
 
     simulate_banks(growth_mode, grow_func, M0, 1, relative_p, true, 0, m, cycles)
 end
@@ -279,8 +294,9 @@ function simulate_random_LR(M0 = 1000000;
                         max_m::Integer,
                         cycles::Integer,
                         fixed_seed = true)
-    loan_func() = random_float(min_LR, max_LR)
-    maturity_func() = random_int(min_m, max_m)
+    rng = fixed_seed ? MersenneTwister(12345) : nothing
+    loan_func() = random_float(min_LR, max_LR, rng)
+    maturity_func() = random_int(min_m, max_m, rng)
 
     simulate_banks(loan_ratio_mode, loan_func, M0, 1, relative_p, true, 0, maturity_func, cycles)
 end
