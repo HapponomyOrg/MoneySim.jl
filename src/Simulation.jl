@@ -67,9 +67,10 @@ function generate_func_data(M0::Real, g::Real, p::Real, cycles::Integer)
         else
             debt_ratio = (p*((1+p)/(1+g))^t-g)/(p-g)
     end
+
         func_data.debt_ratio[t] = debt_ratio
         func_data.debt[t] = round(M0 * debt_ratio * (1 + g)^t, digits = 2)
-        func_data.bank_equity[t] = round(M0 * ((((1 + p)/(1 + g))^t - 1)/(p - g)) * (1 + g)^t, digits = 2)
+        #func_data.bank_equity[t] = round(M0 * ((((1 + p)/(1 + g))^t - 1)/(p - g)) * (1 + g)^t, digits = 2)
     end
 
     return func_data
