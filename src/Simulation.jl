@@ -244,7 +244,7 @@ function simulate_banks(mode::Mode,
 
     loans = Vector{Debt}()
 
-    push!(loans, bank_loan(bank, available, debt, 0, value(maturity))) # set profit ratio for initial debt to 0
+    push!(loans, bank_loan(bank, available, debt, profit_ratio, value(maturity))) # set profit ratio for initial debt to 0
 
     # Adjust for debt ratio's different from 100%
     book_asset!(available, DEPOSIT, money_stock - debt)
