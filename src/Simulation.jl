@@ -253,10 +253,11 @@ end
 
 function simulate_random_g(M0 = 1000000;
                         min_g::Real,
-                        max_g::real,
+                        max_g::Real,
                         relative_p::Real,
                         m::Integer,
-                        cycles::Integer)
+                        cycles::Integer,
+                        fixed_seed = true)
     grow_func() = random_float(min_g, max_g)
 
     simulate_banks(growth_mode, grow_func, M0, 1, true, relative_p, 0, m, cyvles)
@@ -276,7 +277,8 @@ function simulate_random_LR(M0 = 1000000;
                         relative_p::Real,
                         min_m::Integer,
                         max_m::Integer,
-                        cycles::Integer)
+                        cycles::Integer,
+                        fixed_seed = true)
     loan_func() = random_float(min_LR, max_LR)
     maturity_func() = random_int(min_m, max_m)
 
