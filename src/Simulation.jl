@@ -254,7 +254,6 @@ end
 function simulate_random_g(M0 = 1000000;
                         min_g::Real,
                         max_g::real,
-                        M0::Real,
                         relative_p::Real,
                         m::Integer,
                         cycles::Integer)
