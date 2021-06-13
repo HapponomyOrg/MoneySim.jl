@@ -42,6 +42,39 @@ struct SimData
                                 Vector{Currency}(undef, size))
 end
 
+struct FuncData
+    debt_ratio::Vector{Fixed(4)}
+    debt::Vector{Currency}
+    bank_equity::Vector{Currency}
+    FuncData(size::Integer) = new(Vector{Fixed(4)}(undef, size),
+                                Vector{Currency}(undef, size),
+                                Vector{Currency}(undef, size))
+end
+
+function generate_func_data(M0::Real, g::Real, p::Real, cycles::Integer)
+    M0 = Currency(M0)
+    func_data = FuncData(cycles)
+
+    for t in 1:cycles
+        if g == 0
+            debt_ratio = (p + 1)^t
+        elseif p == 0
+            debt_ratio = debt_ratio = 1
+        elseif p == g
+            debt_ratio = (g * t) / (1 + g) + 1
+        elseif p < g
+            debt_ratio = g / (g - p)
+        else
+            debt_ratio = (p*((1+p)/(1+g))^t-g)/(p-g)
+    end
+        func_data.debt_ratio[t] = debt_ratio
+        func_data.debt[t] = round(M0 * debt_ratio * (1 + g)^t, digits = 2)
+        func_data.bank_equity[t] = round(M0 * ((((1 + p)/(1 + g))^t - 1)/(p - g)) * (1 + g)^t, digits = 2)
+    end
+
+    return func_data
+end
+
 Base.length(data::SimData) = length(data.growth_ratio)
 
 # agregate bank balance sheet
@@ -318,9 +351,16 @@ function plot_loan_ratio(data::SimData)
     return yaxis!("Percentage")
 end
 
-function plot_debt_ratio(data::SimData)
+function plot_debt_ratio(data::SimData; func_plot = false)
     series = debt_ratio(data)
     plot(series, label = "DR", title = "Debt ratio (" * string(length(data)) * " years)")
+
+    if func_plot
+        M0 = money_stock(data)[1]
+        func_data = generate_func_data(M0, data.growth_ratio[1], data.profit_ratio[1], length(series))
+        plot!(.*(func_data.debt_ratio, 100), label = "fDR")
+    end
+
     xaxis!("Years")
 
     return yaxis!("Percentage")
@@ -376,6 +416,18 @@ function plot_D_over_L(data::SimData)
     xaxis!("Years")
 
     return yaxis!("D/L")
+end
+
+function plot_I_over_D(data::SimData)
+    series = ./(data.installment * 100, data.debt)
+    g = last(data.growth_ratio)
+    p = last(data.profit_ratio)
+    ID = last(series)
+    parameter_str = "g = " * string(g) * " p = " * string(p) * " I/D = " * string(ID)
+    plot(series, label = "I/D", title = parameter_str * " (" * string(length(data)) * " years)")
+    xaxis!("Years")
+
+    return yaxis!("I/D")
 end
 
 function plot_data(mode::Mode, m::RealFunc, p::Real, relative_p::Bool, s::Real, maturity::RealFunc, cycles::Integer = 100)
