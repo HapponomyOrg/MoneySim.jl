@@ -243,8 +243,7 @@ end
 random_float(low::Real, high::Real) = rand() * (high - low) + low
 random_int(low::Integer, high::Integer) = rand(low:high)
 
-function simulate_fixed_g(;
-                        M0::Real,
+function simulate_fixed_g(M0 = 1000000;
                         g::Real,
                         p::Real,
                         m::Integer,
@@ -252,7 +251,7 @@ function simulate_fixed_g(;
     simulate_banks(growth_mode, g, M0, 1, p, false, 0, m, cycles)
 end
 
-function simulate_random_g(;
+function simulate_random_g(M0 = 1000000;
                         min_g::Real,
                         max_g::real,
                         M0::Real,
@@ -264,8 +263,7 @@ function simulate_random_g(;
     simulate_banks(growth_mode, grow_func, M0, 1, true, relative_p, 0, m, cyvles)
 end
 
-function simulate_fixed_LR(;
-                        M0::Real,
+function simulate_fixed_LR(M0 = 1000000;
                         LR::Real,
                         p::Real,
                         m::Integer,
@@ -273,8 +271,7 @@ function simulate_fixed_LR(;
     simulate_banks(loan_ratio_mode, LR, M0, 1, p, false, 0, m, cycles)
 end
 
-function simulate_random_LR(;
-                        M0::Real,
+function simulate_random_LR(M0 = 1000000;
                         min_LR::Real,
                         max_LR::Real,
                         relative_p::Real,
