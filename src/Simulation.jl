@@ -60,6 +60,7 @@ debt_ratio(data::SimData) = ./(100 * data.debt, money_stock(data))
 loan_ratio(data::SimData) = ./(100 * data.loan, money_stock(data))
 growth_ratio(data::SimData) = .*(data.growth_ratio, 100)
 profit_ratio(data::SimData) = .*(data.profit_ratio, 100)
+equity_ratio(data::SimData) = ./(100 * data.bank_equity, money_stock(data))
 delta_growth_profit(data::SimData) = .-(100 * data.growth_ratio, 100 * data.profit_ratio)
 
 print_last_ratio(ratios, label) = println(label * "(" * string(length(ratios)) * ") = " * string(round(last(ratios), digits = 2)) * "%")
@@ -336,6 +337,14 @@ end
 function plot_profit_ratio(data::SimData)
     series = profit_ratio(data)
     plot(series, label = "p", title = "Profit ratio (" * string(length(data)) * " years)")
+    xaxis!("Years")
+
+    return yaxis!("Percentage")
+end
+
+function plot_equity_ratio(data::SimData)
+    series = equity_ratio(data)
+    plot(series, label = "ER", title = "Equity ratio (" * string(length(data)) * " years)")
     xaxis!("Years")
 
     return yaxis!("Percentage")
