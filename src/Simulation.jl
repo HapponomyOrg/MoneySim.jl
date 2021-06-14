@@ -170,6 +170,7 @@ function process_cycle!(cycle::Integer,
         deleteat!(loans, index)
     end
 
+    # includes net profit
     data.installment[cycle] = money_stock - current_money_stock()
 
     # determine required and real loan
