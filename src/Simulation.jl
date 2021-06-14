@@ -349,6 +349,22 @@ function simulate_random_LR(M0 = 1000000;
     simulate_banks(loan_ratio_mode, loan_func, M0, 1, relative_p, true, 0, maturity_func, cycles)
 end
 
+function plot_multi_series(series::Tuple{String, Vector}...)
+    counter = 1
+
+    for serie in series
+        if counter == 1
+            plot(serie[2], label = serie[1], title = "Multi series (" * string(length(data)) * " years)")
+        else
+            plot!(serie[2], label = serie[1])
+        end
+
+        counter += 1
+    end
+
+    return xaxis!("Years")
+end
+
 function plot_maturity(data::SimData)
     series = data.maturity
     plot(series, label = "m", title = "Maturity (" * string(length(data)) * " years)")
