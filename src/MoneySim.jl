@@ -7,7 +7,7 @@ export SimData, FuncData, RealFunc, IntFunc
 export simulate_banks, plot_data, simulations
 export simulate_fixed_g, simulate_random_g, simulate_fixed_LR, simulate_random_LR
 export curent_available, current_saved, current_money_stock, money_stock, debt_ratio, growth_ratio, profit_ratio, equity_ratio, loan_ratio, delta_growth_profitexport, print_last_ratio
-export plot_series, plot_maturity, plot_loan_ratio, plot_debt_ratio, plot_growth_ratio, plot_profit_ratio, plot_equity_ratio, plot_delta_growth_profit, plot_money_stock, plot_D_over_L
+export plot_multi_series, plot_maturity, plot_loan_ratio, plot_debt_ratio, plot_growth_ratio, plot_profit_ratio, plot_equity_ratio, plot_delta_growth_profit, plot_money_stock, plot_D_over_L
 export random_float, random_int
 
 end
