@@ -2,6 +2,7 @@ using EconoSim # EconoSim 0.1.2 or https://github.com/HapponomyOrg/EconoSim.jl
 using Plots
 using CSV
 using Random
+using Statistics
 
 """
     Mode in which the simulation is run.
@@ -132,6 +133,7 @@ end
 * save_ratio::Real - the ratio at which money is saved.
 * maturity::IntFunc - the function or value determining loan maturity for this cycle.
 * loan_satisfaction::Real - determines the actual loan demand.
+* no_loss::Bool - if true, profit ratio can not go below 0.
 """
 function process_cycle!(cycle::Integer,
                     data::SimData,
@@ -142,7 +144,8 @@ function process_cycle!(cycle::Integer,
                     relative_profit::Bool,
                     save_ratio::Real,
                     maturity::IntFunc,
-                    loan_satisfaction::Real)
+                    loan_satisfaction::Real,
+                    no_loss::Bool)
     money_stock = current_money_stock()
     mode_ratio = value(mode_ratio)
     maturity = value(maturity)
@@ -187,8 +190,9 @@ function process_cycle!(cycle::Integer,
             profit_ratio = data.growth_ratio[cycle] + profit_ratio
         end
 
-        data.profit_ratio[cycle] = profit_ratio
+        profit_ratio = no_loss ? max(0, profit_ratio) : profit_ratio
         push!(loans, bank_loan(bank, available, data.loan[cycle], profit_ratio, maturity))
+        data.profit_ratio[cycle] = profit_ratio
     end
 
     # save money if available
@@ -210,7 +214,8 @@ end
                     save_ratio::Real,
                     maturity::IntFunc,
                     cycles::Integer;
-                    loan_satisfaction::Real = 1)
+                    loan_satisfaction::Real = 1,
+                    no_loss::Bool = true)
 
 # Arguments
 * mode::Mode - The simulation mode.
@@ -223,6 +228,7 @@ end
 * maturity::IntFunc - The maturity of the loans.
 * cycles::Integer - The number of cycles the simulation runs.
 * loan_satisfaction::Real - The satisfaction rate of the required loan.
+* no_loss::Bool - if true, profit ratio can not go below 0.
 """
 function simulate_banks(mode::Mode,
                 mode_ratio::RealFunc,
@@ -233,7 +239,8 @@ function simulate_banks(mode::Mode,
                 save_ratio::Real,
                 maturity::IntFunc,
                 cycles::Integer;
-                loan_satisfaction::Real = 1)
+                loan_satisfaction::Real = 1,
+                no_loss::Bool = true)
     money_stock = Currency(money_stock)
     debt = money_stock * debt_ratio # determine debt
 
@@ -265,7 +272,8 @@ function simulate_banks(mode::Mode,
                         relative_profit,
                         save_ratio,
                         maturity,
-                        loan_satisfaction)
+                        loan_satisfaction,
+                        no_loss)
 
         if current_available() + current_saved() <= 0
             num_cycles = cycle - 1
@@ -296,7 +304,8 @@ function simulate_fixed_g(M0 = 1000000;
                         g::Real,
                         p::Real,
                         m::Integer,
-                        cycles::Integer)
+                        cycles::Integer,
+                        no_loss::Bool = false)
     simulate_banks(growth_mode, g, M0, 1, p, false, 0, m, cycles)
 end
 
@@ -306,6 +315,7 @@ function simulate_random_g(M0 = 1000000;
                         relative_p::Real,
                         m::Integer,
                         cycles::Integer,
+                        no_loss::Bool = true,
                         fixed_seed = true)
     rng = fixed_seed ? MersenneTwister(12345) : nothing
     grow_func() = random_float(min_g, max_g, rng)
@@ -317,7 +327,8 @@ function simulate_fixed_LR(M0 = 1000000;
                         LR::Real,
                         p::Real,
                         m::Integer,
-                        cycles::Integer)
+                        cycles::Integer,
+                        no_loss::Bool = false)
     simulate_banks(loan_ratio_mode, LR, M0, 1, p, false, 0, m, cycles)
 end
 
@@ -328,6 +339,7 @@ function simulate_random_LR(M0 = 1000000;
                         min_m::Integer,
                         max_m::Integer,
                         cycles::Integer,
+                        no_loss::Bool = true,
                         fixed_seed = true)
     rng = fixed_seed ? MersenneTwister(12345) : nothing
     loan_func() = random_float(min_LR, max_LR, rng)
@@ -358,7 +370,7 @@ function plot_debt_ratio(data::SimData; func_plot = false)
 
     if func_plot
         M0 = money_stock(data)[1]
-        func_data = generate_func_data(M0, data.growth_ratio[1], data.profit_ratio[1], length(series))
+        func_data = generate_func_data(M0, mean(data.growth_ratio), data.profit_ratio[1], length(series))
         plot!(.*(func_data.debt_ratio, 100), label = "fDR")
     end
 
