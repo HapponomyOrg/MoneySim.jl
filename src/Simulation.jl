@@ -1,6 +1,6 @@
 using EconoSim # EconoSim 0.2.0 or https://github.com/HapponomyOrg/EconoSim.jl
 using Plots
-using CSV
+# using CSV
 using Random
 using Statistics
 
@@ -492,22 +492,22 @@ function plot_data(mode::Mode, m::RealFunc, p::Real, relative_p::Bool, s::Real, 
     end
 end
 
-function process_csv(csv_file::String)
-    csv_data = CSV.File(csv_file)
-    data = Vector([Vector{Real}(), Vector{Real}()])
-
-    cur_row = 1
-
-    for row in csv_data
-        cur_col = 1
-
-        for column in row
-            append!(data[cur_col], column)
-            cur_col += 1
-        end
-
-        cur_row += 1
-    end
-
-    return data
-end
+# function process_csv(csv_file::String)
+#     csv_data = CSV.File(csv_file)
+#     data = Vector([Vector{Real}(), Vector{Real}()])
+#
+#     cur_row = 1
+#
+#     for row in csv_data
+#         cur_col = 1
+#
+#         for column in row
+#             append!(data[cur_col], column)
+#             cur_col += 1
+#         end
+#
+#         cur_row += 1
+#     end
+#
+#     return data
+# end
