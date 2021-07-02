@@ -1,4 +1,4 @@
-using EconoSim # EconoSim 0.1.2 or https://github.com/HapponomyOrg/EconoSim.jl
+using EconoSim # EconoSim 0.2.0 or https://github.com/HapponomyOrg/EconoSim.jl
 using Plots
 using CSV
 using Random
