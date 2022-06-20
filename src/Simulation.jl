@@ -1,6 +1,5 @@
 using EconoSim # EconoSim 0.2.0 or https://github.com/HapponomyOrg/EconoSim.jl
 using Plots
-# using CSV
 using Random
 using Statistics
 
@@ -80,11 +79,11 @@ end
 Base.length(data::SimData) = length(data.growth_ratio)
 
 # agregate bank balance sheet
-bank = Balance(def_min_asset = typemin(Currency), log_transactions = false)
+bank = Balance(def_min_asset = typemin(Currency))
 # aggregate balance for money available to pay off debt
-available = Balance(def_min_asset = typemin(Currency), log_transactions = false)
+available = Balance(def_min_asset = typemin(Currency))
 # aggregate balance to save money not available to pay off debt
-saved = Balance(def_min_asset = typemin(Currency), log_transactions = false)
+saved = Balance(def_min_asset = typemin(Currency))
 
 current_available() = asset_value(available, DEPOSIT)
 current_saved() = asset_value(saved, DEPOSIT)
