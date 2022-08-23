@@ -28,7 +28,7 @@ end
 
 ### Behaviors
 
-function yard_sale_transfer!(target1, target2)
+function yard_sale_transfer!(target1, target2, model)
     av1 = max(CUR_0, asset_value(target1.balance, SUMSY_DEP))
     av2 = max(CUR_0, asset_value(target2.balance, SUMSY_DEP))
     transfer = max(C_0,
@@ -58,16 +58,52 @@ function yard_sale_transfer!(target1, target2)
 end
 
 function yard_sale!(model)
-    target1 = random_agent(model)
-    target2 = random_agent(model)
+    for i in 1:model.num_transactions
+        target1 = random_agent(model)
+        target2 = random_agent(model)
+        yard_sale_transfer!(target1, target2, model)
+    end
+end
+
+function taxed_yard_sale!(model)
+    tax = 0.01
 
     for i in 1:model.num_transactions
-        yard_sale_transfer!(target1, target2)
+        target1 = random_agent(model)
+        target2 = random_agent(model)
+
+        av1 = max(CUR_0, asset_value(target1.balance, SUMSY_DEP))
+        av2 = max(CUR_0, asset_value(target2.balance, SUMSY_DEP))
+        transfer = max(C_0,
+                Currency(min(av1, av2) * C_0_2))
+    
+        if rand(1:2) == 1
+            source = target1.balance
+            destination = target2.balance
+            avs = av1
+            avd = av2
+        else
+            source = target2.balance
+            destination = target1.balance
+            avs = av2
+            avd = av1
+        end
+        
+        # Make sure a minimum amount is always transferred
+        if transfer < C_20 &&
+             avs > 0 &&
+             avs > avd
+             transfer = min(C_20, avs * C_0_2)
+        end
+    
+        
+        transfer_asset!(source, destination, SUMSY_DEP, transfer)
+        book_asset!(destination, SUMSY_DEP, -transfer * tax)
     end
 end
 
 function equity_data(actor)
-    return equity(actor.balance)
+    return asset_value(actor.balance, SUMSY_DEP)
 end
 
 function deposit_data(actor)
@@ -79,9 +115,10 @@ function create_actors!(model,
                         start_balance::Real,
                         entry::BalanceEntry;
                         non_gi::Bool = false,
-                        non_gi_override = nothing)
+                        non_gi_override = nothing,
+                        activate_sumsy = true)
     for i in 1:num_actors
-        actor = Actor()
+        actor = activate_sumsy ? sumsy_actor() : Actor()
         book_asset!(actor.balance, entry, start_balance)
 
         if non_gi
@@ -98,7 +135,8 @@ function add_actors!(model,
                         entry::BalanceEntry;
                         add_non_gi::Bool = false,
                         non_gi_override = nothing,
-                        concentrated::Bool = false)
+                        concentrated::Bool = false,
+                        activate_sumsy = true)
     concentrated_balance = num_actors * start_balance
     actor_balance = concentrated ? 0 : start_balance
     actor_balance = add_non_gi ? actor_balance * num_actors / (num_actors + 0.25 * num_actors) : actor_balance
@@ -108,20 +146,42 @@ function add_actors!(model,
 
     if concentrated
         if add_non_gi
-            create_actors!(model, 1, concentrated_balance, entry, non_gi = true, non_gi_override = non_gi_override)
+            create_actors!(model, 1, concentrated_balance, entry,
+                            non_gi = true,
+                            non_gi_override = non_gi_override,
+                            activate_sumsy = activate_sumsy)
             num_non_gi_mod = -1
         else
-            create_actors!(model, 1, Currency(concentrated_balance), entry)
+            create_actors!(model, 1, Currency(concentrated_balance), entry,
+            activate_sumsy = activate_sumsy)
             num_gi_mod = -1
         end
     end
 
-    create_actors!(model, num_actors + num_gi_mod, actor_balance, entry)
+    create_actors!(model, num_actors + num_gi_mod, actor_balance, entry,
+                    activate_sumsy = activate_sumsy)
 
     if add_non_gi
-        create_actors!(model, Integer(num_actors / 4) + num_non_gi_mod, actor_balance, entry, non_gi = true, non_gi_override = non_gi_override)
+        create_actors!(model, Integer(num_actors / 4) + num_non_gi_mod,
+                        actor_balance, entry,
+                        non_gi = true,
+                        non_gi_override = non_gi_override,
+                        activate_sumsy = activate_sumsy)
     end
 end
+
+function process_transaction_sumsy!(balance::Balance, model, step::Int; booking_function = book_net_result!)
+    if is_sumsy_active(balance, sumsy) && process_ready(sumsy, step)
+         seed = step == 0 ? get_seed(balance, sumsy) : CUR_0
+         income = get_guaranteed_income(balance, sumsy)
+         demurrage = calculate_demurrage(balance, sumsy, step)
+         booking_function(balance, sumsy, seed, income, demurrage, step)
+ 
+         return seed, income, demurrage
+    else
+         return CUR_0, CUR_0, CUR_0
+    end
+ end
 
 function run_sumsy_simulation(sumsy::SuMSy = BASIC_SUMSY;
                                 num_actors::Integer = NUM_ACTORS,
@@ -129,11 +189,13 @@ function run_sumsy_simulation(sumsy::SuMSy = BASIC_SUMSY;
                                 sim_length::Integer = SIM_LENGTH,
                                 add_non_gi::Bool = false,
                                 concentrated::Bool = false,
+                                transaction_model = yard_sale!,
                                 model_adaptation::Union{Function, Nothing} = nothing)
     set_random_seed()
     start_balance = telo(sumsy) == CUR_MAX ? telo(BASIC_SUMSY) : telo(sumsy)
     model = create_sumsy_model(sumsy)
     model.properties[:num_transactions] = num_transactions
+    model.properties[:last_transaction] = model.step
 
     if model_adaptation !== nothing
         add_model_behavior!(model, model_adaptation)
@@ -141,7 +203,7 @@ function run_sumsy_simulation(sumsy::SuMSy = BASIC_SUMSY;
 
     non_gi_override = add_non_gi ? sumsy_overrides(sumsy, guaranteed_income = 0) : nothing
     add_actors!(model, num_actors, start_balance, SUMSY_DEP, add_non_gi = add_non_gi, non_gi_override = non_gi_override, concentrated = concentrated)
-    add_model_behavior!(model, yard_sale!)
+    add_model_behavior!(model, transaction_model)
 
     data, _ = run_econo_model!(model, sim_length * sumsy.interval , adata = [deposit_data, equity_data])
 
@@ -257,5 +319,7 @@ function plot_net_incomes(sumsy::SuMSy)
                 - calculate_demurrage(i, sumsy))
     end
 
-    plot(incomes, label = "net income", xlabel="Acount balance")
+    plot(incomes, label = "net income", xlabel="Acount balance", xticks = 10)
 end
+
+run_sumsy_simulation(sim_length = 10)

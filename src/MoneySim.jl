@@ -11,7 +11,9 @@ export random_float, random_int
 
 include("SuMSySimulation.jl")
 export BASIC_SUMSY, DEM_FREE_SUMSY, TIERED_SUMSY, DEM_FREE_TIERED_SUMSY, NO_DEM_SUMSY, NO_SUMSY, NO_GI_SUMSY
-export run_sumsy_simulation, analyse_money_stock, plot_money_stock, plot_comparative_money_stock
+export run_sumsy_simulation
+export yard_sale!, taxed_yard_sale!
+export analyse_money_stock, plot_money_stock, plot_comparative_money_stock
 export one_time_money_injection!, constant_money_injection!, one_time_money_destruction!, constant_money_destruction!
 export plot_net_incomes
 
