@@ -26,9 +26,10 @@ function run_standard_yard_sale_simulation(sumsy_base::SuMSy = BASIC_SUMSY;
     model = create_econo_model()
     model.properties[:num_transactions] = num_transactions
 
-    add_actors!(model, num_actors, start_balance, SUMSY_DEP,
+    add_actors!(model, num_actors, start_balance,
                 concentrated = concentrated,
                 activate_sumsy = false)
+
     add_model_behavior!(model, yard_sale!)
 
     data, _ = run_econo_model!(model, sim_length * sumsy_base.interval, adata = [deposit_data, equity_data])

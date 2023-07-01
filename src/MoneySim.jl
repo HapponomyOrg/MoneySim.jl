@@ -14,7 +14,7 @@ export BASIC_SUMSY, DEM_FREE_SUMSY, TIERED_SUMSY, DEM_FREE_TIERED_SUMSY, NO_DEM_
 export run_sumsy_simulation
 export yard_sale!, taxed_yard_sale!
 export analyse_money_stock, plot_money_stock, plot_comparative_money_stock
-export one_time_money_injection!, constant_money_injection!, one_time_money_destruction!, constant_money_destruction!
+export one_time_money_injection!, constant_money_injection!, one_time_money_destruction!, constant_money_destruction!, equal_money_distribution!
 export plot_net_incomes
 
 include("InequalitySimulation.jl")

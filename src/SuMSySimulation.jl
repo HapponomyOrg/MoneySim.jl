@@ -229,6 +229,22 @@ function constant_money_destruction!(model)
     end
 end
 
+function equal_money_distribution!(model)
+    if process_ready(model.sumsy, model.step)
+        money_stock = CUR_0
+
+        for actor in allagents(model)
+            money_stock += sumsy_assets(actor, model.step)
+        end
+
+        new_balance = money_stock / length(allagents(model))
+
+        for actor in allagents(model)
+            book_sumsy!(get_balance(actor), new_balance, set_to_value = true)
+        end
+    end
+end
+
 function analyse_money_stock(data)
     groups = groupby(data, :step)
 
@@ -311,9 +327,9 @@ function plot_money_stock(dataframes::Union{DataFrame, Vector{DataFrame}},
         end
 
         if i == 1
-            @df dataframes[i] plot(:money_stock, title = "Money stock\n" * title, label = label, yrange = (min_y, max_y))
+            @df dataframes[i] plot(:money_stock, title = title, label = label, yrange = (min_y, max_y), xlabel = "Periods", ylabel = "Money stock")
         else
-            @df dataframes[i] plot!(:money_stock, label = label, yrange = (min_y, max_y))
+            @df dataframes[i] plot!(:money_stock, label = label, yrange = (min_y, max_y), xlabel = "Periods", ylabel = "Money stock")
         end
     end
 
@@ -332,7 +348,7 @@ function plot_comparative_money_stock(dataframe,
                                         original_max = nothing,
                                         new_min = nothing,
                                         new_max = nothing)
-    @df dataframe plot(:money_stock, title = "Money stock\n" * title, label = "new money stock", color = "blue")
+    @df dataframe plot(:money_stock, title = title, label = "money stock", color = "blue", xlabel = "Periods", ylabel = "Money stock")
 
     if original_min !== nothing
         plot!(fill(original_min, size(dataframe[!, :money_stock])[1]), label = "original min", color = "orange")
@@ -352,7 +368,7 @@ function plot_comparative_money_stock(dataframe,
 end
 
 function plot_money_stock_per_person(dataframe, num_actors = NUM_ACTORS, title::String = "")
-    plot(./(dataframe[!, :money_stock], num_actors), title = "Money stock\n" * title, label = "Money stock")
+    plot(./(dataframe[!, :money_stock], num_actors), title = title, label = "Money stock", xlabel = "Periods", ylabel = "Money stock")
 end
 
 function plot_net_incomes(sumsy::SuMSy)

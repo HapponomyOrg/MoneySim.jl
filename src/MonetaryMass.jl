@@ -69,12 +69,12 @@ function plot_sim(T::Int64, g::Float64, f::Float64, M0 = 100.0)
   return plot1
 end
 
-plot_growth(f) = plot_sim(100,0.04,f)
+# plot_growth(f) = plot_sim(100,0.04,f)
 
-for f = 0.1:0.1:0.9
-  pl = plot_growth(f)
-  display(pl)
-end
+# for f = 0.1:0.1:0.9
+#   pl = plot_growth(f)
+#   display(pl)
+# end
 # savefig("overview.pdf")
 
 # The old way
