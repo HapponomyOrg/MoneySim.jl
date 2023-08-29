@@ -9,7 +9,7 @@ struct SimParams
     lock_random_generator::Bool
     sim_length::Int
     collection_interval::Int
-    transaction_range::RangeData{Int}
+    transaction_range::UnitRange{Int}
 end
 
 abstract type MoneyModelParams end
