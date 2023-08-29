@@ -18,7 +18,15 @@ export one_time_money_injection!, constant_money_injection!, one_time_money_dest
 export plot_net_incomes
 
 include("InequalitySimulation.jl")
-export run_standard_yard_sale_simulation, run_transaction_based_sumsy_simulation
+export run_standard_yard_sale_simulation, run_debt_based_simulation
+export borrow_income, borrow_when_poor, borrow_when_rich, ubi_borrow_when_poor, ubi_borrow_when_poor_rich
 export analyse_wealth, plot_wealth, plot_outlier_wealth
+
+include("transaction_models.jl")
+export TransactionParams, YardSaleParams, ConsumerSupplierParams
+
+include("transaction_sim.jl")
+export SimParams, ModelMoneyModelParams, FixedWealthParams, SuMSyParams, DebtBasedParams
+export run_fixed_wealth_simulation, run_sumsy_simulation, run_debt_based_simulation
 
 end

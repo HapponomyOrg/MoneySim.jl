@@ -4,7 +4,9 @@ using Random
 using Agents
 using DataFrames
 
-#include("SumSySimulation.jl")
+# include("SumSySimulation.jl")
+
+NUM_ACTORS = 1000
 
 BOTTOM_0_1 = 1:Int64(round(NUM_ACTORS / 1000))
 BOTTOM_1 = 1:Int64(NUM_ACTORS / 100)
@@ -25,6 +27,7 @@ function run_standard_yard_sale_simulation(sumsy_base::SuMSy = BASIC_SUMSY;
     start_balance = telo(sumsy_base) == CUR_MAX ? telo(BASIC_SUMSY) : telo(sumsy_base)
     model = create_econo_model()
     model.properties[:num_transactions] = num_transactions
+    model.properties[:last_transaction] = model.step
 
     add_actors!(model, num_actors, start_balance,
                 concentrated = concentrated,
@@ -32,46 +35,42 @@ function run_standard_yard_sale_simulation(sumsy_base::SuMSy = BASIC_SUMSY;
 
     add_model_behavior!(model, yard_sale!)
 
-    data, _ = run_econo_model!(model, sim_length * sumsy_base.interval, adata = [deposit_data, equity_data])
+    data, _ = run_econo_model!(model, sim_length * sumsy_base.interval, adata = [deposit_data, equity_data, wealth_data])
 
     return data
 end
 
-function deposit_net_income(model, actor)
-    last_transaction = isnothing(actor.last_transaction) ? 1 : actor.last_transaction
-    interval = model.step - last_transaction
-    d = calculate_demurrage(sumsy_balance(actor,  model), model.sumsy) * interval / model.sumsy.interval
-    gi = model.sumsy.guaranteed_income * interval / model.sumsy.interval
-    book_asset!(actor.balance, model.sumsy.dep_entry, gi - d)
-    actor.last_transaction = model.step
-end
-
-function sumsy_yard_sale!(model)
-    target1 = random_agent(model)
-    target2 = random_agent(model)
-
-    for i in 1:model.num_transactions
-        deposit_net_income(model, target1)
-        deposit_net_income(model, target2)
-        yard_sale_transfer!(target1, target2, model)
-    end
-end
-
-function run_transaction_based_sumsy_simulation(sumsy_base::SuMSy = BASIC_SUMSY;
-                                                num_actors::Integer = NUM_ACTORS,
-                                                num_transactions::Integer = NUM_TRANSACTIONS,
-                                                sim_length::Integer = SIM_LENGTH,
-                                                concentrated::Bool = false)
+function run_debt_based_simulation(sumsy_base::SuMSy = BASIC_SUMSY;
+                                    transaction_model::Function = yard_sale!,
+                                    model_action::Function = nothing,
+                                    active_sumsy = NO_SUMSY,
+                                    num_actors::Integer = NUM_ACTORS,
+                                    num_transactions::Integer = NUM_TRANSACTIONS,
+                                    sim_length::Integer = SIM_LENGTH,
+                                    concentrated::Bool = false)
     set_random_seed()
-    start_balance = telo(sumsy_base) == CUR_MAX ? telo(BASIC_SUMSY) : telo(sumsy_base)
     model = create_econo_model()
-    model.properties[:sumsy] = sumsy_base
+    model.properties[:sumsy_base] = sumsy_base
+    model.properties[:bank] = Balance()    
+    start_balance = telo(sumsy_base)
     model.properties[:num_transactions] = num_transactions
+    model.properties[:last_transaction] = model.step
 
-    add_actors!(model, num_actors, start_balance, SUMSY_DEP, concentrated = concentrated)
-    add_model_behavior!(model, sumsy_yard_sale!)
+    add_actors!(model, num_actors, start_balance,
+                concentrated = concentrated,
+                activate_sumsy = false)
 
-    data, _ = run_econo_model!(model, sim_length * sumsy_base.interval, adata = [deposit_data, equity_data])
+    for actor in allagents(model)
+        actor.debts = []
+    end
+
+    add_model_behavior!(model, transaction_model)
+
+    if model_action !== nothing
+        add_model_behavior!(model, model_action)
+    end
+
+    data, _ = run_econo_model!(model, sim_length, adata = [deposit_data, equity_data, wealth_data])
 
     return data
 end
@@ -94,7 +93,8 @@ function borrow_income(model)
                 delete_element!(actor.debts, debt)
             end
 
-            income = max(0, sumsy.guaranteed_income - calculate_demurrage(actor.balance, sumsy, step))
+            income, demurrage = calculate_timerange_adjustments(asset_value(actor.balance, SUMSY_DEP), sumsy, true, sumsy.interval)
+            income = max(0, income - demurrage)
 
             if (income > 0)
                 push!(actor.debts, bank_loan(model.bank, actor.balance, income, 0, 20, sumsy.interval, step, money_entry = SUMSY_DEP))
@@ -103,84 +103,87 @@ function borrow_income(model)
     end
 end
 
-function run_debt_based_simulation(sumsy_base::SuMSy = BASIC_SUMSY;
-                                    active_sumsy = NO_SUMSY,
-                                    num_actors::Integer = NUM_ACTORS,
-                                    num_transactions::Integer = NUM_TRANSACTIONS,
-                                    sim_length::Integer = SIM_LENGTH,
-                                    concentrated::Bool = false)
-    set_random_seed()
-    model = create_sumsy_model(active_sumsy, borrow_income)
-    model.properties[:sumsy_base] = sumsy_base
-    model.properties[:bank] = Balance()    
-    start_balance = telo(sumsy_base)
-    model.properties[:num_transactions] = num_transactions
+function borrow_when_poor(model)
+    sumsy = model.sumsy_base
+    step = model.step
 
-    add_actors!(model, num_actors, start_balance, SUMSY_DEP, concentrated = concentrated)
+    if process_ready(sumsy, step)
+        for actor in allagents(model)
+            settled_debts = []
 
-    for actor in allagents(model)
-        actor.debts = []
-    end
-
-    add_model_behavior!(model, yard_sale!)
-
-    data, _ = run_econo_model!(model, sim_length, adata = [deposit_data, equity_data])
-
-    return data
-end
-
-function analyse_wealth(data)
-    # deleteat!(data, 1:NUM_ACTORS)
-    groups = groupby(data, :step)
-
-    # Create data frame
-    analysis = DataFrame(cycle = Int64[],
-                        money_stock = Fixed(4)[],
-                        total_wealth = Fixed(4)[],
-                        bottom_0_1 = Fixed(4)[],
-                        bottom_1 = Fixed(4)[],
-                        bottom_10 = Fixed(4)[],
-                        bottom_50 = Fixed(4)[],
-                        middle_40 = Fixed(4)[],
-                        top_10 = Fixed(4)[],
-                        top_1 = Fixed(4)[],
-                        top_0_1 = Fixed(4)[])
-
-    for group in groups
-        total_wealth = sum(group[!, :equity_data])
-        money_stock = sum(group[!, :deposit_data])
-        rows = eachrow(sort(group, :equity_data))
-        wealth_values = zeros(Fixed(4), 1, 8)
-        wealth_percentages = zeros(Fixed(4), 1, 8)
-
-        for index in 1:length(PERCENTILES)
-            for i in PERCENTILES[index]
-                wealth_values[index] += rows[i][:equity_data]
+            for debt in actor.debts
+                if debt_settled(process_debt!(debt))
+                    push!(settled_debts, debt)
+                end
             end
 
-            wealth_percentages[index] = 100 * wealth_values[index] / total_wealth
+            for debt in settled_debts
+                delete_element!(actor.debts, debt)
+            end
+
+            if (asset_value(actor.balance, SUMSY_DEP) < 100)
+                push!(actor.debts, bank_loan(model.bank, actor.balance, 1000, 0, 20, sumsy.interval, step, money_entry = SUMSY_DEP))
+            end
         end
+    end
+end
 
-        push!(analysis, [[rows[1][:step]] [money_stock] [total_wealth] wealth_percentages])
+function borrow_when_rich(model)
+    sumsy = model.sumsy_base
+    step = model.step
+
+    if process_ready(sumsy, step)
+        for actor in allagents(model)
+            settled_debts = []
+
+            for debt in actor.debts
+                if debt_settled(process_debt!(debt))
+                    push!(settled_debts, debt)
+                end
+            end
+
+            for debt in settled_debts
+                delete_element!(actor.debts, debt)
+            end
+
+            balance_value = asset_value(actor.balance, SUMSY_DEP)
+
+            if (balance_value > 50000)
+                push!(actor.debts, bank_loan(model.bank, actor.balance, balance_value / 10, 0, 20, sumsy.interval, step, money_entry = SUMSY_DEP))
+            end
+        end
+    end
+end
+
+function ubi_borrow_when_poor(model)
+    sumsy = model.sumsy_base
+    step = model.step
+
+    if process_ready(sumsy, step)
+        for actor in allagents(model)
+            book_asset!(get_balance(actor), SUMSY_DEP, sumsy.income.guaranteed_income)
+        end
     end
 
-    return analysis
+    borrow_when_poor(model)
 end
 
-function plot_wealth(dataframe, title::String = "")
-    @df dataframe plot([:bottom_10, :bottom_50, :middle_40, :top_10, :top_1, :top_0_1],
-                        title = "Wealth distribution\n" * title,
-                        label = ["Bottom 10" "Bottom 50" "Middle 40" "Top 10" "Top 1" "Top 0.1"],
-                        legend = :legend)
-end
+function ubi_borrow_when_poor_rich(model)
+    sumsy = model.sumsy_base
+    step = model.step
 
-function plot_outlier_wealth(dataframe, title::String)
-    for i in 1:250
-        deleteat!(dataframe, 1)
+    if process_ready(sumsy, step)
+        for actor in allagents(model)
+            book_asset!(get_balance(actor), SUMSY_DEP, sumsy.income.guaranteed_income)
+        end
     end
-    
-    @df dataframe plot([:bottom_0_1, :bottom_1, :bottom_10, :top_10, :top_1, :top_0_1],
-                        title = "Outlier wealth distribution\n" * title,
-                        label = ["Bottom 0.1" "Bottom 1" "Bottom 10" "Top 10" "Top 1" "Top 0.1"],
-                        ylims = [0, 100])
+
+    borrow_when_poor(model)
+    borrow_when_rich(model)
 end
+
+
+
+# df = run_debt_based_simulation(model_action = borrow_income, num_actors = 1000, num_transactions = 10, sim_length = 10)
+# dfa = analyse_money_stock(df)
+# plot_money_stock(dfa, "Borrow net income")
