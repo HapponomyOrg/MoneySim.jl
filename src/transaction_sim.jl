@@ -22,7 +22,7 @@ end
 
 function run_fixed_wealth_simulation(sim_params::SimParams,
                                         fixed_wealth_params::FixedWealthParams,
-                                        transaction_params::TransactionParams
+                                        transaction_params::TransactionParams,
                                         model_adaptations::Vector{Function} = [])
     model = create_unremovable_econo_model()
     add_actors!(model, fixed_wealth_params)
