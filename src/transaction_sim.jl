@@ -100,10 +100,10 @@ end
 
 function add_sumsy_actors!(model::ABM, sumsy_params::SuMSyParams)
     if !sumsy_params.wealth_distributed
-        total_wealth = sumsy_params.num_gi_actors
-                        * sumsy_params.initial_gi_wealth
-                        + sumsy_params.num_non_gi_actors
-                        * sumsy_paramsinitial_non_gi_wealth
+        total_wealth = sumsy_params.num_gi_actors *
+                        sumsy_params.initial_gi_wealth +
+                        sumsy_params.num_non_gi_actors *
+                        sumsy_paramsinitial_non_gi_wealth
         initial_gi_wealth = C_0
         initial_non_gi_wealth = C_0
     else
