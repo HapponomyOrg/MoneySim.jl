@@ -128,7 +128,7 @@ end
 function add_actors!(model::ABM, money_params::MoneyModelParams)
     if !money_params.wealth_distributed
         total_wealth = money_params.num_actors * money_params.initial_wealth
-        initial_wealth = CUR_0()
+        initial_wealth = CUR_0
     else
         initial_wealth = money_params.initial_wealth
     end
@@ -153,8 +153,8 @@ function add_sumsy_actors!(model::ABM, sumsy_params::SuMSyParams)
                         sumsy_params.initial_gi_wealth +
                         sumsy_params.num_non_gi_actors *
                         sumsy_params.initial_non_gi_wealth
-        initial_gi_wealth = CUR_0()
-        initial_non_gi_wealth = CUR_0()
+        initial_gi_wealth = CUR_0
+        initial_non_gi_wealth = CUR_0
     else
         initial_gi_wealth = sumsy_params.initial_gi_wealth
         initial_non_gi_wealth = sumsy_params.initial_non_gi_wealth
@@ -186,7 +186,7 @@ function equity_collector(actor)
 end
 
 function wealth_collector(actor)
-    return max(CUR_0(), liability_value(get_balance(actor), EQUITY))
+    return max(CUR_0, liability_value(get_balance(actor), EQUITY))
 end
 
 function deposit_collector(actor)
@@ -201,7 +201,7 @@ function sumsy_equity_collector(actor)
 end
 
 function sumsy_wealth_collector(actor)
-    return max(CUR_0(), sumsy_equity_collector(actor))
+    return max(CUR_0, sumsy_equity_collector(actor))
 end
 
 function sumsy_deposit_collector(actor)

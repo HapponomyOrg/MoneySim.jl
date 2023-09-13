@@ -62,8 +62,8 @@ function yard_sale_transfer(target1::AbstractActor,
         adjust_sumsy_balance!(b2, model.step)
     end
 
-    av1 = max(CUR_0(), asset_value(target1.balance, SUMSY_DEP))
-    av2 = max(CUR_0(), asset_value(target2.balance, SUMSY_DEP))
+    av1 = max(CUR_0, asset_value(target1.balance, SUMSY_DEP))
+    av2 = max(CUR_0, asset_value(target2.balance, SUMSY_DEP))
 
     source, destination, amount = randomize_direction(target1,
                                                         av1,
@@ -79,7 +79,7 @@ function randomize_direction(target1::AbstractActor,
                             target2::AbstractActor,
                             av2::Real,
                             transfer_rate::Real)
-    transfer = max(CUR_0(),
+    transfer = max(CUR_0,
             Currency(min(av1, av2) * transfer_rate))
 
     if rand(1:2) == 1
