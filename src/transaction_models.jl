@@ -1,9 +1,15 @@
-abstract type TransactionParams end
+using Agents
+using FixedPointDecimals
+
+abstract type TransactionParams{C <: FixedDecimal} end
 
 # Yard sale model
-struct YardSaleParams <: TransactionParams
-    wealth_transfer_range::UnitRange{Int}
-    minimal_wealth_transfer::Currency
+struct YardSaleParams{C <: FixedDecimal} <: TransactionParams{C}
+    wealth_transfer_range::StepRange{Percentage, Percentage}
+    minimal_wealth_transfer::C
+    YardSaleParams(wealth_transfer_range,
+                    minimal_wealth_transfer::Real) = new{Currency}(wealth_transfer_range,
+                                                                    minimal_wealth_transfer)
 end
 
 function yard_sale!(model::ABM)
@@ -15,9 +21,9 @@ function yard_sale!(model::ABM)
 end
 
 #Taxed yard sale model
-struct TaxedYardSaleParams <: TransactionParams
+struct TaxedYardSaleParams{C <: FixedDecimal} <: TransactionParams{C}
     wealth_transfer_range::UnitRange{Int}
-    minimal_wealth_transfer::Currency
+    minimal_wealth_transfer::C
     tax::Percentage
 end
 
@@ -32,10 +38,11 @@ function taxed_yard_sale!(model::ABM)
 end
 
 function atomic_yard_sale!(model::ABM)
-    target1 = random_actor(model)
-    target2 = random_actor(model)
+    target1 = random_agent(model)
+    target2 = random_agent(model)
     source, destination, amount = yard_sale_transfer(target1, target2, model)
-    transfer_asset!(source, destination, SUMSY_DEP, amount)
+    
+    transfer_asset!(source, destination, SUMSY_DEP, amount, timestamp = model.step)
 
     return source, destination, amount
 end
@@ -44,18 +51,19 @@ function yard_sale_transfer(target1::AbstractActor,
                                 target2::AbstractActor,
                                 model::ABM)
     transfer_rate = rand(model.transaction_params.wealth_transfer_range)
+    b1 = get_balance(target1)
+    b2 = get_balance(target2)
 
-    if get_balance(target1) isa SuMSyBalance
-        av1 = max(CUR_0, sumsy_assets(target1, model.step))
-    else
-        av1 = max(CUR_0, asset_value(target1.balance, SUMSY_DEP))
+    if b1 isa SuMSyBalance && is_transactional(b1)
+        adjust_sumsy_balance!(b1, model.step)
     end
 
-    if get_balance(target2) isa SuMSyBalance
-        av2 = max(CUR_0, sumsy_assets(target2, model.step))
-    else
-        av2 = max(CUR_0, asset_value(target2.balance, SUMSY_DEP))
+    if b2 isa SuMSyBalance && is_transactional(b2)
+        adjust_sumsy_balance!(b2, model.step)
     end
+
+    av1 = max(CUR_0(), asset_value(target1.balance, SUMSY_DEP))
+    av2 = max(CUR_0(), asset_value(target2.balance, SUMSY_DEP))
 
     source, destination, amount = randomize_direction(target1,
                                                         av1,
@@ -63,27 +71,23 @@ function yard_sale_transfer(target1::AbstractActor,
                                                         av2,
                                                         transfer_rate)
     
-    return source, destination, min(amount, model.transaction_params.minimal_wealth_transfer)
+    return source, destination, max(amount, model.transaction_params.minimal_wealth_transfer)
 end
 
 function randomize_direction(target1::AbstractActor,
-                            av1::Currency,
+                            av1::Real,
                             target2::AbstractActor,
-                            av2::Currency,
+                            av2::Real,
                             transfer_rate::Real)
-    transfer = max(C_0,
+    transfer = max(CUR_0(),
             Currency(min(av1, av2) * transfer_rate))
 
     if rand(1:2) == 1
         source = get_balance(target1)
         destination = get_balance(target2)
-        avs = av1
-        avd = av2
     else
         source = get_balance(target2)
         destination = get_balance(target1)
-        avs = av2
-        avd = av1
     end
 
     return source, destination, transfer
@@ -91,5 +95,5 @@ end
 
 # Consumer/Supplier model
 
-struct ConsumerSupplierParams <: TransactionParams
+struct ConsumerSupplierParams{C <: FixedDecimal} <: TransactionParams{C}
 end

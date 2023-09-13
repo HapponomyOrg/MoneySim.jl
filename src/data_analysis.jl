@@ -4,8 +4,8 @@ function analyse_money_stock(data)
     # Create data frame
     counter = 0
     analysis = DataFrame(cycle = Int64[],
-                        money_stock = Fixed(4)[],
-                        total_wealth = Fixed(4)[])
+                        money_stock = Currency[],
+                        total_wealth = Currency[])
 
     for group in groups
         rows = eachrow(group)
@@ -20,29 +20,38 @@ function analyse_money_stock(data)
     return analysis
 end
 
-function analyse_wealth(data)
-    # deleteat!(data, 1:NUM_ACTORS)
+function analyse_wealth(data, num_actors::Int)
+    BOTTOM_0_1 = 1:Int64(round(num_actors / 1000))
+    BOTTOM_1 = 1:Int64(num_actors / 100)
+    BOTTOM_10 = 1:Int64(num_actors / 10)
+    BOTTOM_50 = 1:Int64(num_actors / 2)
+    MIDDLE_40 = Int64(num_actors / 2 + 1):Int64(num_actors - num_actors / 10)
+    TOP_10 = Int64(num_actors - num_actors / 10 + 1):num_actors
+    TOP_1 = Int64(num_actors - num_actors / 100 + 1):num_actors
+    TOP_0_1 = Int64(round(num_actors + 1 - num_actors / 1000)):num_actors
+    PERCENTILES = [BOTTOM_0_1, BOTTOM_1, BOTTOM_10, BOTTOM_50, MIDDLE_40, TOP_10, TOP_1, TOP_0_1]
+    
     groups = groupby(data, :step)
 
     # Create data frame
     analysis = DataFrame(cycle = Int64[],
-                        money_stock = Fixed(4)[],
-                        total_wealth = Fixed(4)[],
-                        bottom_0_1 = Fixed(4)[],
-                        bottom_1 = Fixed(4)[],
-                        bottom_10 = Fixed(4)[],
-                        bottom_50 = Fixed(4)[],
-                        middle_40 = Fixed(4)[],
-                        top_10 = Fixed(4)[],
-                        top_1 = Fixed(4)[],
-                        top_0_1 = Fixed(4)[])
+                        money_stock = Currency[],
+                        total_wealth = Currency[],
+                        bottom_0_1 = Currency[],
+                        bottom_1 = Currency[],
+                        bottom_10 = Currency[],
+                        bottom_50 = Currency[],
+                        middle_40 = Currency[],
+                        top_10 = Currency[],
+                        top_1 = Currency[],
+                        top_0_1 = Currency[])
 
     for group in groups
         total_wealth = sum(group[!, :wealth_data])
         money_stock = sum(group[!, :deposit_data])
         rows = eachrow(sort(group, :equity_data))
-        wealth_values = zeros(Fixed(4), 1, 8)
-        wealth_percentages = zeros(Fixed(4), 1, 8)
+        wealth_values = zeros(Currency, 1, 8)
+        wealth_percentages = zeros(Currency, 1, 8)
 
         for index in 1:length(PERCENTILES)
             for i in PERCENTILES[index]

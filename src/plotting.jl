@@ -19,27 +19,22 @@ function plot_money_stock(dataframes::Union{DataFrame,Vector{DataFrame}},
     for i in 1:length(dataframes)
         label = money_stock_labels[i]
 
-        min_money_stock = typemax(Currency)
-        max_money_stock = typemin(Currency)
+        min_money_stock = minimum(dataframes[i].money_stock)
+        max_money_stock = maximum(dataframes[i].money_stock)
 
-        for j in 1:data_size
-            min_money_stock = min(min_money_stock, Currency(dataframes[i][j, :money_stock]))
-            max_money_stock = max(max_money_stock, Currency(dataframes[i][j, :money_stock]))
-        end
-
-        if max_money_stock - min_money_stock < 4
+        if max_money_stock - min_money_stock < 1
             if isnothing(theoretical_min) && isnothing(theoretical_max)
-                min_y = round(max_money_stock - 5)
-                max_y = round(max_money_stock + 1)
+                min_y = round(min_money_stock) - 0.5
+                max_y = round(max_money_stock) + 0.5
             elseif isnothing(theoretical_min)
-                min_y = theoretical_max - 2
-                max_y = theoretical_max + 2
+                min_y = theoretical_max - 0.5
+                max_y = theoretical_max + 0.5
             elseif isnothing(theoretical_max)
-                min_y = theoretical_min - 2
-                max_y = theoretical_min + 2
+                min_y = theoretical_min - 0.5
+                max_y = theoretical_min + 0.5
             else
-                min_y = theoretical_min - 2
-                max_y = theoretical_max + 2
+                min_y = theoretical_min - 0.5
+                max_y = theoretical_max + 0.5
             end
         else
             if isnothing(theoretical_min) && isnothing(theoretical_max)

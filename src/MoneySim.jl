@@ -1,6 +1,6 @@
 module MoneySim
 
-include("Simulation.jl")
+include("keynes_sim.jl")
 export Mode, growth_mode, loan_ratio_mode
 export SimData, FuncData, RealFunc, IntFunc
 export simulate_banks, plot_data, simulations
@@ -9,24 +9,28 @@ export curent_available, current_saved, current_money_stock, money_stock, debt_r
 export plot_multi_series, plot_maturity, plot_loan_ratio, plot_debt_ratio, plot_growth_ratio, plot_profit_ratio, plot_equity_ratio, plot_delta_growth_profit, plot_money_stock, plot_D_over_L
 export random_float, random_int
 
-include("SuMSySimulation.jl")
-export BASIC_SUMSY, DEM_FREE_SUMSY, TIERED_SUMSY, DEM_FREE_TIERED_SUMSY, NO_DEM_SUMSY, NO_SUMSY, NO_GI_SUMSY
-export run_sumsy_simulation
-export yard_sale!, taxed_yard_sale!
-export analyse_money_stock, plot_money_stock, plot_comparative_money_stock
-export one_time_money_injection!, constant_money_injection!, one_time_money_destruction!, constant_money_destruction!, equal_money_distribution!
-export plot_net_incomes
-
-include("InequalitySimulation.jl")
-export run_standard_yard_sale_simulation, run_debt_based_simulation
-export borrow_income, borrow_when_poor, borrow_when_rich, ubi_borrow_when_poor, ubi_borrow_when_poor_rich
-export analyse_wealth, plot_wealth, plot_outlier_wealth
-
 include("transaction_models.jl")
 export TransactionParams, YardSaleParams, ConsumerSupplierParams
+
+include("model_adaptations.jl")
+export one_time_money_injection!, constant_money_injection!, one_time_money_destruction!, constant_money_destruction!, equal_money_distribution!
+
+include("behaviors.jl")
+export borrow_income, borrow_when_poor, borrow_when_rich, ubi_borrow_when_poor, ubi_borrow_when_poor_rich
 
 include("transaction_sim.jl")
 export SimParams, ModelMoneyModelParams, FixedWealthParams, SuMSyParams, DebtBasedParams
 export run_fixed_wealth_simulation, run_sumsy_simulation, run_debt_based_simulation
+
+include("data_analysis.jl")
+export analyse_money_stock, analyse_wealth
+
+include("plotting.jl")
+export plot_money_stock, plot_comparative_money_stock
+export plot_net_incomes
+export plot_wealth, plot_outlier_wealth
+
+include("sumsy_simulation.jl")
+export run_sumsy_simulation
 
 end
