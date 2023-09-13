@@ -24,7 +24,7 @@ end
 function run_fixed_wealth_simulation(sim_params::SimParams,
                                         fixed_wealth_params::FixedWealthParams,
                                         transaction_params::TransactionParams,
-                                        model_adaptations::Vector{Function} = Vector{Function}())
+                                        model_adaptations::Vector{<: Function} = Vector{Function}())
     model = create_unremovable_econo_model()
     add_actors!(model, fixed_wealth_params)
     
@@ -66,7 +66,7 @@ end
 function run_sumsy_simulation(sim_params::SimParams,
                                 sumsy_params::SuMSyParams,
                                 transaction_params::TransactionParams,
-                                model_adaptations::Vector{Function} = Vector{Function}())
+                                model_adaptations::Vector{<: Function} = Vector{Function}())
     sumsy = SuMSy(sumsy_params.guaranteed_income,
                     sumsy_params.demurrage_free,
                     sumsy_params.demurrage_tiers,
@@ -97,7 +97,7 @@ end
 function run_debt_based_simulation(sim_params::SimParams,
                                     debt_based_params::DebtBasedParams,
                                     transaction_params::TransactionParams,
-                                    model_adaptations::Vector{Function} = Vector{Function}())
+                                    model_adaptations::Vector{<: Function} = Vector{Function}())
     set_random_seed!()
     model = create_econo_model()
     model.properties[:sumsy_base] = sumsy_base
@@ -215,7 +215,7 @@ end
 function run_model!(model::ABM,
                     sim_params::SimParams,
                     transaction_params::TransactionParams,
-                    model_adaptations::Vector{Function} = [];
+                    model_adaptations::Vector{<: Function} = Vector{Function}();
                     equity::Function = equity_collector,
                     wealth::Function = wealth_collector,
                     deposit::Function = deposit_collector)
