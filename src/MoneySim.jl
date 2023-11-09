@@ -22,7 +22,11 @@ export borrow_income, borrow_when_poor, borrow_when_rich, ubi_borrow_when_poor, 
 
 include("transaction_sim.jl")
 export SimParams, ModelMoneyModelParams, FixedWealthParams, SuMSyParams, DebtBasedParams
-export run_fixed_wealth_simulation, run_sumsy_simulation, run_debt_based_simulation
+export run_fixed_wealth_simulation
+export equal_wealth_distribution!, concentrated_wealth_distribution!
+export percentage_gi_actors!, mixed_actors!, typed_gi_actors!
+export run_sumsy_simulation
+export run_debt_based_simulation
 
 include("data_analysis.jl")
 export analyse_money_stock, analyse_wealth, analyse_type_wealth
