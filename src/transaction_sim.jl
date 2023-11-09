@@ -62,7 +62,7 @@ struct SuMSyParams{C <: FixedDecimal} <: MonetaryModelParams{C}
     make_sumsy_actors!::Function
     distribute_wealth!::Function
     SuMSyParams(initial_gi_wealth::Real,
-                initial_non_gi_wealth::Real = 0;
+                initial_non_gi_wealth::Real = 0,
                 make_sumsy_actors!::Function = mixed_actors!,
                 distribute_wealth!::Function = equal_wealth_distribution!) = new{Currency}(initial_gi_wealth,
                                                                                         initial_non_gi_wealth,
@@ -135,7 +135,7 @@ end
     If not all actors are gi eligible, define a new function based on this one to set the make_sumsy_actors! as follows:
         make_sumsy_actors! = model -> mixed_actors!(model, num_gi_actors)
 """
-function mixed_actors!(model::ABM, num_gi_actors::{Int, Nothing} = nothing)
+function mixed_actors!(model::ABM, num_gi_actors::Union{Int, Nothing} = nothing)
     sumsy = model.sumsy
     num_gi = 0
 
