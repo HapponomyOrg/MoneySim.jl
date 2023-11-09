@@ -129,9 +129,9 @@ function plot_wealth(dataframe, percentiles::Vector{Symbol} = [:bottom_10, :bott
         ylims=[0, 100])
 end
 
-function plot_type_wealth(dataframes::Vector{DataFrame}, types::Vector{Symbol}, title = "", labels = Nothing)
+function plot_type_wealth(dataframes::Vector{DataFrame}, types::Vector{Symbol}, title = "", labels = nothing!)
     types = unique(types)
-    the_plot = plot_type_wealth(dataframes[1], types, title, isnothing(labels) ? Nothing : labels[1])
+    the_plot = plot_type_wealth(dataframes[1], types, title, isnothing(labels) ? nothing! : labels[1])
 
     for i in 2:length(dataframes)
         plot!([dataframes[i][!, type] for type in types],
@@ -141,7 +141,7 @@ function plot_type_wealth(dataframes::Vector{DataFrame}, types::Vector{Symbol}, 
     return the_plot
 end
 
-function plot_type_wealth(dataframe::DataFrame, types::Vector{Symbol}, title = "", label = Nothing)
+function plot_type_wealth(dataframe::DataFrame, types::Vector{Symbol}, title = "", label = nothing!)
     types = unique(types)
 
 	plot(

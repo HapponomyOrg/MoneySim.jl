@@ -27,7 +27,7 @@ end
 """
     Must be called after initialize_transaction_model!
 """
-function initialize_monetary_model(model::ABM,
+function initialize_monetary_model!(model::ABM,
                                     fixed_wealth_params::FixedWealthParams)
     if fixed_wealth_params.wealth_distributed
         initial_wealth = money_params.initial_wealth
@@ -59,18 +59,18 @@ SuMSyParams can only be used in conjunction with a SuMSy model.
 struct SuMSyParams{C <: FixedDecimal} <: MonetaryModelParams{C}
     initial_gi_wealth::C
     initial_non_gi_wealth::C
-    make_sumsy_actors::Function
-    distribute_wealth::Function
+    make_sumsy_actors!::Function
+    distribute_wealth!::Function
     SuMSyParams(initial_gi_wealth::Real,
-                initial_non_gi_wealth::Real = 0,
-                make_sumsy_actors::Function = percentage_gi_actors,
-                distribute_wealth::Function = equal_wealth_distribution) = new{Currency}(initial_gi_wealth,
+                initial_non_gi_wealth::Real = 0;
+                make_sumsy_actors!::Function = mixed_actors!,
+                distribute_wealth!::Function = equal_wealth_distribution!) = new{Currency}(initial_gi_wealth,
                                                                                         initial_non_gi_wealth,
-                                                                                        make_sumsy_actors,
-                                                                                        distribute_wealth)
+                                                                                        make_sumsy_actors!,
+                                                                                        distribute_wealth!)
 end
 
-function equal_wealth_distribution(model::ABM, sumsy_params::SuMSyParams)
+function equal_wealth_distribution!(model::ABM, sumsy_params::SuMSyParams)
     for actor in allagents(model)
         if is_gi_eligible(actor)
             book_asset!(get_balance(actor), SUMSY_DEP, sumsy_params.initial_gi_wealth)
@@ -80,7 +80,7 @@ function equal_wealth_distribution(model::ABM, sumsy_params::SuMSyParams)
     end
 end
 
-function concentrated_wealth_distribution(model::ABM, sumsy_params::SuMSyParams)
+function concentrated_wealth_distribution!(model::ABM, sumsy_params::SuMSyParams)
     num_gi_eligible = 0
     num_non_gi_eligible = 0
 
@@ -99,19 +99,18 @@ function concentrated_wealth_distribution(model::ABM, sumsy_params::SuMSyParams)
 end
 
 """
-    percentage_gi_actors
+    percentage_gi_actors!
 
         Must be called after initialize_transaction_model!
 
     * model::ABM
-    * sumsy_params::SuMSyParams
     * gi_actor_percentage::Percentage
 
     Use this function to set a percentage of actors as gi eligible actors.
-    If the percentage is less than 1.0, define a new function based on this one to set the make_sumsy_actors as follows:
-        make_sumsy_actors = (model, sumsy_params) -> percentage_gi_actors(model, sumsy_params, gi_actor_percentage)
+    If the percentage is less than 1.0, define a new function based on this one to set the make_sumsy_actors! as follows:
+        make_sumsy_actors! = model -> percentage_gi_actors!(model, gi_actor_percentage)
 """
-function percentage_gi_actors(model::ABM, sumsy_params::SuMSyParams, gi_actor_percentage::Real = 1.0)
+function percentage_gi_actors!(model::ABM, gi_actor_percentage::Real = 1.0)
     sumsy = model.sumsy
     gi_actor_percentage = Percentage(gi_actor_percentage)
     num_actors = nagents(model)
@@ -125,7 +124,34 @@ function percentage_gi_actors(model::ABM, sumsy_params::SuMSyParams, gi_actor_pe
 end
 
 """
-    typed_gi_actors
+    mixed_actors
+
+        Must be called after initialize_transaction_model!
+    
+    * model::ABM
+    * num_gi_actors::{Int, Nothing} : The number of actors that are gi eligible. All other actors are set to non-gi eligible. If nothing is passed, all actors are gi eligible.
+
+    Use this function to set the number of gi eligible actors.
+    If not all actors are gi eligible, define a new function based on this one to set the make_sumsy_actors! as follows:
+        make_sumsy_actors! = model -> mixed_actors!(model, num_gi_actors)
+"""
+function mixed_actors!(model::ABM, num_gi_actors::{Int, Nothing} = nothing)
+    sumsy = model.sumsy
+    num_gi = 0
+
+    for actor in allagents(model)
+        if num_gi < num_gi_actors
+            make_single_sumsy!(model, sumsy, actor, gi_eligible = true, initialize = false)
+        else
+            make_single_sumsy!(model, sumsy, actor, gi_eligible = false, initialize = false)
+        end
+
+        num_gi += 1
+    end
+end
+
+"""
+    typed_gi_actors!
 
         Must be called after initialize_transaction_model!
 
@@ -134,20 +160,22 @@ end
     * gi_actor_types::Set{Symbol} : types of actors that are gi eligible.
 
     Use this function to set a percentage of actors as gi eligible actors.
-    If the percentage is less than 1.0, define a new function based on this one to set the make_sumsy_actors as follows:
-        make_sumsy_actors = (model, sumsy_params) -> percentage_gi_actors(model, sumsy_params, gi_actor_types)
+    If the percentage is less than 1.0, define a new function based on this one to set the make_sumsy_actors! as follows:
+        make_sumsy_actors! = model -> typed_gi_actors!(model, gi_actor_types)
 """
-function typed_gi_actors(model::ABM, sumsy_params::SuMSyParams, gi_actor_types::Set{Symbol})
+function typed_gi_actors!(model::ABM, gi_actor_types::Set{Symbol})
+    sumsy = model.sumsy
+
     for actor in allagents(model)
         gi_eligible = !isempty(intersect(actor.types, gi_actor_types))
-        make_single_sumsy!(sumsy_params.sumsy, actor, gi_eligible = gi_eligible, initialize = false)
+        make_single_sumsy!(sumsy, actor, gi_eligible = gi_eligible, initialize = false)
     end
 end
 
-function initialize_monetary_model!(model::ABM,
+function initialize_monetary_model!!(model::ABM,
                                     sumsy_params::SuMSyParams)
-    sumsy_params.make_sumsy_actors(model, sumsy_params)
-    sumsy_params.distribute_wealth(model, sumsy_params)
+    sumsy_params.make_sumsy_actors!(model)
+    sumsy_params.distribute_wealth!(model, sumsy_params)
 end
 
 function run_sumsy_simulation(sumsy::SuMSy,
@@ -176,7 +204,7 @@ struct DebtBasedParams{C <: FixedDecimal} <: MonetaryModelParams{C}
                                                             initial_wealth)
 end
 
-function initialize_monetary_model(model::ABM,
+function initialize_monetary_model!(model::ABM,
                                     debt_based_params::DebtBasedParams)
 end
 
@@ -238,7 +266,7 @@ function run_model!(model::ABM,
    model.properties[:collection_interval] = sim_params.collection_interval
 
    initialize_transaction_model!(model, transaction_params)
-   initialize_monetary_model!(model, monetary_params)
+   initialize_monetary_model!!(model, monetary_params)
 
     for model_adaptation in model_adaptations
         add_model_behavior!(model, model_adaptation)
