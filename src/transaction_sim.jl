@@ -4,16 +4,19 @@ using Agents
 using DataFrames
 
 struct SimParams
-    lock_random_generator::Bool
     sim_length::Int
     collection_interval::Int
-    transaction_range::UnitRange{Int}
+    lock_random_generator::Bool
+    SimParams(sim_length::Int,
+              collection_interval::Int;
+              lock_random_generator::Bool = true) = new(sim_length, collection_interval, lock_random_generator)
 end
 
-abstract type MoneyModelParams{C <: FixedDecimal} end
+abstract type MonetaryModelParams{C <: FixedDecimal} end
 
-struct FixedWealthParams{C <: FixedDecimal} <: MoneyModelParams{C}
-    num_actors::Int
+# Fixed wealth
+
+struct FixedWealthParams{C <: FixedDecimal} <: MonetaryModelParams{C}
     initial_wealth::C
     wealth_distributed::Bool
     FixedWealthParams(num_actors::Int,
@@ -21,164 +24,173 @@ struct FixedWealthParams{C <: FixedDecimal} <: MoneyModelParams{C}
                         wealth_distributed::Bool) = new{Currency}(num_actors, initial_wealth, wealth_distributed)
 end
 
-function run_fixed_wealth_simulation(sim_params::SimParams,
-                                        fixed_wealth_params::FixedWealthParams,
-                                        transaction_params::TransactionParams,
-                                        model_adaptations::Vector{<: Function} = Vector{Function}())
-    model = create_unremovable_econo_model()
-    add_actors!(model, fixed_wealth_params)
+"""
+    Must be called after initialize_transaction_model!
+"""
+function initialize_monetary_model(model::ABM,
+                                    fixed_wealth_params::FixedWealthParams)
+    if fixed_wealth_params.wealth_distributed
+        initial_wealth = money_params.initial_wealth
+    else
+        total_wealth = nagents(model) * money_params.initial_wealth
+        initial_wealth = CUR_0
+    end
+
+    for actor in allagents(model)
+        actor.model = model
+        book_asset!(get_balance(actor), SUMSY_DEP, initial_wealth)
+    end
     
-    run_model!(model,
-                sim_params,
-                transaction_params,
-                model_adaptations)
+    if !fixed_wealth_params.wealth_distributed
+        actor = random_agent(model)
+        book_asset!(get_balance(actor), SUMSY_DEP, total_wealth)
+    end
+
+    return model
 end
 
-struct SuMSyParams{C <: FixedDecimal} <: MoneyModelParams{C}
-    guaranteed_income::C
-    demurrage_free::C
-    demurrage_tiers::DemTiers
-    transactional::Bool
-    num_gi_actors::Int
+# SuMSy
+
+"""
+SuMSyParams constructor
+
+SuMSyParams can only be used in conjunction with a SuMSy model.
+"""
+struct SuMSyParams{C <: FixedDecimal} <: MonetaryModelParams{C}
     initial_gi_wealth::C
-    num_non_gi_actors::Int
     initial_non_gi_wealth::C
-    wealth_distributed::Bool
-    SuMSyParams(guaranteed_income::Real,
-                demurrage_free::Real,
-                demurrage_tiers::Union{DemTiers, DemSettings, Real},
-                transactional::Bool,
-                num_gi_actors::Int,
-                initial_gi_wealth::Real,
-                num_non_gi_actors::Int,
-                initial_non_gi_wealth::Real,
-                wealth_distributed::Bool) = new{Currency}(guaranteed_income,
-                                                            demurrage_free,
-                                                            make_tiers(demurrage_tiers),
-                                                            transactional,
-                                                            num_gi_actors,
-                                                            initial_gi_wealth,
-                                                            num_non_gi_actors,
-                                                            initial_non_gi_wealth,
-                                                            wealth_distributed)
+    make_sumsy_actors::Function
+    distribute_wealth::Function
+    SuMSyParams(initial_gi_wealth::Real,
+                initial_non_gi_wealth::Real = 0,
+                make_sumsy_actors::Function = percentage_gi_actors,
+                distribute_wealth::Function = equal_wealth_distribution) = new{Currency}(initial_gi_wealth,
+                                                                                        initial_non_gi_wealth,
+                                                                                        make_sumsy_actors,
+                                                                                        distribute_wealth)
 end
 
-function run_sumsy_simulation(sim_params::SimParams,
-                                sumsy_params::SuMSyParams,
-                                transaction_params::TransactionParams,
-                                model_adaptations::Vector{<: Function} = Vector{Function}())
-    sumsy = SuMSy(sumsy_params.guaranteed_income,
-                    sumsy_params.demurrage_free,
-                    sumsy_params.demurrage_tiers,
-                    sim_params.collection_interval,
-                    transactional = sumsy_params.transactional)
+function equal_wealth_distribution(model::ABM, sumsy_params::SuMSyParams)
+    for actor in allagents(model)
+        if is_gi_eligible(actor)
+            book_asset!(get_balance(actor), SUMSY_DEP, sumsy_params.initial_gi_wealth)
+        else
+            book_asset!(get_balance(actor), SUMSY_DEP, sumsy_params.initial_non_gi_wealth)
+        end
+    end
+end
 
+function concentrated_wealth_distribution(model::ABM, sumsy_params::SuMSyParams)
+    num_gi_eligible = 0
+    num_non_gi_eligible = 0
+
+    for actor in allagents(model)
+        if is_gi_eligible(actor)
+            num_gi_eligible += 1
+        else
+            num_non_gi_eligible += 1
+        end
+    end
+
+    book_asset!(get_balance(random_agent(model)),
+                SUMSY_DEP,
+                sumsy_params.initial_gi_wealth * num_gi_eligible
+                    + sumsy_params.initial_non_gi_wealth * num_non_gi_eligible)
+end
+
+"""
+    percentage_gi_actors
+
+        Must be called after initialize_transaction_model!
+
+    * model::ABM
+    * sumsy_params::SuMSyParams
+    * gi_actor_percentage::Percentage
+
+    Use this function to set a percentage of actors as gi eligible actors.
+    If the percentage is less than 1.0, define a new function based on this one to set the make_sumsy_actors as follows:
+        make_sumsy_actors = (model, sumsy_params) -> percentage_gi_actors(model, sumsy_params, gi_actor_percentage)
+"""
+function percentage_gi_actors(model::ABM, sumsy_params::SuMSyParams, gi_actor_percentage::Real = 1.0)
+    sumsy = model.sumsy
+    gi_actor_percentage = Percentage(gi_actor_percentage)
+    num_actors = nagents(model)
+    num_gi_actors = round(Int, num_actors * gi_actor_percentage)
+    gi_counter = 0
+
+    for actor in allagents(model)
+        make_single_sumsy!(model, sumsy, actor, gi_eligible = gi_counter < num_gi_actors, initialize = false)
+        gi_counter += 1
+    end
+end
+
+"""
+    typed_gi_actors
+
+        Must be called after initialize_transaction_model!
+
+    * model::ABM
+    * sumsy_params::SuMSyParams
+    * gi_actor_types::Set{Symbol} : types of actors that are gi eligible.
+
+    Use this function to set a percentage of actors as gi eligible actors.
+    If the percentage is less than 1.0, define a new function based on this one to set the make_sumsy_actors as follows:
+        make_sumsy_actors = (model, sumsy_params) -> percentage_gi_actors(model, sumsy_params, gi_actor_types)
+"""
+function typed_gi_actors(model::ABM, sumsy_params::SuMSyParams, gi_actor_types::Set{Symbol})
+    for actor in allagents(model)
+        gi_eligible = !isempty(intersect(actor.types, gi_actor_types))
+        make_single_sumsy!(sumsy_params.sumsy, actor, gi_eligible = gi_eligible, initialize = false)
+    end
+end
+
+function initialize_monetary_model!(model::ABM,
+                                    sumsy_params::SuMSyParams)
+    sumsy_params.make_sumsy_actors(model, sumsy_params)
+    sumsy_params.distribute_wealth(model, sumsy_params)
+end
+
+function run_sumsy_simulation(sumsy::SuMSy,
+                                sim_params::SimParams,
+                                transaction_params::TransactionParams,
+                                sumsy_params::SuMSyParams,
+                                model_adaptations::Vector{<: Function} = Vector{Function}())
     if sumsy.transactional
         model = create_unremovable_single_sumsy_model(sumsy)
     else
         model = create_unremovable_single_sumsy_model(sumsy, model_behaviors = process_model_sumsy!)
     end
     
-    add_sumsy_actors!(model, sumsy_params)
-    run_model!(model, sim_params, transaction_params, model_adaptations,
+    run_model!(model, sim_params, transaction_params, sumsy_params, model_adaptations,
                 equity = sumsy_equity_collector,
                 wealth = sumsy_wealth_collector,
                 deposit = sumsy_deposit_collector)
 end
 
-struct DebtBasedParams{C <: FixedDecimal} <: MoneyModelParams{C}
-    num_actors::Int
+# Debt based with borrowing
+
+struct DebtBasedParams{C <: FixedDecimal} <: MonetaryModelParams{C}
     initial_wealth::C
     DebtBasedParams(num_actors::Int,
                     initial_wealth::Real) = new{Currency}(num_actors,
                                                             initial_wealth)
 end
 
+function initialize_monetary_model(model::ABM,
+                                    debt_based_params::DebtBasedParams)
+end
+
 function run_debt_based_simulation(sim_params::SimParams,
-                                    debt_based_params::DebtBasedParams,
                                     transaction_params::TransactionParams,
+                                    debt_based_params::DebtBasedParams,
                                     model_adaptations::Vector{<: Function} = Vector{Function}())
-    set_random_seed!()
     model = create_econo_model()
-    model.properties[:sumsy_base] = sumsy_base
-    model.properties[:bank] = Balance()    
-    start_balance = telo(sumsy_base)
-    model.properties[:num_transactions] = num_transactions
-    model.properties[:last_transaction] = model.step
+    model.properties[:bank] = Balance()
 
-    add_actors!(model, num_actors, start_balance,
-                concentrated = concentrated,
-                activate_sumsy = false)
-
-    for actor in allagents(model)
-        actor.debts = []
-    end
-
-    add_model_behavior!(model, transaction_model)
-
-    if model_action !== nothing
-        add_model_behavior!(model, model_action)
-    end
-
-    data, _ = run_econo_model!(model, sim_length, adata = [deposit_data, equity_data, wealth_data])
-
-    return data
-end
-
-function add_actors!(model::ABM, money_params::MoneyModelParams)
-    if !money_params.wealth_distributed
-        total_wealth = money_params.num_actors * money_params.initial_wealth
-        initial_wealth = CUR_0
-    else
-        initial_wealth = money_params.initial_wealth
-    end
-
-    for i in 1:money_params.num_actors
-        actor = add_actor!(model, MonetaryActor())
-        actor.model = model
-        book_asset!(get_balance(actor), SUMSY_DEP, money_params.initial_wealth)
-    end
-    
-    if !money_params.wealth_distributed
-        actor = random_agent(model)
-        book_asset!(get_balance(actor), SUMSY_DEP, total_wealth)
-    end
-
-    return model
-end
-
-function add_sumsy_actors!(model::ABM, sumsy_params::SuMSyParams)
-    if !sumsy_params.wealth_distributed
-        total_wealth = sumsy_params.num_gi_actors *
-                        sumsy_params.initial_gi_wealth +
-                        sumsy_params.num_non_gi_actors *
-                        sumsy_params.initial_non_gi_wealth
-        initial_gi_wealth = CUR_0
-        initial_non_gi_wealth = CUR_0
-    else
-        initial_gi_wealth = sumsy_params.initial_gi_wealth
-        initial_non_gi_wealth = sumsy_params.initial_non_gi_wealth
-    end
-
-    for actor_tuple in [(sumsy_params.num_gi_actors, true, initial_gi_wealth),
-                            (sumsy_params.num_non_gi_actors, false, initial_non_gi_wealth)]
-        gi_eligible = actor_tuple[2]
-        initial_wealth = actor_tuple[3]
-
-        for i in 1:actor_tuple[1]
-            actor = add_single_sumsy_actor!(model, gi_eligible = gi_eligible, initialize = false)
-
-            actor.model = model
-            book_asset!(get_balance(actor), SUMSY_DEP, initial_wealth)
-        end
-    end
-
-    if !sumsy_params.wealth_distributed
-        actor = random_agent(model)
-        book_asset!(get_balance(actor), SUMSY_DEP, total_wealth)
-    end
-
-    return model
+    run_model!(model, sim_params, transaction_params, debt_based_params, model_adaptations,
+                equity = sumsy_equity_collector,
+                wealth = sumsy_wealth_collector,
+                deposit = sumsy_deposit_collector)
 end
 
 function equity_collector(actor)
@@ -215,23 +227,18 @@ end
 function run_model!(model::ABM,
                     sim_params::SimParams,
                     transaction_params::TransactionParams,
+                    monetary_params::MonetaryModelParams,
                     model_adaptations::Vector{<: Function} = Vector{Function}();
                     equity::Function = equity_collector,
                     wealth::Function = wealth_collector,
                     deposit::Function = deposit_collector)
-    set_random_seed!(sim_params.lock_random_generator)
+   set_random_seed!(sim_params.lock_random_generator)
                 
-    model.properties[:transaction_range] = sim_params.transaction_range
-    model.properties[:last_transaction] = model.step
-    model.properties[:collection_interval] = sim_params.collection_interval
-    model.properties[:transaction_params] = transaction_params
+   model.properties[:last_transaction] = model.step
+   model.properties[:collection_interval] = sim_params.collection_interval
 
-    if transaction_params isa YardSaleParams
-        add_model_behavior!(model, yard_sale!)
-    elseif transaction_params isa TaxedYardSaleParams
-        add_model_behavior!(model, taxed_yard_sale!)
-    elseif transaction_params isa ConsumerSupplierParams
-    end
+   initialize_transaction_model!(model, transaction_params)
+   initialize_monetary_model!(model, monetary_params)
 
     for model_adaptation in model_adaptations
         add_model_behavior!(model, model_adaptation)
@@ -239,7 +246,7 @@ function run_model!(model::ABM,
 
     data, _ = run_econo_model!(model,
                                 sim_params.sim_length,
-                                adata = [deposit, equity, wealth],
+                                adata = [deposit, equity, wealth, :types],
                                 when = collect_data)
 
     rename!(data, 3 => :deposit_data, 4 => :equity_data, 5 => :wealth_data)
@@ -252,4 +259,12 @@ function set_random_seed!(lock_random_generator::Bool)
     else
         Random.seed(Integer(round(time())))
     end
+end
+
+function run_simulation(model::ABM,
+                        sim_params::SimParams,
+                        transaction_params::TransactionParams,
+                        monetary_params::MonetaryModelParams,
+                        model_adaptations::Vector{<: Function} = Vector{Function}())
+    run_model!(model, sim_params, transaction_params, monetary_params, model_adaptations)
 end

@@ -111,24 +111,61 @@ function plot_net_incomes(sumsy::SuMSy)
     # plot(incomes, label = "net income", xlabel="Acount balance", xticks = 10)
 end
 
-function plot_wealth(dataframe, title::String="")
-    @df dataframe plot([:bottom_10, :bottom_50, :middle_40, :top_10, :top_1, :top_0_1],
+function plot_wealth(dataframe, percentiles::Vector{Symbol} = [:bottom_10, :bottom_50, :middle_40, :top_10, :top_1, :top_0_1], title::String="")
+    labels = Vector{String}()
+
+    for percentile in percentiles
+        label = replace(string(percentile), "_" => " ")
+        label = uppercase(label[1]) * label[2:end]
+        push!(labels, label)
+    end
+
+    @df dataframe plot(percentiles,
         title="Wealth distribution\n" * title,
         label=["Bottom 10" "Bottom 50" "Middle 40" "Top 10" "Top 1" "Top 0.1"],
         xlabel="Time",
         ylabel="Wealth %",
-        legend=:legend)
+        legend=:legend,
+        ylims=[0, 100])
 end
 
-function plot_outlier_wealth(dataframe, title::String)
-    # for i in 1:250
-    #     deleteat!(dataframe, 1)
-    # end
+function plot_type_wealth(dataframes::Vector{DataFrame}, types::Vector{Symbol}, title = "", labels = Nothing)
+    types = unique(types)
+    the_plot = plot_type_wealth(dataframes[1], types, title, isnothing(labels) ? Nothing : labels[1])
 
-    @df dataframe plot([:bottom_0_1, :bottom_1, :bottom_10, :top_10, :top_1, :top_0_1],
-        title="Outlier wealth distribution\n" * title,
-        label=["Bottom 0.1" "Bottom 1" "Bottom 10" "Top 10" "Top 1" "Top 0.1"],
-        xlabel="Time",
-        ylabel="Wealth %",
-        ylims=[0, 100])
+    for i in 2:length(dataframes)
+        plot!([dataframes[i][!, type] for type in types],
+            label=isnothing(labels) ? symbols_to_labels(types) : labels[i])
+    end
+
+    return the_plot
+end
+
+function plot_type_wealth(dataframe::DataFrame, types::Vector{Symbol}, title = "", label = Nothing)
+    types = unique(types)
+
+	plot(
+		[dataframe[!, type] for type in types],
+		label = isnothing(label) ? symbols_to_labels(types) : label,
+		title = title,
+		xlabel ="Time",
+		ylabel ="Median wealth"
+	)
+end
+
+function symbol_to_label(s::Symbol)
+    label = replace(string(s), "_" => " ")
+    label = uppercase(label[1]) * label[2:end]
+
+    return label
+end
+
+function symbols_to_labels(symbols::Vector{Symbol})
+    labels = Vector{String}()
+
+    for symbol in symbols
+        push!(labels, symbol_to_label(symbol))
+    end
+
+    return reshape([label for label in labels], 1, length(labels))
 end

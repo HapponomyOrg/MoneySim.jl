@@ -10,7 +10,9 @@ export plot_multi_series, plot_maturity, plot_loan_ratio, plot_debt_ratio, plot_
 export random_float, random_int
 
 include("transaction_models.jl")
-export TransactionParams, YardSaleParams, ConsumerSupplierParams
+export TransactionParams
+export YardSaleParams, StandardYardSaleParams, TaxedYardSaleParams
+export ConsumerSupplyParams, FixedConsumerSupplyParams, VariableConsumerSupplyParams
 
 include("model_adaptations.jl")
 export one_time_money_injection!, constant_money_injection!, one_time_money_destruction!, constant_money_destruction!, equal_money_distribution!
@@ -23,12 +25,12 @@ export SimParams, ModelMoneyModelParams, FixedWealthParams, SuMSyParams, DebtBas
 export run_fixed_wealth_simulation, run_sumsy_simulation, run_debt_based_simulation
 
 include("data_analysis.jl")
-export analyse_money_stock, analyse_wealth
+export analyse_money_stock, analyse_wealth, analyse_type_wealth
 
 include("plotting.jl")
 export plot_money_stock, plot_comparative_money_stock
 export plot_net_incomes
-export plot_wealth, plot_outlier_wealth
+export plot_wealth, plot_outlier_wealth, plot_type_wealth
 
 include("sumsy_simulation.jl")
 export run_sumsy_simulation
