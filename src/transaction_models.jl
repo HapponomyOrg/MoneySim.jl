@@ -24,7 +24,7 @@ struct StandardYardSaleParams{C <: FixedDecimal} <: YardSaleParams{C}
     minimal_wealth_transfer::C
     StandardYardSaleParams(num_actors::Int,
                             transfer_range::UnitRange{Int},
-                            wealth_transfer_range::StepRange{Percentage, Percentage},
+                            wealth_transfer_range::Union{StepRange, StepRangeLen},
                             minimal_wealth_transfer::Real) = new{Currency}(num_actors,
                                                                             transfer_range,
                                                                             wealth_transfer_range,
@@ -55,14 +55,14 @@ end
 
 function initialize_transaction_model!(model::ABM, params::TaxedYardSaleParams)
     initialize_yard_sale!(model, params)
-    model.tax = params.tax
+    model.properties[:tax] = params.tax
     add_model_behavior!(model, taxed_yard_sale!)
 end
 
 function initialize_yard_sale!(model::ABM, params::YardSaleParams)
-    model.transaction_range = params.transaction_range
-    model.wealth_transfer_range = params.wealth_transfer_range
-    model.minimal_wealth_transfer = params.minimal_wealth_transfer
+    model.properties[:transaction_range] = params.transaction_range
+    model.properties[:wealth_transfer_range] = params.wealth_transfer_range
+    model.properties[:minimal_wealth_transfer] = params.minimal_wealth_transfer
 
     for i in 1:params.num_actors
         add_actor!(model, MonetaryActor())
@@ -102,8 +102,8 @@ function yard_sale_transfer(target1::AbstractActor,
                                 model::ABM)
     transfer_rate = rand(model.wealth_transfer_range)
 
-    av1 = max(CUR_0, adjusted_asset_value!(get_balance(target1)))
-    av2 = max(CUR_0, adjusted_asset_value!(get_balance(target2)))
+    av1 = max(CUR_0, adjusted_asset_value!(target1))
+    av2 = max(CUR_0, adjusted_asset_value!(target2))
 
     return randomize_direction(target1,
                                 av1,

@@ -62,7 +62,7 @@ struct SuMSyParams{C <: FixedDecimal} <: MonetaryModelParams{C}
     make_sumsy_actors!::Function
     distribute_wealth!::Function
     SuMSyParams(initial_gi_wealth::Real,
-                initial_non_gi_wealth::Real = 0,
+                initial_non_gi_wealth::Real = 0;
                 make_sumsy_actors!::Function = mixed_actors!,
                 distribute_wealth!::Function = equal_wealth_distribution!) = new{Currency}(initial_gi_wealth,
                                                                                         initial_non_gi_wealth,
@@ -140,7 +140,7 @@ function mixed_actors!(model::ABM, num_gi_actors::Union{Int, Nothing} = nothing)
     num_gi = 0
 
     for actor in allagents(model)
-        if num_gi < num_gi_actors
+        if isnothing(num_gi_actors) || num_gi < num_gi_actors
             make_single_sumsy!(model, sumsy, actor, gi_eligible = true, initialize = false)
         else
             make_single_sumsy!(model, sumsy, actor, gi_eligible = false, initialize = false)
@@ -163,12 +163,13 @@ end
     If the percentage is less than 1.0, define a new function based on this one to set the make_sumsy_actors! as follows:
         make_sumsy_actors! = model -> typed_gi_actors!(model, gi_actor_types)
 """
-function typed_gi_actors!(model::ABM, gi_actor_types::Set{Symbol})
+function typed_gi_actors!(model::ABM, gi_actor_types::Vector{Symbol})
     sumsy = model.sumsy
+    gi_actor_types = unique(gi_actor_types)
 
     for actor in allagents(model)
         gi_eligible = !isempty(intersect(actor.types, gi_actor_types))
-        make_single_sumsy!(sumsy, actor, gi_eligible = gi_eligible, initialize = false)
+        make_single_sumsy!(model, sumsy, actor, gi_eligible = gi_eligible, initialize = false)
     end
 end
 

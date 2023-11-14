@@ -37,6 +37,6 @@ export plot_net_incomes
 export plot_wealth, plot_outlier_wealth, plot_type_wealth
 
 include("sumsy_simulation.jl")
-export run_sumsy_simulation
+export run_sumsy_simulation, run_consumer_supplier_simulation
 
 end
