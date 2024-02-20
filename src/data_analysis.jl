@@ -1,3 +1,5 @@
+using DataFrames
+
 function analyse_money_stock(data)
     groups = groupby(data, :step)
 

@@ -3,15 +3,6 @@ using Random
 using Agents
 using DataFrames
 
-struct SimParams
-    sim_length::Int
-    collection_interval::Int
-    lock_random_generator::Bool
-    SimParams(sim_length::Int,
-              collection_interval::Int;
-              lock_random_generator::Bool = true) = new(sim_length, collection_interval, lock_random_generator)
-end
-
 abstract type MonetaryModelParams{C <: FixedDecimal} end
 
 # Fixed wealth
@@ -19,9 +10,8 @@ abstract type MonetaryModelParams{C <: FixedDecimal} end
 struct FixedWealthParams{C <: FixedDecimal} <: MonetaryModelParams{C}
     initial_wealth::C
     wealth_distributed::Bool
-    FixedWealthParams(num_actors::Int,
-                        initial_wealth::Real,
-                        wealth_distributed::Bool) = new{Currency}(num_actors, initial_wealth, wealth_distributed)
+    FixedWealthParams(initial_wealth::Real,
+                        wealth_distributed::Bool) = new{Currency}(initial_wealth, wealth_distributed)
 end
 
 """
@@ -30,9 +20,9 @@ end
 function initialize_monetary_model!(model::ABM,
                                     fixed_wealth_params::FixedWealthParams)
     if fixed_wealth_params.wealth_distributed
-        initial_wealth = money_params.initial_wealth
+        initial_wealth = fixed_wealth_params.initial_wealth
     else
-        total_wealth = nagents(model) * money_params.initial_wealth
+        total_wealth = nagents(model) * fixed_wealth_params.initial_wealth
         initial_wealth = CUR_0
     end
 
@@ -55,6 +45,7 @@ end
 SuMSyParams constructor
 
 SuMSyParams can only be used in conjunction with a SuMSy model.
+Must be called after initialize_transaction_model!
 """
 struct SuMSyParams{C <: FixedDecimal} <: MonetaryModelParams{C}
     initial_gi_wealth::C
@@ -173,27 +164,10 @@ function typed_gi_actors!(model::ABM, gi_actor_types::Vector{Symbol})
     end
 end
 
-function initialize_monetary_model!!(model::ABM,
+function initialize_monetary_model!(model::ABM,
                                     sumsy_params::SuMSyParams)
     sumsy_params.make_sumsy_actors!(model)
     sumsy_params.distribute_wealth!(model, sumsy_params)
-end
-
-function run_sumsy_simulation(sumsy::SuMSy,
-                                sim_params::SimParams,
-                                transaction_params::TransactionParams,
-                                sumsy_params::SuMSyParams,
-                                model_adaptations::Vector{<: Function} = Vector{Function}())
-    if sumsy.transactional
-        model = create_unremovable_single_sumsy_model(sumsy)
-    else
-        model = create_unremovable_single_sumsy_model(sumsy, model_behaviors = process_model_sumsy!)
-    end
-    
-    run_model!(model, sim_params, transaction_params, sumsy_params, model_adaptations,
-                equity = sumsy_equity_collector,
-                wealth = sumsy_wealth_collector,
-                deposit = sumsy_deposit_collector)
 end
 
 # Debt based with borrowing
@@ -207,93 +181,4 @@ end
 
 function initialize_monetary_model!(model::ABM,
                                     debt_based_params::DebtBasedParams)
-end
-
-function run_debt_based_simulation(sim_params::SimParams,
-                                    transaction_params::TransactionParams,
-                                    debt_based_params::DebtBasedParams,
-                                    model_adaptations::Vector{<: Function} = Vector{Function}())
-    model = create_econo_model()
-    model.properties[:bank] = Balance()
-
-    run_model!(model, sim_params, transaction_params, debt_based_params, model_adaptations,
-                equity = sumsy_equity_collector,
-                wealth = sumsy_wealth_collector,
-                deposit = sumsy_deposit_collector)
-end
-
-function equity_collector(actor)
-    return liability_value(get_balance(actor), EQUITY)
-end
-
-function wealth_collector(actor)
-    return max(CUR_0, liability_value(get_balance(actor), EQUITY))
-end
-
-function deposit_collector(actor)
-    return asset_value(get_balance(actor), SUMSY_DEP)
-end
-
-function sumsy_equity_collector(actor)
-    step = get_step(actor.model)
-    g, d = calculate_adjustments(get_balance(actor), step)
-
-    return liability_value(get_balance(actor), EQUITY) + g - d
-end
-
-function sumsy_wealth_collector(actor)
-    return max(CUR_0, sumsy_equity_collector(actor))
-end
-
-function sumsy_deposit_collector(actor)
-    return sumsy_assets(actor, get_step(actor.model))
-end
-
-function collect_data(model::ABM, step::Int)
-    return mod(step, model.collection_interval) == 0
-end
-
-function run_model!(model::ABM,
-                    sim_params::SimParams,
-                    transaction_params::TransactionParams,
-                    monetary_params::MonetaryModelParams,
-                    model_adaptations::Vector{<: Function} = Vector{Function}();
-                    equity::Function = equity_collector,
-                    wealth::Function = wealth_collector,
-                    deposit::Function = deposit_collector)
-   set_random_seed!(sim_params.lock_random_generator)
-                
-   model.properties[:last_transaction] = model.step
-   model.properties[:collection_interval] = sim_params.collection_interval
-
-   initialize_transaction_model!(model, transaction_params)
-   initialize_monetary_model!!(model, monetary_params)
-
-    for model_adaptation in model_adaptations
-        add_model_behavior!(model, model_adaptation)
-    end
-
-    data, _ = run_econo_model!(model,
-                                sim_params.sim_length,
-                                adata = [deposit, equity, wealth, :types],
-                                when = collect_data)
-
-    rename!(data, 3 => :deposit_data, 4 => :equity_data, 5 => :wealth_data)
-    return data
-end
-
-function set_random_seed!(lock_random_generator::Bool)
-    if lock_random_generator
-        Random.seed!(35646516187576568)
-    else
-        Random.seed(Integer(round(time())))
-    end
-end
-
-function run_simulation(model::ABM,
-                        sim_params::SimParams,
-                        transaction_params::TransactionParams,
-                        monetary_params::MonetaryModelParams,
-                        model_adaptations::Vector{<: Function} = Vector{Function}())
-    run_model!(model, sim_params, transaction_params, monetary_params, model_adaptations)
 end

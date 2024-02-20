@@ -111,22 +111,25 @@ function plot_net_incomes(sumsy::SuMSy)
     # plot(incomes, label = "net income", xlabel="Acount balance", xticks = 10)
 end
 
-function plot_wealth(dataframe, percentiles::Vector{Symbol} = [:bottom_10, :bottom_50, :middle_40, :top_10, :top_1, :top_0_1], title::String="")
-    labels = Vector{String}()
+function plot_wealth(dataframe,
+                    percentiles::Vector{Symbol} = [:bottom_10, :bottom_50, :middle_40, :top_10, :top_1, :top_0_1],
+                    title::String="",
+                    labels = nothing)
+    labels = isnothing(labels) ? symbols_to_labels(percentiles) : labels
 
-    for percentile in percentiles
-        label = replace(string(percentile), "_" => " ")
-        label = uppercase(label[1]) * label[2:end]
-        push!(labels, label)
+    the_plot = plot(
+		dataframe[!, percentiles[1]],
+		label = labels[1],
+		title = title,
+		xlabel ="Tijd",
+		ylabel ="% Rijkdom"
+	)
+
+    for i in 2:length(percentiles)
+        plot!(dataframe[!, percentiles[i]], label=labels[i])
     end
 
-    @df dataframe plot(percentiles,
-        title="Wealth distribution\n" * title,
-        label=["Bottom 10" "Bottom 50" "Middle 40" "Top 10" "Top 1" "Top 0.1"],
-        xlabel="Time",
-        ylabel="Wealth %",
-        legend=:legend,
-        ylims=[0, 100])
+    return the_plot
 end
 
 function plot_type_wealth(dataframes::Vector{DataFrame}, types::Vector{Symbol}, title = "", labels = nothing!)
@@ -168,4 +171,12 @@ function symbols_to_labels(symbols::Vector{Symbol})
     end
 
     return reshape([label for label in labels], 1, length(labels))
+end
+
+function plot_gdp(dataframe, title::String="")
+    plot(dataframe[!, :gdp_data], title=title, label="GDP", xlabel="Tijd", ylabel="GDP")
+end
+
+function plot_transactions(dataframe, title::String="")
+    plot(dataframe[!, :transactions_data], title=title, label="Transactions", xlabel="Tijd", ylabel="Transactions")
 end
