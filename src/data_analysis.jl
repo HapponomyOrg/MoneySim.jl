@@ -1,7 +1,7 @@
 using DataFrames
 
 function analyse_money_stock(data)
-    groups = groupby(data, :step)
+    groups = groupby(data, :time)
 
     # Create data frame
     counter = 0
@@ -14,7 +14,7 @@ function analyse_money_stock(data)
         total_wealth = sum(group[!, :equity_data])
         money_stock = sum(group[!, :deposit_data])
 
-        push!(analysis, [[rows[1][:step]] [money_stock] [total_wealth]])
+        push!(analysis, [[rows[1][:time]] [money_stock] [total_wealth]])
 
         counter += 1
     end
@@ -22,28 +22,43 @@ function analyse_money_stock(data)
     return analysis
 end
 
-function analyse_wealth(data, num_actors::Int)
+function calculate_percentile_numbers(num_actors::Int)
     BOTTOM_0_1 = 1:Int64(round(num_actors / 1000))
     BOTTOM_1 = 1:Int64(round(num_actors / 100))
     BOTTOM_10 = 1:Int64(round(num_actors / 10))
     BOTTOM_50 = 1:Int64(round(num_actors / 2))
-    MIDDLE_40 = Int64(round(num_actors / 2 + 1)):Int64(round(num_actors - num_actors / 10))
+    LOW_MIDDLE_40 = Int64(round(num_actors / 10 + 1)):Int64(round(num_actors / 2))
+    HIGH_MIDDLE_40 = Int64(round(num_actors / 2 + 1)):Int64(round(num_actors - num_actors / 10))
     TOP_10 = Int64(round(num_actors - num_actors / 10 + 1)):num_actors
     TOP_1 = Int64(round(num_actors - num_actors / 100 + 1)):num_actors
     TOP_0_1 = Int64(round(num_actors + 1 - num_actors / 1000)):num_actors
-    PERCENTILES = [BOTTOM_0_1, BOTTOM_1, BOTTOM_10, BOTTOM_50, MIDDLE_40, TOP_10, TOP_1, TOP_0_1]
+    return [BOTTOM_0_1, BOTTOM_1, BOTTOM_10, BOTTOM_50, LOW_MIDDLE_40, HIGH_MIDDLE_40, TOP_10, TOP_1, TOP_0_1]
+end
+
+function analyse_wealth(data, num_actors::Int)
+    PERCENTILES = calculate_percentile_numbers(num_actors)
     
-    groups = groupby(data, :step)
+    groups = groupby(data, :time)
 
     # Create data frame
     analysis = DataFrame(cycle = Int64[],
                         money_stock = Currency[],
                         total_wealth = Currency[],
+                        p_bottom_0_1 = Currency[],
+                        p_bottom_1 = Currency[],
+                        p_bottom_10 = Currency[],
+                        p_bottom_50 = Currency[],
+                        p_low_middle_40 = Currency[],
+                        p_high_middle_40 = Currency[],
+                        p_top_10 = Currency[],
+                        p_top_1 = Currency[],
+                        p_top_0_1 = Currency[],
                         bottom_0_1 = Currency[],
                         bottom_1 = Currency[],
                         bottom_10 = Currency[],
                         bottom_50 = Currency[],
-                        middle_40 = Currency[],
+                        low_middle_40 = Currency[],
+                        high_middle_40 = Currency[],
                         top_10 = Currency[],
                         top_1 = Currency[],
                         top_0_1 = Currency[])
@@ -52,18 +67,19 @@ function analyse_wealth(data, num_actors::Int)
         total_wealth = sum(group[!, :wealth_data])
         money_stock = sum(group[!, :deposit_data])
         rows = eachrow(sort(group, :equity_data))
-        wealth_values = zeros(Currency, 1, 8)
-        wealth_percentages = zeros(Currency, 1, 8)
+        wealth_values = zeros(Currency, 1, 9)
+        wealth_percentages = zeros(Currency, 1, 9)
 
         for index in 1:length(PERCENTILES)
             for i in PERCENTILES[index]
                 wealth_values[index] += rows[i][:equity_data]
             end
 
+            wealth_values[index] /= length(PERCENTILES[index])
             wealth_percentages[index] = total_wealth != 0 ? 100 * wealth_values[index] / total_wealth : 0
         end
 
-        push!(analysis, [[rows[1][:step]] [money_stock] [total_wealth] wealth_percentages])
+        push!(analysis, [[rows[1][:time]] [money_stock] [total_wealth] wealth_percentages wealth_values])
     end
 
     return analysis
@@ -91,7 +107,7 @@ function analyse_type_wealth(data, wealth_processing::Function = median)
 
     unique!(types)
 
-    groups = groupby(data, :step)
+    groups = groupby(data, :time)
     analysis = DataFrame(cycle = Int64[])
     
     for type in types
@@ -114,7 +130,7 @@ function analyse_type_wealth(data, wealth_processing::Function = median)
             type_wealth_vector[findfirst(x -> x == type, type_wealth_vector)] = wealth_processing(type_wealth[type])
         end
 
-        push!(analysis, [[rows[1][:step]] transpose(type_wealth_vector)])
+        push!(analysis, [[rows[1][:time]] transpose(type_wealth_vector)])
     end
 
     return analysis

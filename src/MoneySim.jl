@@ -11,8 +11,10 @@ export random_float, random_int
 
 include("transaction_models.jl")
 export TransactionParams
+export NoTransactionParams
 export YardSaleParams, StandardYardSaleParams, TaxedYardSaleParams, GDPYardSaleParams
 export ConsumerSupplyParams, FixedConsumerSupplyParams, VariableConsumerSupplyParams
+export gdp_yard_sale!, gdp_baseline_yard_sale!
 
 include("model_adaptations.jl")
 export one_time_money_injection!, constant_money_injection!, one_time_money_destruction!, constant_money_destruction!, equal_money_distribution!
@@ -21,12 +23,12 @@ include("behaviors.jl")
 export borrow_income, borrow_when_poor, borrow_when_rich, ubi_borrow_when_poor, ubi_borrow_when_poor_rich
 
 include("money_models.jl")
-export ModelMoneyModelParams, FixedWealthParams, SuMSyParams, DebtBasedParams
-export equal_wealth_distribution!, concentrated_wealth_distribution!
+export ModelMoneyModelParams, FixedWealthParams, StandardSuMSyParams, InequalitySuMSyParams, InequalityData, DebtBasedParams
+export equal_wealth_distribution!, concentrated_wealth_distribution!, inequal_wealth_distribution!
 export percentage_gi_actors!, mixed_actors!, typed_gi_actors!
 
 include("data_analysis.jl")
-export analyse_money_stock, analyse_wealth, analyse_type_wealth
+export calculate_percentile_numbers, analyse_money_stock, analyse_wealth, analyse_type_wealth
 
 include("plotting.jl")
 export plot_money_stock, plot_comparative_money_stock
@@ -36,6 +38,9 @@ export plot_gdp, plot_transactions
 
 include("simulations.jl")
 export SimParams
+export equity_collector, wealth_collector, deposit_collector
+export sumsy_equity_collector, sumsy_wealth_collector, sumsy_deposit_collector
+export run_simulation
 export run_fixed_wealth_simulation, run_fixed_wealth_gdp_simulation
 export run_sumsy_simulation, run_consumer_supplier_simulation
 export run_debt_based_simulation

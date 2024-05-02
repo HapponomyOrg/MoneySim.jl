@@ -121,8 +121,8 @@ function plot_wealth(dataframe,
 		dataframe[!, percentiles[1]],
 		label = labels[1],
 		title = title,
-		xlabel ="Tijd",
-		ylabel ="% Rijkdom"
+		xlabel ="Time",
+		ylabel ="% Wealth"
 	)
 
     for i in 2:length(percentiles)
@@ -174,9 +174,9 @@ function symbols_to_labels(symbols::Vector{Symbol})
 end
 
 function plot_gdp(dataframe, title::String="")
-    plot(dataframe[!, :gdp_data], title=title, label="GDP", xlabel="Tijd", ylabel="GDP")
+    plot(dataframe[!, :gdp_data], title=title, label="GDP", xlabel="Time", ylabel="GDP")
 end
 
 function plot_transactions(dataframe, title::String="")
-    plot(dataframe[!, :transactions_data], title=title, label="Transactions", xlabel="Tijd", ylabel="Transactions")
+    plot(dataframe[!, :transactions_data], title=title, label="Transactions", xlabel="Time", ylabel="Transactions")
 end

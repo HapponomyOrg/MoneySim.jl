@@ -27,8 +27,9 @@ function run_simulation(model::ABM,
                         process_data!::Function = standard_data_processing!)
     set_random_seed!(sim_params.lock_random_generator)
 
-    model.properties[:last_transaction] = model.step
-    model.properties[:collection_interval] = sim_params.collection_interval
+    properties = abmproperties(model)
+    properties[:last_transaction] = model.step
+    properties[:collection_interval] = sim_params.collection_interval
 
     initialize_transaction_model!(model, transaction_params)
     initialize_monetary_model!(model, monetary_params)
@@ -58,7 +59,7 @@ function run_fixed_wealth_simulation(sim_params::SimParams,
                                                                     :types],
                                     model_data_collectors::Vector = [],
                                     process_data!::Function = standard_data_processing!)
-    model = create_unremovable_econo_model()
+    model = create_econo_model()
 
     run_simulation(model,
                     sim_params,
@@ -104,7 +105,7 @@ function run_fixed_wealth_gdp_simulation(;
                                         years::Int)
     sim_params = SimParams(years * 365, 365)
     fixed_wealth_params = FixedWealthParams(m2 / population, true)
-    yard_sale_params = GDPYardSaleParams(population, gdp, 365, 0.2:0.2:0.2, 0)
+    yard_sale_params = GDPYardSaleParams(population, gdp, 365, 0.2:0.2:0.2, 0, gdp_baseline_yard_sale!)
 
     run_fixed_wealth_simulation(sim_params,
                                 yard_sale_params,
@@ -127,9 +128,9 @@ function run_sumsy_simulation(sumsy::SuMSy,
                                 model_data_collectors::Vector = [],
                                 process_data!::Function = standard_data_processing!)
     if sumsy.transactional
-        model = create_unremovable_single_sumsy_model(sumsy)
+        model = create_single_sumsy_model(sumsy)
     else
-        model = create_unremovable_single_sumsy_model(sumsy, model_behaviors = process_model_sumsy!)
+        model = create_single_sumsy_model(sumsy, model_behaviors = process_model_sumsy!)
     end
     
     run_simulation(model,
@@ -230,7 +231,7 @@ function run_debt_based_simulation(sim_params::SimParams,
                                     model_data_collectors::Vector = [],
                                     process_data!::Function = standard_data_processing!)
     model = create_econo_model()
-    model.properties[:bank] = Balance()
+    abmproperties(model)[:bank] = Balance()
 
     run_model!(model,
                 sim_params,

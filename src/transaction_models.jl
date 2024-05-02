@@ -14,6 +14,23 @@ function adjusted_asset_value!(actor::MonetaryActor)
     return asset_value(balance, SUMSY_DEP)
 end
 
+# No Transaction Model
+
+struct NoTransactionParams <: TransactionParams{Currency}
+    num_actors::Int
+    NoTransactionParams(num_actors::Int) = new(num_actors)
+end
+
+function initialize_transaction_model!(model::ABM,
+                                       no_transaction_params::NoTransactionParams)
+    
+    for _ in 1:no_transaction_params.num_actors
+        add_actor!(model, MonetaryActor(model))
+    end
+    
+    return model
+end
+
 # Yard sale model
 abstract type YardSaleParams{C <: FixedDecimal} <: TransactionParams{C} end
 
@@ -54,15 +71,18 @@ struct GDPYardSaleParams{C <: FixedDecimal} <: YardSaleParams{C}
     gdp_period::Int
     wealth_transfer_range::StepRange{Percentage, Percentage}
     minimal_wealth_transfer::C
+    gdp_model_behavior::Function
     GDPYardSaleParams(population::Int,
                         gdp::Real,
                         gdp_period::Int,
                         wealth_transfer_range::Union{StepRange, StepRangeLen},
-                        minimal_wealth_transfer::Real) = new{Currency}(population,
+                        minimal_wealth_transfer::Real,
+                        gdp_model_behavior) = new{Currency}(population,
                                                                         gdp,
                                                                         gdp_period,
                                                                         wealth_transfer_range,
-                                                                        minimal_wealth_transfer)
+                                                                        minimal_wealth_transfer,
+                                                                        gdp_model_behavior)
 end
 
 function initialize_transaction_model!(model::ABM, params::StandardYardSaleParams)
@@ -72,33 +92,36 @@ end
 
 function initialize_transaction_model!(model::ABM, params::TaxedYardSaleParams)
     initialize_yard_sale!(model, params)
-    model.properties[:tax] = params.tax
+    abmproperties(model)[:tax] = params.tax
     add_model_behavior!(model, taxed_yard_sale!)
 end
 
 function initialize_transaction_model!(model::ABM, params::GDPYardSaleParams)
-    model.properties[:min_gdp_per_cycle] = params.gdp / params.gdp_period
-    model.properties[:wealth_transfer_range] = params.wealth_transfer_range
-    model.properties[:minimal_wealth_transfer] = params.minimal_wealth_transfer
-    model.properties[:gdp_period] = params.gdp_period
-    model.properties[:gdp] = params.gdp
-    model.properties[:transactions] = 0
-    model.properties[:max_transactions] = 0
+    properties = abmproperties(model)
+
+    properties[:min_gdp_per_cycle] = params.gdp / params.gdp_period
+    properties[:wealth_transfer_range] = params.wealth_transfer_range
+    properties[:minimal_wealth_transfer] = params.minimal_wealth_transfer
+    properties[:gdp_period] = params.gdp_period
+    properties[:gdp] = params.gdp
+    properties[:transactions] = 0
 
     for i in 1:params.population
-        add_actor!(model, MonetaryActor())
+        add_actor!(model, MonetaryActor(model))
     end
 
-    add_model_behavior!(model, gdp_initial_yard_sale!)
+    add_model_behavior!(model, params.gdp_model_behavior)
 end
 
 function initialize_yard_sale!(model::ABM, params::YardSaleParams)
-    model.properties[:transaction_range] = params.transaction_range
-    model.properties[:wealth_transfer_range] = params.wealth_transfer_range
-    model.properties[:minimal_wealth_transfer] = params.minimal_wealth_transfer
+    properties = abmproperties(model)
+
+    properties[:transaction_range] = params.transaction_range
+    properties[:wealth_transfer_range] = params.wealth_transfer_range
+    properties[:minimal_wealth_transfer] = params.minimal_wealth_transfer
 
     for i in 1:params.num_actors
-        add_actor!(model, MonetaryActor())
+        add_actor!(model, MonetaryActor(model))
     end
 end
 
@@ -126,10 +149,10 @@ end
     Executes the yard sale for the first `gdp_period` of the simulation, making sure that GDP is reached over the period.
     During this first period, 10 times the maximum number of transactions per cycle needed to reach GDP per cycle is stored.
     The multiplier of 10 gives some time to reach GDP should the average amount per transaction diominish over time.
-    After the first period, the model will switch to the `gdp_yard_sale!` function.
+    After the first period, the model will switch to the `gdp_constrained_yard_sale!` function.
     Real GDP per period is stored in the model.
 """
-function gdp_initial_yard_sale!(model::ABM)
+function gdp_baseline_yard_sale!(model::ABM)
     cycle_gdp = 0
     transactions = 0
 
@@ -137,27 +160,30 @@ function gdp_initial_yard_sale!(model::ABM)
         _, _, amount = atomic_yard_sale!(model)
         cycle_gdp += amount
         transactions += 1
-    end
-
-    model.gdp += cycle_gdp
-    model.transactions += transactions
-    model.max_transactions = max(model.max_transactions, 10 * transactions)
+    end    
 
     if model.step % model.gdp_period == 0
-        delete_model_behavior!(model, gdp_initial_yard_sale!)
-        add_model_behavior!(model, gdp_yard_sale!)
+        model.gdp = cycle_gdp
+        model.transactions = transactions
+
+        abmproperties(model)[:max_transactions] = max(model.max_transactions, 10 * transactions)
+        delete_model_behavior!(model, gdp_baseline_yard_sale!)
+        add_model_behavior!(model, gdp_constrained_yard_sale!)
+    else
+        model.gdp += cycle_gdp
+        model.transactions += transactions
     end
 end
 
 """
-    gdp_yard_sale!(model::ABM)
+    gdp_constrained_yard_sale!(model::ABM)
 
     Executes the yard sale model for each period after the first one,
     attempting to reach GDP per cycle if it can be reached with no more than `max_transactions`,
-    stored during the execution of 'gdp_initial_yard_sale!'.
+    stored during the execution of 'gdp_baseline_yard_sale!'.
     Real GDP per period is stored in the model.
 """
-function gdp_yard_sale!(model::ABM)
+function gdp_constrained_yard_sale!(model::ABM)
     cycle_gdp = 0
     transactions = 0
 
@@ -167,8 +193,37 @@ function gdp_yard_sale!(model::ABM)
         transactions += 1
     end
 
-    model.gdp += cycle_gdp
-    model.transactions += transactions
+    if model.step % model.gdp_period == 1
+        model.gdp = cycle_gdp
+        model.transactions = transactions
+    else
+        model.gdp += cycle_gdp
+        model.transactions += transactions
+    end
+end
+
+"""
+    gdp_yard_sale!!(model::ABM)
+
+    Executes the yard sale model for each period, making sure that GDP is reached over each period.
+"""
+function gdp_yard_sale!(model::ABM)
+    cycle_gdp = 0
+    transactions = 0
+
+    while cycle_gdp < model.min_gdp_per_cycle
+        _, _, amount = atomic_yard_sale!(model)
+        cycle_gdp += amount
+        transactions += 1
+    end
+
+    if model.step % model.gdp_period == 1
+        model.gdp = cycle_gdp
+        model.transactions = transactions
+    else
+        model.gdp += cycle_gdp
+        model.transactions += transactions
+    end
 end
 
 function atomic_yard_sale!(model::ABM)
@@ -268,7 +323,7 @@ end
 
 function add_suppliers!(num_suppliers::Int, price, num_consumers, demand, model::ABM)
     for i in 1:num_suppliers
-        supplier = add_actor!(model, MonetaryActor())
+        supplier = add_actor!(model, MonetaryActor(model))
         add_type!(supplier, :supplier)
         supplier.price = price()
         supplier.model = model
@@ -279,7 +334,7 @@ end
 
 function add_consumers!(supplier::MonetaryActor, num_consumers, demand, model::ABM)
     for i in 1:num_consumers()
-        consumer = add_actor!(model, MonetaryActor())
+        consumer = add_actor!(model, MonetaryActor(model))
         add_type!(consumer, :consumer)
         add_behavior!(consumer, satisfy_demand!)
         consumer.supplier = supplier
