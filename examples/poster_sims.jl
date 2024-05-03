@@ -11,8 +11,12 @@ population = [727, 727, 727, 728, 729, 730, 731, 733, 735, 736, 738, 739, 740, 7
 
 # A SuMSy model is created that results in an account balance of 20,000.
 # This is the average amount of money per person in the EU in 2021.
-# Data source M2: https://www.statista.com/statistics/254226/development-of-the-money-supply-m1-in-the-euro-area/
-sumsy = SuMSy(2000, 0, 0.1, 30)
+# Data source M2: https://tradingeconomics.com/euro-area/money-supply-m2
+m2 = 15300000 # million
+money_supply_per_capita = m2 / population[end]
+gi = 2000
+d = gi / money_supply_per_capita
+sumsy = SuMSy(gi, 0, d, 30)
 
 # Every year the population is adjusted to be in line with the historical data
 function adjust_population!(model::ABM)
@@ -47,10 +51,10 @@ transaction_params = NoTransactionParams(727)
 sumsy_params = StandardSuMSyParams(telo(sumsy))
 
 # Money stock simulation
-# data = run_simulation(model, sim_params, transaction_params, sumsy_params)
-# mdata = analyse_money_stock(data[1])
+data = run_simulation(model, sim_params, transaction_params, sumsy_params)
+mdata = analyse_money_stock(data[1])
 
-# CSV.write("data/Poster - Money stock EU.csv", mdata)
+CSV.write("data/Poster - Money stock EU.csv", mdata)
 
 # Inequality simulation
 # Inequality data source: https://wid.world/world/
@@ -62,6 +66,13 @@ data_collectors = [equity_collector, wealth_collector, deposit_collector, :types
 # EU GDP 2021
 # Data source population: https://www.statista.com/statistics/1106711/population-of-europe/
 # GDP data source: https://www.statista.com/statistics/279447/gross-domestic-product-gdp-in-the-european-union-eu/#:~:text=In%202022%20the%20gross%20domestic,economic%20strength%20of%20a%20country.
+# Data source M2: https://tradingeconomics.com/euro-area/money-supply-m2
+M2 = 13800000 # million
+population = 745 # million
+money_supply_per_capita = M2 / population
+gdp = 14640036 # million
+d = gi / money_supply_per_capita
+sumsy = SuMSy(gi, 0, d, 30)
 inequality_data = InequalityData(nothing,   # Top 0.1% - not applicable
                                 1566407,    # Top 1%
                                 381336,     # Top 10%
@@ -71,7 +82,7 @@ inequality_data = InequalityData(nothing,   # Top 0.1% - not applicable
                                 -45198,     # Bottom 1%
                                 nothing)    # Bottom 0.1% - not applicable
 sumsy_params = InequalitySuMSyParams(inequality_data)
-gdp_yard_sale_params = GDPYardSaleParams(1000, 14640036 / 744 * 1000, 360, 0.2:0.2, 0.0, gdp_yard_sale!)
+gdp_yard_sale_params = GDPYardSaleParams(1000, gdp / population * 1000, 360, 0.2:0.2, 0.0, gdp_yard_sale!)
 
 eu_data = run_sumsy_simulation(sumsy,
                                 sim_params,
@@ -85,7 +96,14 @@ CSV.write("data/Poster - Inequality EU.csv", eu_wdata)
 # Belgium GDP 2021
 # Data source population: https://www.statista.com/statistics/516667/total-population-of-belgium/
 # GDP data source: https://www.statista.com/statistics/524844/gross-domestic-product-gdp-in-belgium/
-gdp_yard_sale_params = GDPYardSaleParams(1000, 502311 / 11.5 * 1000, 360, 0.2:0.2, 0.0, gdp_yard_sale!)
+# Data source M2: https://tradingeconomics.com/belgium/money-supply-m2
+M2 = 610000 # million
+population = 11.55 # million
+money_supply_per_capita = M2 / population
+gdp = 502311 # million
+d = gi / money_supply_per_capita
+sumsy = SuMSy(gi, 0, d, 30)
+gdp_yard_sale_params = GDPYardSaleParams(1000, gdp / population * 1000, 360, 0.2:0.2, 0.0, gdp_yard_sale!)
 inequality_data = InequalityData(nothing,   # Top 0.1% - not applicable
                                 3821141,    # Top 1%
                                 1329362,    # Top 10%
@@ -108,6 +126,14 @@ CSV.write("data/Poster - Inequality Belgium.csv", be_wdata)
 # Netherlands GDP 2021
 # Data source population: https://www.statista.com/statistics/519720/total-population-of-the-netherlands/
 # GDP data source: https://www.statista.com/statistics/529063/the-netherlands-gdp/
+# Data source M2: https://tradingeconomics.com/netherlands/money-supply-m2
+# M2 = 937000 M euro
+M2 = 937000 # million
+population = 17.48 # million
+money_supply_per_capita = M2 / population
+gdp = 856360 # million
+d = gi / money_supply_per_capita
+sumsy = SuMSy(gi, 0, d, 30)
 inequality_data = InequalityData(nothing,   # Top 0.1% - not applicable
                                 4345950,    # Top 1%
                                 1483226,    # Top 10%
@@ -117,7 +143,7 @@ inequality_data = InequalityData(nothing,   # Top 0.1% - not applicable
                                 7241,       # Bottom 1%
                                 nothing)    # Bottom 0.1% - not applicable                                					
 sumsy_params = InequalitySuMSyParams(inequality_data)
-gdp_yard_sale_params = GDPYardSaleParams(1000, 856360 / 17.5 * 1000, 360, 0.2:0.2, 0.0, gdp_yard_sale!)
+gdp_yard_sale_params = GDPYardSaleParams(1000, gdp / population * 1000, 360, 0.2:0.2, 0.0, gdp_yard_sale!)
 
 nl_data = run_sumsy_simulation(sumsy,
                                 sim_params,
