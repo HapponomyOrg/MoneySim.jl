@@ -332,7 +332,7 @@ end
 # Debt based with borrowing
 
 struct DebtBasedParams{C <: FixedDecimal} <: MonetaryModelParams{C}
-    initial_wealth::C
+    initial_wealth::C    
     DebtBasedParams(num_actors::Int,
                     initial_wealth::Real) = new{Currency}(num_actors,
                                                             initial_wealth)
@@ -340,4 +340,10 @@ end
 
 function initialize_monetary_model!(model::ABM,
                                     debt_based_params::DebtBasedParams)
+    abmproperties(model)[:bank] = Balance()
+
+    for actor in allagents(model)
+        min_asset!(get_balance(actor), SUMSY_DEP, typemin(Currency))
+        book_asset!(get_balance(actor), SUMSY_DEP, debt_based_params.initial_wealth, set_to_value = true)
+    end
 end

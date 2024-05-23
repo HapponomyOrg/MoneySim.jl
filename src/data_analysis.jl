@@ -1,7 +1,12 @@
 using DataFrames
 
+"""
+    analyse_money_stock(data)
+
+    * data: a data frame vector returned by `run_simulation`.
+"""
 function analyse_money_stock(data)
-    groups = groupby(data, :time)
+    groups = groupby(data[1], :time)
 
     # Create data frame
     counter = 0
@@ -35,10 +40,9 @@ function calculate_percentile_numbers(num_actors::Int)
     return [BOTTOM_0_1, BOTTOM_1, BOTTOM_10, BOTTOM_50, LOW_MIDDLE_40, HIGH_MIDDLE_40, TOP_10, TOP_1, TOP_0_1]
 end
 
-function analyse_wealth(data, num_actors::Int)
-    PERCENTILES = calculate_percentile_numbers(num_actors)
-    
-    groups = groupby(data, :time)
+function analyse_wealth(data)    
+    wealth_groups = groupby(data[1], :time)
+    population_groups = groupby(data[2], :time)
 
     # Create data frame
     analysis = DataFrame(cycle = Int64[],
@@ -63,7 +67,10 @@ function analyse_wealth(data, num_actors::Int)
                         top_1 = Currency[],
                         top_0_1 = Currency[])
 
-    for group in groups
+    counter = 1
+
+    for group in wealth_groups
+        PERCENTILES = calculate_percentile_numbers(population_groups[counter][!, :num_actors][1])
         total_wealth = sum(group[!, :wealth_data])
         money_stock = sum(group[!, :deposit_data])
         rows = eachrow(sort(group, :equity_data))
@@ -80,6 +87,7 @@ function analyse_wealth(data, num_actors::Int)
         end
 
         push!(analysis, [[rows[1][:time]] [money_stock] [total_wealth] wealth_percentages wealth_values])
+        counter += 1
     end
 
     return analysis
@@ -88,14 +96,14 @@ end
 """
     analyse_wealth_per_type(data, wealth_processing)
 
-    * data: a data frame
-    * wealth_processing: a function that takes in a vector of wealth data and return a single number.
+    * data: a data frame vector returned by `run_simulation`.
+    * wealth_processing: a function that takes in a vector of wealth data and returns a single number.
                         The result of this function will be used in the analysis per type.
 
 Returns a data frame with the wealth distribution per type
 """
 function analyse_type_wealth(data, wealth_processing::Function = median)
-    type_sets = unique(data[!, :types])
+    type_sets = unique(data[1][!, :types])
     types = []
     type_wealth = Dict{Symbol, Vector{Currency}}()
 
@@ -107,7 +115,7 @@ function analyse_type_wealth(data, wealth_processing::Function = median)
 
     unique!(types)
 
-    groups = groupby(data, :time)
+    groups = groupby(data[1], :time)
     analysis = DataFrame(cycle = Int64[])
     
     for type in types

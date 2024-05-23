@@ -51,3 +51,30 @@ function equal_money_distribution!(model)
         end
     end
 end
+
+function adjust_population!(model::ABM)
+    if model.step % (30 * 12) == 0 && nagents(model) != population[Int(round(model.step / (30 * 12)))]
+       population_adjustment = population[Int(round(model.step / (30 * 12)))] - nagents(model)
+
+       if population_adjustment > 0
+           for _ in 1:population_adjustment
+               agent = add_actor!(model, make_single_sumsy!(model, sumsy, MonetaryActor(model), initialize = false))
+               set_last_adjustment!(agent.balance, model.step)
+           end
+       else
+           for _ in 1:abs(population_adjustment)
+               dead_agent = random_agent(model)
+               heir = random_agent(model)
+
+               while dead_agent == heir
+                   heir = random_agent(model)
+               end
+
+               transfer_sumsy!(model, dead_agent, heir, asset_value(get_balance(dead_agent), SUMSY_DEP))
+
+               remove_agent!(dead_agent, model)
+           end
+       end
+
+    end
+end

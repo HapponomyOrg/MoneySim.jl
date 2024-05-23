@@ -1,5 +1,13 @@
 module MoneySim
 
+using EconoSim
+
+include("population.jl")
+export PopulationParams
+export PopulationVectorParams, FixedPopulationParams, DynamicPopulationParams
+export adjust_vector_population!
+export create_sumsy_actor!
+
 include("keynes_sim.jl")
 export Mode, growth_mode, loan_ratio_mode
 export SimData, FuncData, RealFunc, IntFunc
@@ -28,7 +36,7 @@ export equal_wealth_distribution!, concentrated_wealth_distribution!, inequal_we
 export percentage_gi_actors!, mixed_actors!, typed_gi_actors!
 
 include("data_analysis.jl")
-export calculate_percentile_numbers, analyse_money_stock, analyse_wealth, analyse_type_wealth
+export analyse_money_stock, analyse_wealth, analyse_type_wealth
 
 include("plotting.jl")
 export plot_money_stock, plot_comparative_money_stock
