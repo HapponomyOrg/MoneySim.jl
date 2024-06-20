@@ -10,7 +10,7 @@ sim_params = SimParams(30 * 12 * 23, 30 * 12, lock_random_generator = true)
 population = [727, 727, 727, 728, 729, 730, 731, 733, 735, 736, 738, 739, 740, 741, 742, 743, 744, 745, 746, 746, 745, 744, 742]
 population_params = PopulationVectorParams(population,
                                             30 * 12,
-                                            create_actor! = create_sumsy_actor!)
+                                            create_actor! = create_sumsy_actor)
 
 # A SuMSy model is created that results in an account balance of 20,000.
 # This is the average amount of money per person in the EU in 2021.
@@ -21,7 +21,7 @@ gi = 2000
 d = gi / money_supply_per_capita
 sumsy = SuMSy(gi, 0, d, 30)
 
-model = create_single_sumsy_model(sumsy, model_behaviors = process_model_sumsy!)
+model = create_sumsy_model(sumsy, model_behaviors = process_model_sumsy!)
 transaction_params = NoTransactionParams(727)
 sumsy_params = StandardSuMSyParams(telo(sumsy))
 
@@ -31,7 +31,7 @@ data = run_simulation(model,
                         population_params = population_params,
                         transaction_params = transaction_params,
                         monetary_params = sumsy_params)
-mdata = analyse_money_stock(data)
+mdata = analyse_money_stock(data[1])
 
 CSV.write("data/Poster - Money stock EU.csv", mdata)
 
@@ -41,7 +41,7 @@ CSV.write("data/Poster - Money stock EU.csv", mdata)
 gdp_collector(actor) = actor.model.gdp
 transactions_collector(actor) = actor.model.transactions
 data_collectors = [equity_collector, wealth_collector, deposit_collector, :types, gdp_collector, transactions_collector]
-population_params = FixedPopulationParams()
+population_params = FixedPopulationParams(create_sumsy_actor)
 
 # EU GDP 2021
 # Data source population: https://www.statista.com/statistics/1106711/population-of-europe/

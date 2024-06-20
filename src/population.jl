@@ -61,11 +61,11 @@ function adjust_vector_population!(model::ABM)
                 dead_balance = get_balance(dead_agent)
 
                 for asset in assets(dead_balance)
-                    transfer_asset!(model, dead_agent, heir, asset_value(get_balance(dead_agent), asset))
+                    transfer_asset!(model, dead_agent, heir, asset, asset_value(get_balance(dead_agent), asset))
                 end
 
                 for liability in liabilities(dead_balance)
-                    transfer_liability!(model, dead_agent, heir, liability_value(get_balance(dead_agent), liability))
+                    transfer_liability!(model, dead_agent, heir, liability, liability_value(get_balance(dead_agent), liability))
                 end
 
                 remove_agent!(dead_agent, model)
