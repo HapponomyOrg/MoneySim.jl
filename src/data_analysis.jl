@@ -6,7 +6,7 @@ using DataFrames
     * data: a data frame vector returned by `run_simulation`.
 """
 function analyse_money_stock(data)
-    groups = groupby(data[1], :time)
+    groups = groupby(data, :time)
 
     # Create data frame
     counter = 0
@@ -103,7 +103,7 @@ end
 Returns a data frame with the wealth distribution per type
 """
 function analyse_type_wealth(data, wealth_processing::Function = median)
-    type_sets = unique(data[1][!, :types])
+    type_sets = unique(data[!, :types])
     types = []
     type_wealth = Dict{Symbol, Vector{Currency}}()
 
@@ -115,7 +115,7 @@ function analyse_type_wealth(data, wealth_processing::Function = median)
 
     unique!(types)
 
-    groups = groupby(data[1], :time)
+    groups = groupby(data, :time)
     analysis = DataFrame(cycle = Int64[])
     
     for type in types

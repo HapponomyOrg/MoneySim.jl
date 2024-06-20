@@ -16,9 +16,9 @@ end
 
 function run_simulation(model::ABM;
                         sim_params::SimParams,
+                        population_params::PopulationParams = FixedPopulationParams(),
                         transaction_params::TransactionParams,
                         monetary_params::MonetaryModelParams,
-                        population_params::PopulationParams = FixedPopulationParams(),
                         model_adaptations::Vector{<: Function} = Vector{Function}(),
                         actor_data_collectors::Vector = [equity_collector,
                                                         wealth_collector,
@@ -33,9 +33,9 @@ function run_simulation(model::ABM;
     properties[:last_transaction] = model.step
     properties[:collection_interval] = sim_params.collection_interval
 
+    initialize_population_model!(model, population_params)
     initialize_transaction_model!(model, transaction_params)
     initialize_monetary_model!(model, monetary_params)
-    initialize_population_model!(model, population_params)
 
     for model_adaptation in model_adaptations
         add_model_behavior!(model, model_adaptation)
@@ -53,9 +53,9 @@ end
 # Fixed wealth simulation
 
 function run_fixed_wealth_simulation(fixed_wealth_params::FixedWealthParams;
+                                    population_params::PopulationParams = FixedPopulationParams(),
                                     sim_params::SimParams,
                                     transaction_params::TransactionParams,
-                                    population_params::PopulationParams = FixedPopulationParams(),
                                     model_adaptations::Vector{<: Function} = Vector{Function}(),
                                     actor_data_collectors::Vector = [equity_collector,
                                                                     wealth_collector,
@@ -67,9 +67,9 @@ function run_fixed_wealth_simulation(fixed_wealth_params::FixedWealthParams;
 
     run_simulation(model,
                     sim_params = sim_params,
+                    population_params = population_params,
                     transaction_params = transaction_params,
                     monetary_params = fixed_wealth_params,
-                    population_params = population_params,
                     model_adaptations = model_adaptations,
                     actor_data_collectors = actor_data_collectors,
                     model_data_collectors = model_data_collectors,
@@ -98,8 +98,8 @@ function run_fixed_wealth_simulation(;
 
     run_fixed_wealth_simulation(fixed_wealth_params,
                                 sim_params = sim_params,
-                                transaction_params = yard_sale_params,
                                 population_params = population_params,
+                                transaction_params = yard_sale_params,
                                 actor_data_collectors = actor_data_collectors,
                                 model_data_collectors = model_data_collectors,
                                 process_data! = process_data!)
@@ -116,9 +116,9 @@ function run_fixed_wealth_gdp_simulation(;
     yard_sale_params = GDPYardSaleParams(population, gdp, 365, 0.2:0.2:0.2, 0, gdp_baseline_yard_sale!)
 
     run_fixed_wealth_simulation(fixed_wealth_params,
+                                population_params = population_params,
                                 sim_params = sim_params,
                                 transaction_params = yard_sale_params,
-                                population_params = population_params,
                                 model_data_collectors = [gdp_collector!, transactions_collector!],
                                 process_data! = gdp_data_processing!)
 end
@@ -128,8 +128,8 @@ end
 function run_sumsy_simulation(sumsy::SuMSy,
                                 sumsy_params::SuMSyParams;
                                 sim_params::SimParams,
+                                population_params::PopulationParams = FixedPopulationParams(create_sumsy_actor),
                                 transaction_params::TransactionParams,
-                                population_params::PopulationParams = FixedPopulationParams(),
                                 model_adaptations::Vector{<: Function} = Vector{Function}(),
                                 actor_data_collectors::Vector = [equity_collector,
                                                                 wealth_collector,
@@ -138,9 +138,9 @@ function run_sumsy_simulation(sumsy::SuMSy,
                                 model_data_collectors::Vector = [],
                                 process_data!::Function = standard_data_processing!)
     if sumsy.transactional
-        model = create_single_sumsy_model(sumsy)
+        model = create_sumsy_model(sumsy)
     else
-        model = create_single_sumsy_model(sumsy, model_behaviors = process_model_sumsy!)
+        model = create_sumsy_model(sumsy, model_behaviors = process_model_sumsy!)
     end
     
     run_simulation(model,
@@ -161,7 +161,7 @@ function run_sumsy_simulation(sumsy::SuMSy;
                                 period_length::Int = sumsy.interval,
                                 sim_length::Int = 150,
                                 distributed::Bool = true,
-                                population_params::PopulationParams = FixedPopulationParams(),
+                                population_params::PopulationParams = FixedPopulationParams(create_sumsy_actor),
                                 model_adaptation::Union{Function, Nothing} = nothing,
                                 actor_data_collectors::Vector = [equity_collector,
                                                                 wealth_collector,
@@ -175,9 +175,9 @@ function run_sumsy_simulation(sumsy::SuMSy;
     initial_wealth = telo(sumsy)
 
     if non_eligible_actors > 0
-        make_sumsy_actors! = model -> mixed_actors!(model, eligible_actors)
+        configure_sumsy_actors! = model -> mixed_actors!(model, eligible_actors)
     else
-        make_sumsy_actors! = mixed_actors!
+        configure_sumsy_actors! = mixed_actors!
     end
 
     if non_eligible_actors > 0
@@ -187,7 +187,7 @@ function run_sumsy_simulation(sumsy::SuMSy;
 
     sumsy_params = StandardSuMSyParams(initial_wealth,
                                         initial_wealth,
-                                        make_sumsy_actors! = make_sumsy_actors!,
+                                        configure_sumsy_actors! = configure_sumsy_actors!,
                                         distribute_wealth! = distributed ? equal_wealth_distribution! : concentrated_wealth_distribution!)
     transaction_params = StandardYardSaleParams(eligible_actors + non_eligible_actors,
                                                 num_transactions:num_transactions,
@@ -196,9 +196,9 @@ function run_sumsy_simulation(sumsy::SuMSy;
     model_adaptations = isnothing(model_adaptation) ? Vector{Function}() : Vector{Function}([model_adaptation])
 
     run_sumsy_simulation(sumsy, sumsy_params,
-                            sim_params = sim_params, 
-                            transaction_params = transaction_params,
+                            sim_params = sim_params,
                             population_params = population_params,
+                            transaction_params = transaction_params,
                             model_adaptations = model_adaptations,
                             actor_data_collectors = actor_data_collectors,
                             model_data_collectors = model_data_collectors,
@@ -211,7 +211,7 @@ function run_consumer_supplier_simulation(sumsy::SuMSy;
                                             fulfilled_demand::Int = 1,
                                             net_profit::Real = 1,
                                             suppliers_gi_eligible = false,
-                                            population_params = FixedPopulationParams(),
+                                            population_params = FixedPopulationParams(create_sumsy_actor),
                                             actor_data_collectors::Vector = [equity_collector,
                                                                             wealth_collector,
                                                                             deposit_collector,
@@ -221,13 +221,13 @@ function run_consumer_supplier_simulation(sumsy::SuMSy;
     sim_params = SimParams(sim_length * sumsy.interval, sumsy.interval)
 
     gi_eligible_types = suppliers_gi_eligible ? [:supplier, :consumer] : [:consumer]
-    sumsy_params = SuMSyParams(telo(sumsy), make_sumsy_actors! = model -> typed_gi_actors!(model, gi_eligible_types))
+    sumsy_params = StandardSuMSyParams(telo(sumsy), configure_sumsy_actors! = model -> typed_gi_actors!(model, gi_eligible_types))
     consumer_supply_params = FixedConsumerSupplyParams(1, consumers_per_supplier, fulfilled_demand, net_profit)
 
     return run_sumsy_simulation(sumsy, sumsy_params,
                                 sim_params = sim_params,
-                                transaction_params = consumer_supply_params,
                                 population_params = population_params,
+                                transaction_params = consumer_supply_params,
                                 actor_data_collectors = actor_data_collectors,
                                 model_data_collectors = model_data_collectors,
                                 process_data! = process_data!)
@@ -248,9 +248,9 @@ function run_debt_based_simulation(debt_based_params::DebtBasedParams;
 
     run_simulation(model,
                     sim_params = sim_params,
+                    population_params = population_params,
                     transaction_params = transaction_params, 
                     monetary_params = debt_based_params,
-                    population_params = population_params,
                     model_adaptations = model_adaptations,
                     actor_data_collectors = actor_data_collectors,
                     model_data_collectors = model_data_collectors,

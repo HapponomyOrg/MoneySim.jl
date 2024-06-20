@@ -1,11 +1,15 @@
 using Agents
+import Base.Callable
 
 abstract type PopulationParams end
 
 struct FixedPopulationParams <: PopulationParams
+    create_actor!::Function
+    FixedPopulationParams(create_actor! = create_monetary_actor) = new(create_actor!)
 end
 
 function initialize_population_model!(model::ABM, population_params::FixedPopulationParams)
+    abmproperties(model)[:create_actor!] = population_params.create_actor!
 end
 
 struct PopulationVectorParams <: PopulationParams
@@ -67,31 +71,5 @@ function adjust_vector_population!(model::ABM)
                 remove_agent!(dead_agent, model)
             end
         end
-    end
-end
-
-function create_sumsy_actor!(model::ABM)
-    return make_single_sumsy!(model, model.sumsy, MonetaryActor(model), initialize = false)
-end
-
-struct DynamicPopulationParams <: PopulationParams
-    adjustment_interval::Integer
-    supplemental_initialisation!::Union{Nothing, Function}
-    adjust_population!::Function
-    DynamicPopulationParams(adjustment_interval::Integer,
-                            supplemental_initialisation!::Union{Nothing, Function} = nothing,
-                            adjust_population!::Function = adjust_vector_population!) =
-                                new(supplemental_initialisation!,
-                                    adjustment_interval,
-                                    adjust_population!)
-end
-
-function initialize_population_model!(model::ABM, population_params::DynamicPopulationParams)
-    properties = abmproperties(model)
-    properties[:adjustment_interval] = population_params.adjustment_interval
-    add_model_behavior!(model, population_params.adjust_population!)
-
-    if !isnothing(population_params.supplemental_initialisation!)
-        population_params.supplemental_initialisation!(model)
     end
 end

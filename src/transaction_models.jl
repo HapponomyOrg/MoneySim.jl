@@ -4,7 +4,7 @@ using EconoSim
 
 abstract type TransactionParams{C <: FixedDecimal} end
 
-function adjusted_asset_value!(actor::MonetaryActor)
+function adjusted_asset_value!(actor::BalanceActor)
     balance = get_balance(actor)
 
     if balance isa SuMSyBalance && is_transactional(balance)
@@ -25,7 +25,7 @@ function initialize_transaction_model!(model::ABM,
                                        no_transaction_params::NoTransactionParams)
     
     for _ in 1:no_transaction_params.num_actors
-        add_actor!(model, MonetaryActor(model))
+        add_actor!(model, model.create_actor!(model))
     end
     
     return model
@@ -107,7 +107,7 @@ function initialize_transaction_model!(model::ABM, params::GDPYardSaleParams)
     properties[:transactions] = 0
 
     for i in 1:params.population
-        add_actor!(model, MonetaryActor(model))
+        add_actor!(model, model.create_actor!(model))
     end
 
     add_model_behavior!(model, params.gdp_model_behavior)
@@ -121,7 +121,7 @@ function initialize_yard_sale!(model::ABM, params::YardSaleParams)
     properties[:minimal_wealth_transfer] = params.minimal_wealth_transfer
 
     for i in 1:params.num_actors
-        add_actor!(model, MonetaryActor(model))
+        add_actor!(model, model.create_actor!(model))
     end
 end
 
@@ -323,7 +323,7 @@ end
 
 function add_suppliers!(num_suppliers::Int, price, num_consumers, demand, model::ABM)
     for i in 1:num_suppliers
-        supplier = add_actor!(model, MonetaryActor(model))
+        supplier = add_actor!(model, model.create_actor!(model))
         add_type!(supplier, :supplier)
         supplier.price = price()
         supplier.model = model
@@ -332,9 +332,9 @@ function add_suppliers!(num_suppliers::Int, price, num_consumers, demand, model:
     end
 end
 
-function add_consumers!(supplier::MonetaryActor, num_consumers, demand, model::ABM)
+function add_consumers!(supplier::BalanceActor, num_consumers, demand, model::ABM)
     for i in 1:num_consumers()
-        consumer = add_actor!(model, MonetaryActor(model))
+        consumer = add_actor!(model, model.create_actor!(model))
         add_type!(consumer, :consumer)
         add_behavior!(consumer, satisfy_demand!)
         consumer.supplier = supplier
@@ -342,7 +342,7 @@ function add_consumers!(supplier::MonetaryActor, num_consumers, demand, model::A
     end
 end
 
-function satisfy_demand!(model::ABM, actor::MonetaryActor)
+function satisfy_demand!(model::ABM, actor::BalanceActor)
     available = adjusted_asset_value!(actor)
     demand = actor.demand()
     price = actor.supplier.price

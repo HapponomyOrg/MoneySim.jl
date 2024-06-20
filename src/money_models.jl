@@ -53,15 +53,15 @@ Must be called after initialize_transaction_model!
 struct StandardSuMSyParams{C <: FixedDecimal} <: SuMSyParams{C}
     initial_gi_wealth::C
     initial_non_gi_wealth::C
-    make_sumsy_actors!::Function
+    configure_sumsy_actors!::Function
     distribute_wealth!::Function
     StandardSuMSyParams(initial_gi_wealth::Real,
                         initial_non_gi_wealth::Real = 0;
-                        make_sumsy_actors!::Function = mixed_actors!,
+                        configure_sumsy_actors!::Function = mixed_actors!,
                         distribute_wealth!::Function = equal_wealth_distribution!) =
                             new{Currency}(initial_gi_wealth,
                                             initial_non_gi_wealth,
-                                            make_sumsy_actors!,
+                                            configure_sumsy_actors!,
                                             distribute_wealth!)
 end
 
@@ -102,8 +102,8 @@ end
     * gi_actor_percentage::Percentage
 
     Use this function to set a percentage of actors as gi eligible actors.
-    If the percentage is less than 1.0, define a new function based on this one to set the make_sumsy_actors! as follows:
-        make_sumsy_actors! = model -> percentage_gi_actors!(model, gi_actor_percentage)
+    If the percentage is less than 1.0, define a new function based on this one to set the configure_sumsy_actors! as follows:
+        configure_sumsy_actors! = model -> percentage_gi_actors!(model, gi_actor_percentage)
 """
 function percentage_gi_actors!(model::ABM, gi_actor_percentage::Real = 1.0)
     sumsy = model.sumsy
@@ -127,18 +127,17 @@ end
     * num_gi_actors::{Int, Nothing} : The number of actors that are gi eligible. All other actors are set to non-gi eligible. If nothing is passed, all actors are gi eligible.
 
     Use this function to set the number of gi eligible actors.
-    If not all actors are gi eligible, define a new function based on this one to set the make_sumsy_actors! as follows:
-        make_sumsy_actors! = model -> mixed_actors!(model, num_gi_actors)
+    If not all actors are gi eligible, define a new function based on this one to set the configure_sumsy_actors! as follows:
+        configure_sumsy_actors! = model -> mixed_actors!(model, num_gi_actors)
 """
 function mixed_actors!(model::ABM, num_gi_actors::Union{Int, Nothing} = nothing)
-    sumsy = model.sumsy
     num_gi = 0
 
     for actor in allagents(model)
         if isnothing(num_gi_actors) || num_gi < num_gi_actors
-            make_single_sumsy!(model, sumsy, actor, gi_eligible = true, initialize = false)
+            set_gi_eligible!(actor, true)
         else
-            make_single_sumsy!(model, sumsy, actor, gi_eligible = false, initialize = false)
+            set_gi_eligible!(actor, false)
         end
 
         num_gi += 1
@@ -155,22 +154,21 @@ end
     * gi_actor_types::Set{Symbol} : types of actors that are gi eligible.
 
     Use this function to set a percentage of actors as gi eligible actors.
-    If the percentage is less than 1.0, define a new function based on this one to set the make_sumsy_actors! as follows:
-        make_sumsy_actors! = model -> typed_gi_actors!(model, gi_actor_types)
+    If the percentage is less than 1.0, define a new function based on this one to set the configure_sumsy_actors! as follows:
+        configure_sumsy_actors! = model -> typed_gi_actors!(model, gi_actor_types)
 """
 function typed_gi_actors!(model::ABM, gi_actor_types::Vector{Symbol})
-    sumsy = model.sumsy
     gi_actor_types = unique(gi_actor_types)
 
     for actor in allagents(model)
         gi_eligible = !isempty(intersect(actor.types, gi_actor_types))
-        make_single_sumsy!(model, sumsy, actor, gi_eligible = gi_eligible, initialize = false)
+        set_gi_eligible!(actor, gi_eligible)
     end
 end
 
 function initialize_monetary_model!(model::ABM,
                                     sumsy_params::StandardSuMSyParams)
-    sumsy_params.make_sumsy_actors!(model)
+    sumsy_params.configure_sumsy_actors!(model)
     sumsy_params.distribute_wealth!(model, sumsy_params)
 end
 
@@ -226,18 +224,18 @@ end
     InequalitySuMSyParams
 
     * inequality_data::InequalityData : data on the inequality
-    * make_sumsy_actors!::Function : function to make actors
+    * configure_sumsy_actors!::Function : function to make actors
     * distribute_wealth!::Function : function to distribute wealth
 """
 struct InequalitySuMSyParams{C <: FixedDecimal} <: SuMSyParams{C}
     inequality_data::InequalityData
-    make_sumsy_actors!::Function
+    configure_sumsy_actors!::Function
     distribute_wealth!::Function
     InequalitySuMSyParams(inequality_data::InequalityData,
-                            make_sumsy_actors!::Function = mixed_actors!,
+                            configure_sumsy_actors!::Function = mixed_actors!,
                             distribute_wealth!::Function = inequal_wealth_distribution!) =
                                 new{Currency}(inequality_data,
-                                                make_sumsy_actors!,
+                                                configure_sumsy_actors!,
                                                 distribute_wealth!)
 end
 
@@ -325,7 +323,7 @@ end
 
 function initialize_monetary_model!(model::ABM,
                                     inequality_sumsy_params::InequalitySuMSyParams)
-    inequality_sumsy_params.make_sumsy_actors!(model)
+    inequality_sumsy_params.configure_sumsy_actors!(model)
     inequality_sumsy_params.distribute_wealth!(model, inequality_sumsy_params.inequality_data)
 end
 
