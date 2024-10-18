@@ -1,25 +1,39 @@
 using DataFrames
 
-"""
-    analyse_money_stock(data)
+@enum Percentiles BOTTOM_0_1 BOTTOM_1 BOTTOM_10 BOTTOM_50 LOW_MIDDLE_40 HIGH_MIDDLE_40 TOP_10 TOP_1 TOP_0_1
+@enum WealthType PERCENTAGE NOMINAL SCALED
 
-    * data: a data frame vector returned by `run_simulation`.
 """
-function analyse_money_stock(data)
-    groups = groupby(data, :time)
+    analyse_money_stock(dataframe,
+                        data::Vector{Symbol} = [:deposit_data],
+                        output_stocks::Vector{Symbol} = [:money_stock])
+
+    * dataframe: a data frame returned by `run_simulation`.
+    * data: a vector of symbols indicating the data to be analysed.
+    * output_stocks: a vector of symbols indicating the stocks to be returned.
+"""
+function analyse_money_stock(dataframe::DataFrame,
+                            data::Vector{Symbol} = [:deposit_data],
+                            output_stocks::Vector{Symbol} = [:money_stock])
+    groups = groupby(dataframe, :time)
 
     # Create data frame
     counter = 0
-    analysis = DataFrame(cycle = Int64[],
-                        money_stock = Currency[],
-                        total_wealth = Currency[])
+    analysis = DataFrame(cycle = Int64[])
+
+    for stock in output_stocks
+        analysis[!, stock] = Currency[]
+    end
 
     for group in groups
         rows = eachrow(group)
-        total_wealth = sum(group[!, :equity_data])
-        money_stock = sum(group[!, :deposit_data])
+        stock_data = Array{Currency}(undef, 1, length(data))
 
-        push!(analysis, [[rows[1][:time]] [money_stock] [total_wealth]])
+        for index in 1:length(data)
+            stock_data[1, index] = sum(group[!, data[index]])
+        end
+
+        push!(analysis, [[rows[1][:time]] stock_data])
 
         counter += 1
     end
@@ -27,70 +41,85 @@ function analyse_money_stock(data)
     return analysis
 end
 
-function calculate_percentile_numbers(num_actors::Int)
-    BOTTOM_0_1 = 1:Int64(round(num_actors / 1000))
-    BOTTOM_1 = 1:Int64(round(num_actors / 100))
-    BOTTOM_10 = 1:Int64(round(num_actors / 10))
-    BOTTOM_50 = 1:Int64(round(num_actors / 2))
-    LOW_MIDDLE_40 = Int64(round(num_actors / 10 + 1)):Int64(round(num_actors / 2))
-    HIGH_MIDDLE_40 = Int64(round(num_actors / 2 + 1)):Int64(round(num_actors - num_actors / 10))
-    TOP_10 = Int64(round(num_actors - num_actors / 10 + 1)):num_actors
-    TOP_1 = Int64(round(num_actors - num_actors / 100 + 1)):num_actors
-    TOP_0_1 = Int64(round(num_actors + 1 - num_actors / 1000)):num_actors
-    return [BOTTOM_0_1, BOTTOM_1, BOTTOM_10, BOTTOM_50, LOW_MIDDLE_40, HIGH_MIDDLE_40, TOP_10, TOP_1, TOP_0_1]
+function calculate_percentile_ranges(num_actors::Int)
+    bottom_0_1 = 1:Int64(round(num_actors / 1000))
+    bottom_1 = 1:Int64(round(num_actors / 100))
+    bottom_10 = 1:Int64(round(num_actors / 10))
+    bottom_50 = 1:Int64(round(num_actors / 2))
+    low_middle_40 = Int64(round(num_actors / 10 + 1)):Int64(round(num_actors / 2))
+    high_middle_40 = Int64(round(num_actors / 2 + 1)):Int64(round(num_actors - num_actors / 10))
+    top_10 = Int64(round(num_actors - num_actors / 10 + 1)):num_actors
+    top_1 = Int64(round(num_actors - num_actors / 100 + 1)):num_actors
+    top_0_1 = Int64(round(num_actors + 1 - num_actors / 1000)):num_actors
+    return [bottom_0_1, bottom_1, bottom_10, bottom_50, low_middle_40, high_middle_40, top_10, top_1, top_0_1]
 end
 
+"""
+    analyse_wealth(data)
+
+    * data: a data frame vector returned by `run_simulation`, containing two elements:
+        1. data frame with actor wealth data
+        2. data frame with population data
+
+    * returns: a data frame tuple consisting of:
+        1. data frame with aggregated wealth data
+        2. data frame with nominal wealth data per percentile
+        3. data frame with wealth distribution where the wealth of the top 0.1% has been scaled to 100.
+           The wealth of the other percentiles have been scaled relatively.
+           It indicates how much wealth a member of a percentile has for everey 100 a member of the top percentile has
+"""
 function analyse_wealth(data)    
     wealth_groups = groupby(data[1], :time)
     population_groups = groupby(data[2], :time)
 
-    # Create data frame
-    analysis = DataFrame(cycle = Int64[],
+    # Create data frames
+    aggregate = DataFrame(cycle = Int64[],
                         money_stock = Currency[],
-                        total_wealth = Currency[],
-                        p_bottom_0_1 = Currency[],
-                        p_bottom_1 = Currency[],
-                        p_bottom_10 = Currency[],
-                        p_bottom_50 = Currency[],
-                        p_low_middle_40 = Currency[],
-                        p_high_middle_40 = Currency[],
-                        p_top_10 = Currency[],
-                        p_top_1 = Currency[],
-                        p_top_0_1 = Currency[],
-                        bottom_0_1 = Currency[],
-                        bottom_1 = Currency[],
-                        bottom_10 = Currency[],
-                        bottom_50 = Currency[],
-                        low_middle_40 = Currency[],
-                        high_middle_40 = Currency[],
-                        top_10 = Currency[],
-                        top_1 = Currency[],
-                        top_0_1 = Currency[])
+                        total_wealth = Currency[])
+
+    w_analysis = DataFrame(cycle = Int64[])
+    p_analysis = DataFrame(cycle = Int64[])
+    scaled_analysis = DataFrame(cycle = Int64[])
+
+    for percentile in instances(Percentiles)
+        w_analysis[!, Symbol(percentile)] = Currency[]
+        p_analysis[!, Symbol(percentile)] = Currency[]
+        scaled_analysis[!, Symbol(percentile)] = Currency[]
+    end
 
     counter = 1
 
     for group in wealth_groups
-        PERCENTILES = calculate_percentile_numbers(population_groups[counter][!, :num_actors][1])
+        percentile_ranges = calculate_percentile_ranges(population_groups[counter][!, :num_actors][1])
         total_wealth = sum(group[!, :wealth_data])
         money_stock = sum(group[!, :deposit_data])
         rows = eachrow(sort(group, :equity_data))
         wealth_values = zeros(Currency, 1, 9)
         wealth_percentages = zeros(Currency, 1, 9)
+        scaled_values = zeros(Currency, 1, 9)
 
-        for index in 1:length(PERCENTILES)
-            for i in PERCENTILES[index]
+        for index in length(percentile_ranges):-1:1
+            for i in percentile_ranges[index]
                 wealth_values[index] += rows[i][:equity_data]
             end
 
-            wealth_values[index] /= length(PERCENTILES[index])
             wealth_percentages[index] = total_wealth != 0 ? 100 * wealth_values[index] / total_wealth : 0
+            wealth_values[index] /= length(percentile_ranges[index])
+            scaled_values[index] = 100 * wealth_values[index] / wealth_values[9]
         end
 
-        push!(analysis, [[rows[1][:time]] [money_stock] [total_wealth] wealth_percentages wealth_values])
+        push!(aggregate, [[rows[1][:time]] [money_stock] [total_wealth]])
+        push!(w_analysis, [[rows[1][:time]] wealth_values])
+        push!(p_analysis, [[rows[1][:time]] wealth_percentages])
+        push!(scaled_analysis, [[rows[1][:time]] scaled_values])
         counter += 1
     end
 
-    return analysis
+    wealth_dict = Dict{WealthType, DataFrame}([NOMINAL => w_analysis,
+                                                PERCENTAGE => p_analysis,
+                                                SCALED => scaled_analysis])
+
+    return wealth_dict, aggregate
 end
 
 """

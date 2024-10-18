@@ -73,3 +73,13 @@ function adjust_vector_population!(model::ABM)
         end
     end
 end
+
+struct VaryingPopulationParams <: PopulationParams
+    create_actor!::Function
+    adjust_population!::Function
+end
+
+function initialize_population_model!(model::ABM, population_params::VaryingPopulationParams)
+    abmproperties(model)[:create_actor!] = population_params.create_actor!
+    add_model_behavior!(model, population_params.adjust_population!)
+end

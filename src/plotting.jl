@@ -1,3 +1,19 @@
+using DataFrames
+
+function plot_data(dataframe::DataFrame,
+                    data_symbols::Vector{Symbol},
+                    data_labels::Vector{String},
+                    xlabel::String,
+                    ylabel::String)
+    the_plot = plot(dataframe[!, data_symbols[1]], label=data_labels[1], xlabel=xlabel, ylabel=ylabel)
+
+    for i in 2:length(data_symbols)
+        plot!(dataframe[!, data_symbols[i]], label=data_labels[i])
+    end
+
+    return the_plot
+end
+
 function plot_money_stock(dataframes::Union{DataFrame,Vector{DataFrame}},
     title::String="";
     money_stock_labels::Union{Vector{String},String}="money stock",
@@ -5,6 +21,7 @@ function plot_money_stock(dataframes::Union{DataFrame,Vector{DataFrame}},
     theoretical_max=nothing)
     data_size = 0
 
+    
     if typeof(dataframes) == DataFrame
         data_size = size(dataframes[!, :money_stock])[1]
         dataframes = [dataframes]
@@ -111,22 +128,33 @@ function plot_net_incomes(sumsy::SuMSy)
     # plot(incomes, label = "net income", xlabel="Acount balance", xticks = 10)
 end
 
-function plot_wealth(dataframe,
-                    percentiles::Vector{Symbol} = [:bottom_10, :bottom_50, :middle_40, :top_10, :top_1, :top_0_1],
+function plot_wealth(data::Dict{WealthType, DataFrame},
+                    percentiles::Vector{Percentiles} = collect(instances(Percentiles));
                     title::String="",
-                    labels = nothing)
-    labels = isnothing(labels) ? symbols_to_labels(percentiles) : labels
+                    labels = nothing,
+                    type::WealthType = PERCENTAGE)
+    dataframe = data[type]
+    labels = isnothing(labels) ? percentiles_to_labels(percentiles) : labels
+    ylabel = ""
+
+    if type == PERCENTAGE
+        ylabel *= "% Wealth"
+    elseif type == NOMINAL
+        ylabel *= "Wealth"
+    elseif type == SCALED
+        ylabel *= "Scaled wealth"
+    end
 
     the_plot = plot(
-		dataframe[!, percentiles[1]],
+		dataframe[!, Symbol(percentiles[1])],
 		label = labels[1],
 		title = title,
-		xlabel ="Time",
-		ylabel ="% Wealth"
+		xlabel = "Time",
+		ylabel = ylabel
 	)
 
     for i in 2:length(percentiles)
-        plot!(dataframe[!, percentiles[i]], label=labels[i])
+        plot!(dataframe[!, Symbol(percentiles[i])], label=labels[i])
     end
 
     return the_plot
@@ -138,7 +166,7 @@ function plot_type_wealth(dataframes::Vector{DataFrame}, types::Vector{Symbol}, 
 
     for i in 2:length(dataframes)
         plot!([dataframes[i][!, type] for type in types],
-            label=isnothing(labels) ? symbols_to_labels(types) : labels[i])
+            label=isnothing(labels) ? percentiles_to_labels(types) : labels[i])
     end
 
     return the_plot
@@ -149,34 +177,56 @@ function plot_type_wealth(dataframe::DataFrame, types::Vector{Symbol}, title = "
 
 	plot(
 		[dataframe[!, type] for type in types],
-		label = isnothing(label) ? symbols_to_labels(types) : label,
+		label = isnothing(label) ? percentiles_to_labels(types) : label,
 		title = title,
 		xlabel ="Time",
 		ylabel ="Median wealth"
 	)
 end
 
-function symbol_to_label(s::Symbol)
-    label = replace(string(s), "_" => " ")
+function percentile_to_label(p::Percentiles)
+    label = string(p)
+    label = replace(label, "0_1" => "0.1")
+    label = replace(label, "_" => " ")
+    label *= "%"
     label = uppercase(label[1]) * label[2:end]
 
     return label
 end
 
-function symbols_to_labels(symbols::Vector{Symbol})
+function percentiles_to_labels(percentiles::Vector{Percentiles})
     labels = Vector{String}()
 
-    for symbol in symbols
-        push!(labels, symbol_to_label(symbol))
+    for percentile in percentiles
+        push!(labels, percentile_to_label(percentile))
     end
 
     return reshape([label for label in labels], 1, length(labels))
 end
 
-function plot_gdp(dataframe, title::String="")
-    plot(dataframe[!, :gdp_data], title=title, label="GDP", xlabel="Time", ylabel="GDP")
+function plot_gdp(dataframe, title::String="GDP")
+    df = copy(dataframe)
+    deleteat!(df, 1)
+    plot(df[!, :gdp], title=title, label="GDP", xlabel="Time", ylabel="GDP")
+end
+
+function plot_min_max_transactions(dataframe, title::String="Min/Max Transactions")
+    df = copy(dataframe)
+    deleteat!(df, 1)
+
+    the_plot = plot(df[!, :min_transaction], title=title, label="Min transaction", xlabel="Time", ylabel="Transaction size")
+    plot!(df[!, :max_transaction], label="Max transaction")
+
+    return the_plot
 end
 
 function plot_transactions(dataframe, title::String="")
-    plot(dataframe[!, :transactions_data], title=title, label="Transactions", xlabel="Time", ylabel="Transactions")
+    df = copy(dataframe)
+    deleteat!(df, 1)
+
+    plot(df[!, :transactions], title=title, label="Transactions", xlabel="Time", ylabel="Transactions")
+end
+
+function plot_non_broke_actors(dataframe::DataFrame, title::String="")
+    plot(dataframe[!, :non_broke_actors], title=title, label="Non broke actors", xlabel="Time", ylabel="Non broke actors")
 end

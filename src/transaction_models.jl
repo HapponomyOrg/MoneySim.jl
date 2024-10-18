@@ -1,6 +1,7 @@
 using Agents
 using FixedPointDecimals
 using EconoSim
+using Random
 
 abstract type TransactionParams{C <: FixedDecimal} end
 
@@ -39,13 +40,16 @@ struct StandardYardSaleParams{C <: FixedDecimal} <: YardSaleParams{C}
     transaction_range::UnitRange{Int}
     wealth_transfer_range::StepRange{Percentage, Percentage}
     minimal_wealth_transfer::C
+    remove_broke_actors::Bool
     StandardYardSaleParams(num_actors::Int,
                             transfer_range::UnitRange{Int},
                             wealth_transfer_range::Union{StepRange, StepRangeLen},
-                            minimal_wealth_transfer::Real) = new{Currency}(num_actors,
+                            minimal_wealth_transfer::Real,
+                            remove_broke_actors::Bool) = new{Currency}(num_actors,
                                                                             transfer_range,
                                                                             wealth_transfer_range,
-                                                                            minimal_wealth_transfer)
+                                                                            minimal_wealth_transfer,
+                                                                            remove_broke_actors)
 end
 
 struct TaxedYardSaleParams{C <: FixedDecimal} <: YardSaleParams{C}
@@ -53,83 +57,169 @@ struct TaxedYardSaleParams{C <: FixedDecimal} <: YardSaleParams{C}
     transaction_range::UnitRange{Int}
     wealth_transfer_range::StepRange{Percentage, Percentage}
     minimal_wealth_transfer::C
+    remove_broke_actors::Bool
     tax::Percentage
     TaxedYardSaleParams(num_actors::Int,
                         transfer_range::UnitRange{Int},
                         wealth_transfer_range::Union{StepRange, StepRangeLen},
                         minimal_wealth_transfer::Real,
+                        remove_broke_actors::Bool,
                         tax::Real) = new{Currency}(num_actors,
                                                     transfer_range,
                                                     wealth_transfer_range,
                                                     minimal_wealth_transfer,
+                                                    remove_broke_actors,
                                                     tax)
 end
 
+"""
 struct GDPYardSaleParams{C <: FixedDecimal} <: YardSaleParams{C}
-    population::Int
-    gdp::C
+    * num_actors::Int - The number of actors that need to be created.
+    * gdp_period::Int - The number of cycles per GDP period.
+    * gdp_per_capita::C - The GDP per actor over a period.
+    * wealth_transfer_range::StepRange{Percentage, Percentage} - The range of percentage values to be used in the wealth transfer.
+    * minimal_wealth_transfer::C - The minimal amount of wealth that needs to be transferred.
+    * remove_broke_actors::Bool - Whether or not to remove actors that have gone broke.
+    * gdp_model_behavior - The function that is used to execute the transactions.
+"""
+struct GDPYardSaleParams{C <: FixedDecimal} <: YardSaleParams{C}
+    num_actors::Int
     gdp_period::Int
+    gdp_per_capita::C
     wealth_transfer_range::StepRange{Percentage, Percentage}
     minimal_wealth_transfer::C
+    remove_broke_actors::Bool
     gdp_model_behavior::Function
-    GDPYardSaleParams(population::Int,
-                        gdp::Real,
+    GDPYardSaleParams(num_actors::Int,
                         gdp_period::Int,
+                        gdp_per_capita::Real,
                         wealth_transfer_range::Union{StepRange, StepRangeLen},
                         minimal_wealth_transfer::Real,
-                        gdp_model_behavior) = new{Currency}(population,
-                                                                        gdp,
-                                                                        gdp_period,
-                                                                        wealth_transfer_range,
-                                                                        minimal_wealth_transfer,
-                                                                        gdp_model_behavior)
+                        remove_broke_actors::Bool,
+                        gdp_model_behavior) = new{Currency}(num_actors,
+                                                            gdp_period,
+                                                            gdp_per_capita,
+                                                            wealth_transfer_range,
+                                                            minimal_wealth_transfer,
+                                                            remove_broke_actors,
+                                                            gdp_model_behavior)
+end
+
+struct FullYardSaleParams{C <: FixedDecimal} <: YardSaleParams{C}
+    num_actors::Int
+end
+
+function initialize_full_yard_sale!(model::ABM, params::FullYardSaleParams)
+    properties = abmproperties(model)
+
+    properties[:wealth_transfer_range] = params.wealth_transfer_range
+    properties[:minimal_wealth_transfer] = params.minimal_wealth_transfer
+    properties[:non_broke_actor_ids] = Vector{Int}(undef, params.num_actors)
+    properties[:remove_broke_actors] = params.remove_broke_actors
+
+    # Calculate broke threshold
+    if params.minimal_wealth_transfer > 0
+        properties[BROKE_THRESHOLD] = CUR_0
+    else
+        min_transfer_rate = first(params.wealth_transfer_range)
+        increment = Currency(1)
+
+        for _ in 1:get_currency_precision(increment)
+            increment *= Currency(0.1)
+        end
+
+        transfer_amount = CUR_0
+        broke_threshold = CUR_0
+
+        while transfer_amount == CUR_0
+            broke_threshold += increment
+            transfer_amount = Currency(min_transfer_rate * broke_threshold)
+        end
+
+        properties[BROKE_THRESHOLD] = broke_threshold
+    end
+
+    for i in 1:params.num_actors
+        model.non_broke_actor_ids[i] = add_actor!(model, model.create_actor!(model)).id
+    end
 end
 
 function initialize_transaction_model!(model::ABM, params::StandardYardSaleParams)
     initialize_yard_sale!(model, params)
-    add_model_behavior!(model, yard_sale!)
+
+    abmproperties(model)[:transaction_range] = params.transaction_range
+    
+    add_model_behavior!(model, yard_sale!, position = 1)
 end
 
 function initialize_transaction_model!(model::ABM, params::TaxedYardSaleParams)
     initialize_yard_sale!(model, params)
-    abmproperties(model)[:tax] = params.tax
-    add_model_behavior!(model, taxed_yard_sale!)
+
+    properties = abmproperties(model)
+    properties[:transaction_range] = params.transaction_range
+    properties[:tax] = params.tax
+
+    add_model_behavior!(model, taxed_yard_sale!, position = 1)
 end
 
 function initialize_transaction_model!(model::ABM, params::GDPYardSaleParams)
+    initialize_yard_sale!(model, params)
     properties = abmproperties(model)
 
-    properties[:min_gdp_per_cycle] = params.gdp / params.gdp_period
-    properties[:wealth_transfer_range] = params.wealth_transfer_range
-    properties[:minimal_wealth_transfer] = params.minimal_wealth_transfer
+    properties[:gdp] = params.gdp_per_capita * params.num_actors
     properties[:gdp_period] = params.gdp_period
-    properties[:gdp] = params.gdp
+    properties[:min_gdp_per_cycle] = model.gdp / model.gdp_period
     properties[:transactions] = 0
+    properties[:min_transaction] = typemax(Currency)
+    properties[:max_transaction] = typemin(Currency)
 
-    for i in 1:params.population
-        add_actor!(model, model.create_actor!(model))
-    end
-
-    add_model_behavior!(model, params.gdp_model_behavior)
+    add_model_behavior!(model, params.gdp_model_behavior, position = 1)
 end
 
 function initialize_yard_sale!(model::ABM, params::YardSaleParams)
     properties = abmproperties(model)
 
-    properties[:transaction_range] = params.transaction_range
     properties[:wealth_transfer_range] = params.wealth_transfer_range
     properties[:minimal_wealth_transfer] = params.minimal_wealth_transfer
+    properties[:non_broke_actor_ids] = Vector{Int}(undef, params.num_actors)
+    properties[:remove_broke_actors] = params.remove_broke_actors
+
+    # Calculate broke threshold
+    if params.minimal_wealth_transfer > 0
+        properties[BROKE_THRESHOLD] = CUR_0
+    else
+        min_transfer_rate = first(params.wealth_transfer_range)
+        increment = Currency(1)
+
+        for _ in 1:get_currency_precision(increment)
+            increment *= Currency(0.1)
+        end
+
+        transfer_amount = CUR_0
+        broke_threshold = CUR_0
+
+        while transfer_amount == CUR_0
+            broke_threshold += increment
+            transfer_amount = Currency(min_transfer_rate * broke_threshold)
+        end
+
+        properties[BROKE_THRESHOLD] = broke_threshold
+    end
 
     for i in 1:params.num_actors
-        add_actor!(model, model.create_actor!(model))
+        model.non_broke_actor_ids[i] = add_actor!(model, model.create_actor!(model)).id
     end
 end
 
 function yard_sale!(model::ABM)
     transactions = rand(model.transaction_range)
 
-    for i in 1:transactions
-        atomic_yard_sale!(model)
+    for _ in 1:transactions
+        if length(model.non_broke_actor_ids) > 1
+            atomic_yard_sale!(model)
+        else
+            break
+        end
     end
 end
 
@@ -137,9 +227,13 @@ function taxed_yard_sale!(model::ABM)
     transactions = rand(model.transaction_range)
     tax = model.tax
 
-    for i in 1:transactions
-        _, destination, amount = atomic_yard_sale!(model)
-        book_asset!(destination, SUMSY_DEP, -amount * tax)
+    for _ in 1:transactions
+        if length(model.non_broke_actor_ids) > 1
+            _, destination, amount = atomic_yard_sale!(model)
+            book_asset!(destination, SUMSY_DEP, -amount * tax)
+        else
+            break
+        end
     end
 end
 
@@ -153,25 +247,12 @@ end
     Real GDP per period is stored in the model.
 """
 function gdp_baseline_yard_sale!(model::ABM)
-    cycle_gdp = 0
-    transactions = 0
-
-    while cycle_gdp < model.min_gdp_per_cycle
-        _, _, amount = atomic_yard_sale!(model)
-        cycle_gdp += amount
-        transactions += 1
-    end    
+    gdp_yard_sale!(model)
 
     if model.step % model.gdp_period == 0
-        model.gdp = cycle_gdp
-        model.transactions = transactions
-
-        abmproperties(model)[:max_transactions] = max(model.max_transactions, 10 * transactions)
+        abmproperties(model)[:max_transactions] = 10 * model.transactions
         delete_model_behavior!(model, gdp_baseline_yard_sale!)
         add_model_behavior!(model, gdp_constrained_yard_sale!)
-    else
-        model.gdp += cycle_gdp
-        model.transactions += transactions
     end
 end
 
@@ -184,54 +265,63 @@ end
     Real GDP per period is stored in the model.
 """
 function gdp_constrained_yard_sale!(model::ABM)
-    cycle_gdp = 0
-    transactions = 0
-
-    while cycle_gdp < model.min_gdp_per_cycle && transactions < model.max_transactions
-        _, _, amount = atomic_yard_sale!(model)
-        cycle_gdp += amount
-        transactions += 1
-    end
-
-    if model.step % model.gdp_period == 1
-        model.gdp = cycle_gdp
-        model.transactions = transactions
-    else
-        model.gdp += cycle_gdp
-        model.transactions += transactions
-    end
+    gdp_yard_sale!(model, x -> x < model.max_transactions)
 end
 
 """
-    gdp_yard_sale!!(model::ABM)
+    gdp_yard_sale!!(model::ABM, additional_clause = true)
 
     Executes the yard sale model for each period, making sure that GDP is reached over each period.
+        * model::ABM - the model
+        * transactions_constraint - utility function to control the transaction loop.
+                                    It takes the current number of transactions as a parameter. If it returns false, the loop will be stopped.
 """
-function gdp_yard_sale!(model::ABM)
+function gdp_yard_sale!(model::ABM, transactions_constraint = x -> true)
     cycle_gdp = 0
     transactions = 0
+    min_transaction = model.min_transaction
+    max_transaction = model.max_transaction 
 
-    while cycle_gdp < model.min_gdp_per_cycle
+    while cycle_gdp < model.min_gdp_per_cycle && length(model.non_broke_actor_ids) > 1 && transactions_constraint(transactions)
         _, _, amount = atomic_yard_sale!(model)
         cycle_gdp += amount
         transactions += 1
+        min_transaction = min(min_transaction, amount)
+        max_transaction = max(max_transaction, amount)
     end
 
-    if model.step % model.gdp_period == 1
-        model.gdp = cycle_gdp
-        model.transactions = transactions
-    else
-        model.gdp += cycle_gdp
-        model.transactions += transactions
-    end
+    model.gdp += cycle_gdp
+    model.transactions += transactions
+    model.min_transaction = min_transaction
+    model.max_transaction = max_transaction
 end
 
 function atomic_yard_sale!(model::ABM)
-    target1 = random_agent(model)
-    target2 = random_agent(model)
+    # Make sure two different random agents are picked.
+    non_broke_actor_ids = model.non_broke_actor_ids
+    num_non_broke_actors = length(non_broke_actor_ids)
+
+    target_index_1 = rand(1:num_non_broke_actors)
+    target_id_1 = non_broke_actor_ids[target_index_1]
+    target1 = model[target_id_1]
+
+    target_index_2 = rand(1:num_non_broke_actors - 1)
+    target_id_2 = remove_index(non_broke_actor_ids, target_index_1)[target_index_2]
+    target2 = model[target_id_2]
+
     source, destination, amount = yard_sale_transfer!(target1, target2, model)
     
     transfer_asset!(source, destination, SUMSY_DEP, amount, timestamp = model.step)
+
+    if model.remove_broke_actors
+        if is_broke(target1)
+            deleteat!(non_broke_actor_ids, findall(x -> x == target_id_1, non_broke_actor_ids)[1])
+        end
+
+        if is_broke(target2)
+            deleteat!(non_broke_actor_ids, findall(x -> x == target_id_2, non_broke_actor_ids)[1])
+        end
+    end
 
     return source, destination, amount
 end
