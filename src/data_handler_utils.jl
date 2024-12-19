@@ -48,6 +48,46 @@ function sumsy_deposit_collector(actor)
     return sumsy_assets(actor, get_step(actor.model))
 end
 
+function paid_tax_collector!(actor)
+    tax_scheme = actor.model.tax_scheme
+    paid_tax = actor.paid_tax
+    step = get_step(actor.model)
+
+    if mod(step, tax_scheme.interval) == 0
+        actor.paid_tax = CUR_0
+    end
+
+    return paid_tax
+end
+
+function paid_vat_collector!(actor)
+    tax_scheme = actor.model.tax_scheme
+    paid_vat = actor.paid_vat
+    step = get_step(actor.model)
+
+    if mod(step, tax_scheme.interval) == 0
+        actor.paid_vat = CUR_0
+    end
+
+    return paid_vat
+end
+
+function income_collector!(actor)
+    tax_scheme = actor.model.tax_scheme
+    income = actor.income
+    step = get_step(actor.model)
+
+    if mod(step, tax_scheme.interval) == 0
+        actor.income = CUR_0
+    end
+
+    if step > 0
+        step = step
+    end
+
+    return income
+end
+
 # Model data collectors
 
 function gdp_collector!(model::ABM)
@@ -87,6 +127,20 @@ function sumsy_data_collector!(model::ABM)
     return (gi, demurrage, gi - demurrage)
 end
 
+function tax_collector!(model::ABM)
+    collected_taxes = model.collected_taxes
+    model.collected_taxes = CUR_0
+
+    return collected_taxes
+end
+
+function vat_collector!(model::ABM)
+    collected_vat = model.collected_vat
+    model.collected_vat = CUR_0
+
+    return collected_vat
+end
+
 function non_broke_actors(model::ABM)
     non_broke = 0
 
@@ -98,10 +152,6 @@ function non_broke_actors(model::ABM)
 
     return non_broke
 end
-
-# No data handler
-
-NO_DATA_HANDLER = NoDataHandler()
 
 # Full data handler
 
@@ -172,12 +222,20 @@ money_stock_data_handler(interval::Int) = IntervalDataHandler(interval = interva
 
 function gdp_post_processing!(actor_data, model_data)
     actor_data, model_data = full_post_processing!(actor_data, model_data)
+
+    rename!(actor_data,
+            6 => :income,
+            7 => :paid_tax,
+            8 => :paid_vat)
+
     rename!(model_data,
             3 => :non_broke_actors,
             4 => :gdp,
             5 => :transactions,
             6 => :min_transaction,
-            7 => :max_transaction)
+            7 => :max_transaction,
+            8 => :collected_tax,
+            9 => :collected_vat)
 
     return actor_data, model_data
 end
@@ -186,11 +244,16 @@ gdp_data_handler(interval::Int = 1) = IntervalDataHandler(interval = interval,
                                                         actor_data_collectors = [equity_collector,
                                                                                 wealth_collector,
                                                                                 deposit_collector,
+                                                                                income_collector!,
+                                                                                paid_tax_collector!,
+                                                                                paid_vat_collector!,
                                                                                 :types],
                                                         model_data_collectors = [nagents,
                                                                                 non_broke_actors,
                                                                                 gdp_collector!,
                                                                                 transactions_collector!,
                                                                                 min_transaction_collector!,
-                                                                                max_transaction_collector!],
+                                                                                max_transaction_collector!,
+                                                                                tax_collector!,
+                                                                                vat_collector!],
                                                         post_processing! = gdp_post_processing!)

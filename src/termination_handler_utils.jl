@@ -1,5 +1,3 @@
-NO_TERMINATION = NoTerminationHandler()
-
 function terminate_at_end_interval(model::ABM)
     return interval_complete(model, model.step)
 end

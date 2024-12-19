@@ -172,3 +172,6 @@ function analyse_type_wealth(data, wealth_processing::Function = median)
 
     return analysis
 end
+
+function analyse_income_data(data)
+end

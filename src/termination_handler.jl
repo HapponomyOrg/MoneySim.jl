@@ -1,9 +1,5 @@
 abstract type TerminationHandler end
 
-struct NoTerminationHandler <: TerminationHandler end
-
-function initialize_termination_handler!(model::ABM, termination_handler::NoTerminationHandler) end
-
 """
     FlaggedTerminationHandler
 

@@ -17,10 +17,11 @@ end
 function plot_money_stock(dataframes::Union{DataFrame,Vector{DataFrame}},
     title::String="";
     money_stock_labels::Union{Vector{String},String}="money stock",
+    min_label::String = "min",
+    max_label::String = "max",
     theoretical_min=nothing,
     theoretical_max=nothing)
     data_size = 0
-
     
     if typeof(dataframes) == DataFrame
         data_size = size(dataframes[!, :money_stock])[1]
@@ -77,11 +78,11 @@ function plot_money_stock(dataframes::Union{DataFrame,Vector{DataFrame}},
     end
 
     if theoretical_min !== nothing
-        p = plot!(fill(theoretical_min, data_size), label="min")
+        p = plot!(fill(theoretical_min, data_size), label = min_label)
     end
 
     if theoretical_max !== nothing
-        p = plot!(fill(theoretical_max, data_size), label="max")
+        p = plot!(fill(theoretical_max, data_size), label = max_label)
     end
 
     return p
@@ -229,4 +230,41 @@ end
 
 function plot_non_broke_actors(dataframe::DataFrame, title::String="")
     plot(dataframe[!, :non_broke_actors], title=title, label="Non broke actors", xlabel="Time", ylabel="Non broke actors")
+end
+
+function plot_collected_tax(tax_target::Real,
+                            dataframe::Union{DataFrame, Vector{DataFrame}},
+                            labels::Union{String, Vector{String}},
+                            title::String="Collected taxes")
+    if typeof(dataframe) == DataFrame
+        dataframe = [copy(dataframe)]
+    else
+        for i in 1:length(dataframe)
+            dataframe[i] = copy(dataframe[i])
+        end
+    end
+
+    for i in 1:length(dataframe)
+        deleteat!(dataframe[i], 1)
+    end
+
+    if typeof(labels) == String
+        labels = [labels]
+    end
+
+    the_plot = plot(fill(tax_target, size(dataframe[1][!, :collected_tax])[1]), label="Tax target", color="blue", title=title, xlabel = "Years", ylabel = "Tax")
+
+    for i in 1:length(dataframe)
+        plot!(dataframe[i][!, :collected_tax], label=labels[i])
+    end
+
+    # for i in 1:length(dataframe)
+    #     plot!(dataframe[i][!, :collected_vat], label=labels[i] * " VAT")
+    # end
+
+    for i in 1:length(dataframe)
+        plot!(dataframe[i][!, :collected_tax] + dataframe[i][!, :collected_vat], label=labels[i] * " + VAT")
+    end
+
+    return the_plot
 end

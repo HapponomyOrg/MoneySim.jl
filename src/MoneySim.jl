@@ -30,20 +30,26 @@ export initialize_data_handler!, post_process!
 include("data_handler_utils.jl")
 export equity_collector, wealth_collector, deposit_collector
 export sumsy_equity_collector, sumsy_wealth_collector, sumsy_deposit_collector, sumsy_data_collector
+export income_collector!, paid_tax_collector!, paid_vat_collector!
+export tax_collector!, vat_collector!
 export full_post_processing!, full_sumsy_post_processing!, money_stock_post_processing!, gdp_post_processing!
 export NO_DATA_HANDLER
 export full_data_handler, full_sumsy_data_handler, money_stock_data_handler, gdp_data_handler
 export do_collect_data
 
-include("transaction_models.jl")
-export TransactionParams
-export NoTransactionParams
+include("behaviour_models.jl")
+export BehaviourParams
 export YardSaleParams, StandardYardSaleParams, TaxedYardSaleParams, GDPYardSaleParams
 export ConsumerSupplyParams, FixedConsumerSupplyParams, VariableConsumerSupplyParams
 export gdp_yard_sale!, gdp_baseline_yard_sale!
 
+include("tax_scheme.jl")
+export TaxScheme, DemurrageTaxScheme, IncomeTaxScheme
+export initialize_tax_scheme, distribute_taxes!
+
 include("model_adaptations.jl")
 export one_time_money_injection!, constant_money_injection!, one_time_money_destruction!, constant_money_destruction!, equal_money_distribution!
+export DemTaxes, initialize_dem_taxes!, process_dem_taxes!, distribute_dem_taxes!
 
 include("behaviors.jl")
 export borrow_income, borrow_when_poor, borrow_when_rich, ubi_borrow_when_poor, ubi_borrow_when_poor_rich
@@ -73,12 +79,13 @@ export plot_net_incomes
 export plot_wealth, plot_outlier_wealth, plot_type_wealth
 export plot_gdp, plot_transactions, plot_min_max_transactions
 export plot_non_broke_actors
+export plot_collected_tax
 
 include("simulations.jl")
 export SimParams
 export run_simulation
 export run_fixed_wealth_simulation, run_fixed_wealth_gdp_simulation
-export run_sumsy_simulation, run_sumsy_gdp_simulation
+export run_sumsy_simulation, run_sumsy_gdp_simulation, run_taxed_sumsy_gdp_simulation
 export run_consumer_supplier_simulation
 export run_debt_based_simulation
 

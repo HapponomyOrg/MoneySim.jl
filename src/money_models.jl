@@ -50,16 +50,16 @@ SuMSyParams constructor
 SuMSyParams can only be used in conjunction with a SuMSy model.
 Must be called after initialize_transaction_model!
 """
-struct StandardSuMSyParams{C <: FixedDecimal} <: SuMSyParams{C}
+struct StandardSuMSyParams{C <: FixedDecimal, FC <: Function, FD <: Function} <: SuMSyParams{C}
     initial_gi_wealth::C
     initial_non_gi_wealth::C
-    configure_sumsy_actors!::Function
-    distribute_wealth!::Function
+    configure_sumsy_actors!::FC
+    distribute_wealth!::FD
     StandardSuMSyParams(initial_gi_wealth::Real,
                         initial_non_gi_wealth::Real = 0;
                         configure_sumsy_actors!::Function = mixed_actors!,
                         distribute_wealth!::Function = equal_wealth_distribution!) =
-                            new{Currency}(initial_gi_wealth,
+                            new{Currency, typeof(configure_sumsy_actors!), typeof(distribute_wealth!)}(initial_gi_wealth,
                                             initial_non_gi_wealth,
                                             configure_sumsy_actors!,
                                             distribute_wealth!)
@@ -227,14 +227,14 @@ end
     * configure_sumsy_actors!::Function : function to make actors
     * distribute_wealth!::Function : function to distribute wealth
 """
-struct InequalitySuMSyParams{C <: FixedDecimal} <: SuMSyParams{C}
+struct InequalitySuMSyParams{C <: FixedDecimal, FC <: Function, FD <: Function} <: SuMSyParams{C}
     inequality_data::InequalityData
-    configure_sumsy_actors!::Function
-    distribute_wealth!::Function
+    configure_sumsy_actors!::FC
+    distribute_wealth!::FD
     InequalitySuMSyParams(inequality_data::InequalityData,
                             configure_sumsy_actors!::Function = mixed_actors!,
                             distribute_wealth!::Function = inequal_wealth_distribution!) =
-                                new{Currency}(inequality_data,
+                                new{Currency, typeof(configure_sumsy_actors!), typeof(distribute_wealth!)}(inequality_data,
                                                 configure_sumsy_actors!,
                                                 distribute_wealth!)
 end
