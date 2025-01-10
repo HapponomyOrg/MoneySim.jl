@@ -1,11 +1,10 @@
 using DataFrames
 
-@enum Percentiles BOTTOM_0_1 BOTTOM_1 BOTTOM_10 BOTTOM_50 LOW_MIDDLE_40 HIGH_MIDDLE_40 TOP_10 TOP_1 TOP_0_1
 @enum WealthType PERCENTAGE NOMINAL SCALED
 
 """
     analyse_money_stock(dataframe,
-                        data::Vector{Symbol} = [:deposit_data],
+                        data::Vector{Symbol} = [:deposit],
                         output_stocks::Vector{Symbol} = [:money_stock])
 
     * dataframe: a data frame returned by `run_simulation`.
@@ -13,7 +12,7 @@ using DataFrames
     * output_stocks: a vector of symbols indicating the stocks to be returned.
 """
 function analyse_money_stock(dataframe::DataFrame,
-                            data::Vector{Symbol} = [:deposit_data],
+                            data::Vector{Symbol} = [:deposit],
                             output_stocks::Vector{Symbol} = [:money_stock])
     groups = groupby(dataframe, :time)
 
@@ -27,31 +26,18 @@ function analyse_money_stock(dataframe::DataFrame,
 
     for group in groups
         rows = eachrow(group)
-        stock_data = Array{Currency}(undef, 1, length(data))
+        stock = Array{Currency}(undef, 1, length(data))
 
         for index in 1:length(data)
-            stock_data[1, index] = sum(group[!, data[index]])
+            stock[1, index] = sum(group[!, data[index]])
         end
 
-        push!(analysis, [[rows[1][:time]] stock_data])
+        push!(analysis, [[rows[1][:time]] stock])
 
         counter += 1
     end
 
     return analysis
-end
-
-function calculate_percentile_ranges(num_actors::Int)
-    bottom_0_1 = 1:Int64(round(num_actors / 1000))
-    bottom_1 = 1:Int64(round(num_actors / 100))
-    bottom_10 = 1:Int64(round(num_actors / 10))
-    bottom_50 = 1:Int64(round(num_actors / 2))
-    low_middle_40 = Int64(round(num_actors / 10 + 1)):Int64(round(num_actors / 2))
-    high_middle_40 = Int64(round(num_actors / 2 + 1)):Int64(round(num_actors - num_actors / 10))
-    top_10 = Int64(round(num_actors - num_actors / 10 + 1)):num_actors
-    top_1 = Int64(round(num_actors - num_actors / 100 + 1)):num_actors
-    top_0_1 = Int64(round(num_actors + 1 - num_actors / 1000)):num_actors
-    return [bottom_0_1, bottom_1, bottom_10, bottom_50, low_middle_40, high_middle_40, top_10, top_1, top_0_1]
 end
 
 """
@@ -70,7 +56,6 @@ end
 """
 function analyse_wealth(data)    
     wealth_groups = groupby(data[1], :time)
-    population_groups = groupby(data[2], :time)
 
     # Create data frames
     aggregate = DataFrame(cycle = Int64[],
@@ -90,17 +75,17 @@ function analyse_wealth(data)
     counter = 1
 
     for group in wealth_groups
-        percentile_ranges = calculate_percentile_ranges(population_groups[counter][!, :num_actors][1])
-        total_wealth = sum(group[!, :wealth_data])
-        money_stock = sum(group[!, :deposit_data])
-        rows = eachrow(sort(group, :equity_data))
+        percentile_ranges = calculate_percentile_ranges(length(eachrow(group)))
+        total_wealth = sum(group[!, :wealth])
+        money_stock = sum(group[!, :deposit])
+        rows = eachrow(sort(group, :equity))
         wealth_values = zeros(Currency, 1, 9)
         wealth_percentages = zeros(Currency, 1, 9)
         scaled_values = zeros(Currency, 1, 9)
 
         for index in length(percentile_ranges):-1:1
             for i in percentile_ranges[index]
-                wealth_values[index] += rows[i][:equity_data]
+                wealth_values[index] += rows[i][:equity]
             end
 
             wealth_percentages[index] = total_wealth != 0 ? 100 * wealth_values[index] / total_wealth : 0
@@ -120,6 +105,11 @@ function analyse_wealth(data)
                                                 SCALED => scaled_analysis])
 
     return wealth_dict, aggregate
+end
+
+function analyse_wealth_per_type(data)
+    type_groups = groupby(data, :types)
+
 end
 
 """
@@ -157,7 +147,7 @@ function analyse_type_wealth(data, wealth_processing::Function = median)
 
         for row in rows
             for type in row.types
-                push!(type_wealth[type], row.wealth_data)
+                push!(type_wealth[type], row.wealth)
             end
         end
 
@@ -173,5 +163,5 @@ function analyse_type_wealth(data, wealth_processing::Function = median)
     return analysis
 end
 
-function analyse_income_data(data)
+function analyse_income(data)
 end

@@ -1,4 +1,5 @@
 using EconoSim
+using DataFrames
 
 # Actor data collectors
 
@@ -49,43 +50,31 @@ function sumsy_deposit_collector(actor)
 end
 
 function paid_tax_collector!(actor)
-    tax_scheme = actor.model.tax_scheme
     paid_tax = actor.paid_tax
-    step = get_step(actor.model)
-
-    if mod(step, tax_scheme.interval) == 0
-        actor.paid_tax = CUR_0
-    end
+    actor.paid_tax = CUR_0
 
     return paid_tax
 end
 
 function paid_vat_collector!(actor)
-    tax_scheme = actor.model.tax_scheme
     paid_vat = actor.paid_vat
-    step = get_step(actor.model)
-
-    if mod(step, tax_scheme.interval) == 0
-        actor.paid_vat = CUR_0
-    end
+    actor.paid_vat = CUR_0
 
     return paid_vat
 end
 
 function income_collector!(actor)
-    tax_scheme = actor.model.tax_scheme
-    income = actor.income
-    step = get_step(actor.model)
-
-    if mod(step, tax_scheme.interval) == 0
-        actor.income = CUR_0
-    end
-
-    if step > 0
-        step = step
-    end
+    income = actor.periodic_income
+    actor.periodic_income = CUR_0
 
     return income
+end
+
+function expenses_collector!(actor)
+    expenses = actor.periodic_expenses
+    actor.periodic_expenses = CUR_0
+
+    return expenses
 end
 
 # Model data collectors
@@ -134,11 +123,25 @@ function tax_collector!(model::ABM)
     return collected_taxes
 end
 
+function failed_tax_collector!(model::ABM)
+    failed_taxes = model.tax_faliures
+    model.tax_faliures = 0
+
+    return failed_taxes
+end
+
 function vat_collector!(model::ABM)
     collected_vat = model.collected_vat
     model.collected_vat = CUR_0
 
     return collected_vat
+end
+
+function failed_vat_collector!(model::ABM)
+    failed_vat = model.vat_faliures
+    model.vat_faliures = 0
+
+    return failed_vat
 end
 
 function non_broke_actors(model::ABM)
@@ -156,7 +159,7 @@ end
 # Full data handler
 
 function full_post_processing!(actor_data, model_data)
-    rename!(actor_data, 3 => :deposit_data, 4 => :equity_data, 5 => :wealth_data)
+    rename!(actor_data, 3 => :deposit, 4 => :equity, 5 => :wealth)
     rename!(model_data, 2 => :num_actors, 3 => :non_broke_actors)
 
     return actor_data, model_data
@@ -173,7 +176,7 @@ full_data_handler(interval::Int) = IntervalDataHandler(interval = interval,
 # Full SuMSy data handler
 
 function full_sumsy_post_processing!(actor_data, model_data)
-    rename!(actor_data, 3 => :deposit_data, 4 => :equity_data, 5 => :wealth_data)
+    rename!(actor_data, 3 => :deposit, 4 => :equity, 5 => :wealth)
     rename!(model_data, 2 => :num_actors)
     
     sumsy_data = model_data[!, :sumsy_data_collector!]
@@ -207,7 +210,7 @@ full_sumsy_data_handler(interval::Int) = IntervalDataHandler(interval = interval
 # Money stock data handler
 
 function money_stock_post_processing!(actor_data, model_data)
-    rename!(actor_data, 3 => :deposit_data)
+    rename!(actor_data, 3 => :deposit)
     rename!(model_data, 2 => :num_actors)
 
     return actor_data, model_data

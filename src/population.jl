@@ -84,6 +84,59 @@ function adjust_vector_population!(model::ABM)
     end
 end
 
+"""
+    TypedPopulationParams{FC <: Function}
+    * num_actors::Int - The number of actors to be created for the simulation.
+    * types::Dict{Symbol, Int} - A dictionary of age types and their respective percentages.
+    * adjust_up::Symbol - THe symbol of the age type used if the number of actors needs to be adjusted up.
+    * adjust_down::Symbol - The symbol of the age type used if the number of actors needs to be adjusted down.
+    * create_actor!::FC - A function that creates an actor for the simulation.
+
+    A struct that holds the parameters for creating a population of actors with different age types.
+    The numbers in the types dictionary are scaled to the number of actual actors in the simulation.
+    The scaled number of actors is adjusted up or down if the sum of the scaled numbers do not exactly match the number of actors.
+"""
+struct TypedPopulationParams{FC <: Function} <: PopulationParams
+    num_actors::Int
+    actor_types::Dict{Symbol, Float64}
+    adjust_up::Symbol
+    adjust_down::Symbol
+    create_actor!::FC
+    TypedPopulationParams(;num_actors::Int,
+                            actor_types::Dict{Symbol, <:Real},
+                            adjust_up::Symbol,
+                            adjust_down::Symbol,
+                            create_actor!::Function = create_monetary_actor) =
+                                    new{typeof(create_actor!)}(num_actors,
+                                                                actor_types,
+                                                                adjust_up,
+                                                                adjust_down,
+                                                                create_actor!)
+end
+
+function initialize_population_model!(model::ABM, population_params::TypedPopulationParams)
+    actor_types = population_params.actor_types
+    num_actors = population_params.num_actors
+
+    for (type, percentage) in actor_types
+        actor_types[type] = round(percentage * num_actors)
+    end
+
+    population = Int(sum(values(actor_types)))
+
+    if population < num_actors
+        actor_types[population_params.adjust_up] += num_actors - population
+    elseif population > num_actors
+        actor_types[population_params.adjust_down] -= population - num_actors
+    end
+
+    for (type, num) in actor_types
+        for _ in 1:num
+            add_type!(add_actor!(model, population_params.create_actor!(model)), type)
+        end
+    end
+end
+
 struct VaryingPopulationParams{FC <: Function, FA <: Function} <: PopulationParams
     initial_population::Integer
     create_actor!::FC

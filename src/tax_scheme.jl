@@ -1,78 +1,103 @@
 using Random
 
+@enum TAX_TYPE INCOME_TAX = 1 DEMURRAGE_TAX = 2
+
 abstract type TaxScheme{C <: FixedDecimal} end
 
 """
-    collect_vat!(actor::BalanceActor, amount::Real, vat::Real)
-    * actor: BalanceActor - The actor from which the VAT is collected.
-    * amount: Real - The amount of the transaction.
-
-    Used to collect VAT on every transaction.
-    See beheviour models.
+    struct FixedTaxScheme{C <: FixedDecimal} <: TaxScheme{C}
+    * type: TAX_TYPE
+    * tax_recipients: Int - The number of tax recipients.
+    * tax_interval: Int - The interval for tax collection.
+    * tax_brackets: DemTiers - The tax brackets.
+    * tax_free: C - The tax free bracket.
+    * vat_interval: Int - The interval vor VAT collection.
+    * vat: Real - The VAT rate.
+    
 """
-function collect_vat!(actor::BalanceActor, amount::Real, vat::Real, vat_entry::BalanceEntry)
-    if vat != 0
-        model = actor.model
-        vat = Currency(amount * vat)
-        balance = get_balance(actor)
-        book_asset!(balance, vat_entry, -vat)
-        actor.paid_vat += vat
-        model.vat_to_distribute += vat
+struct FixedTaxScheme{C <: FixedDecimal} <: TaxScheme{C}
+    type::TAX_TYPE
+    tax_recipients::Int
+    tax_interval::Int
+    tax_brackets::DemTiers
+    tax_free::C
+    vat_interval::Int
+    vat::Real
+end
 
-        return vat
-    else
-        return CUR_0
+function FixedTaxScheme(tax_type::TAX_TYPE;
+                        tax_recipients::Int,
+                        tax_interval::Int,
+                        tax_brackets::DemSettings,
+                        tax_free::Real,
+                        vat_interval::Real = tax_interval,
+                        vat::Real = 0)
+
+    return FixedTaxScheme{Currency}(tax_type,
+                                    tax_recipients,
+                                    tax_interval,
+                                    make_tiers(tax_brackets),
+                                    tax_free,
+                                    vat_interval,
+                                    vat)
+end
+
+function register_income_and_expenses(model::ABM)
+    for actor in allagents(model)
+        actor.periodic_income = actor.income
+        actor.taxable_income += actor.income
+        actor.vat_eligible += actor.income
+        actor.periodic_expenses += actor.expenses
     end
 end
 
-"""
-    struct IncomeTaxScheme{C <: FixedDecimal} <: TaxScheme{C}
-        * tax_brackets: DemTiers - The tax tax_brackets.
-        * tax_free: C - The tax free amount.
-        * num_tax_recipients: Int - The number of tax recipients.
-        * distribute_taxes!: D - Function that distributes taxes among the recipients.
-        * collect_vat!: V - The function that collects the VAT on every transaction.
-                            It must take the arguments (actor, amount) and must be called when the transaction is processed.
-"""
-struct IncomeTaxScheme{C <: FixedDecimal, D <: Function, V <: Function} <: TaxScheme{C}
-    tax_brackets::DemTiers
-    tax_free::C
-    num_tax_recipients::Int
-    distribute_taxes!::D
-    interval::Int
-    collect_vat!::V
-end
-
-function IncomeTaxScheme(tax_brackets::DemSettings,
-                        tax_free::Real,
-                        num_tax_recipients::Int,
-                        distribute_taxes!::Function,
-                        interval::Int;
-                        vat::Real = 0,
-                        vat_entry::BalanceEntry = SUMSY_DEP)
-
-    vat! = (x, y) -> collect_vat!(x, y, vat, vat_entry)
-
-    return IncomeTaxScheme{Currency, typeof(distribute_taxes!), typeof(vat!)}(make_tiers(tax_brackets),
-                                    tax_free,
-                                    num_tax_recipients,
-                                    distribute_taxes!,
-                                    interval,
-                                    vat!)
-end
-
-function set_tax_properties(model::ABM, tax_scheme::TaxScheme)
+function initialize_tax_scheme!(model::ABM, tax_scheme::FixedTaxScheme)
     properties = abmproperties(model)
-    properties[:tax_scheme] = tax_scheme
     properties[:collected_taxes] = CUR_0
-    properties[:vat_to_distribute] = CUR_0
     properties[:collected_vat] = CUR_0
-    properties[:tax_recipients] = create_tax_recipients(model, tax_scheme.num_tax_recipients)
+    properties[:tax_recipients] = create_tax_recipients(model, tax_scheme.tax_recipients)
+    properties[:tax_faliures] = 0 # When the full tax can not be paid.
+    properties[:vat_faliures] = 0 # WHen the full VAT can not be paid.
 
     for actor in allagents(model)
+        # Data collection purposes
+        actor.periodic_income = CUR_0
+
+        actor.taxable_income = CUR_0
         actor.paid_tax = CUR_0
+        actor.tax_share = CUR_0
+
+        actor.vat_eligible = CUR_0
         actor.paid_vat = CUR_0
-        actor.income = CUR_0
+        actor.vat_share = CUR_0
+
+        actor.periodic_expenses = CUR_0
+    end
+
+    add_model_behavior!(model,
+                        register_income_and_expenses,
+                        position = 2)
+
+    add_model_behavior!(model,
+                        x -> collect_vat!(x,
+                                            tax_scheme.vat_interval,
+                                            tax_scheme.vat),
+                        position = 3)
+
+    if tax_scheme.type == DEMURRAGE_TAX
+        add_model_behavior!(model,
+                            x -> process_dem_taxes!(x,
+                                                    tax_scheme.tax_interval,
+                                                    tax_scheme.tax_free,
+                                                    tax_scheme.tax_brackets),
+                            position = 4)
+    elseif tax_scheme.type == INCOME_TAX
+        add_model_behavior!(model,
+                            x -> process_income_taxes!(x,
+                                                        tax_scheme.tax_interval,
+                                                        tax_scheme.tax_free,
+                                                        tax_scheme.tax_brackets),
+                            position = 4)
     end
 end
 
@@ -93,20 +118,14 @@ end
 
     Distributes taxes among the tax recipients. Called from tax handling functions.
 """
-function distribute_taxes!(model::ABM, tax_amount::Currency)
+function distribute_taxes!(model::ABM, tax_amount::Currency, tax_field::Symbol)
     tax_recipients = model.tax_recipients
-    vat_to_distribute = model.vat_to_distribute
-    model.collected_vat += vat_to_distribute
-
-    tax_amount += vat_to_distribute
-
-    model.vat_to_distribute = CUR_0
 
     tax_share = tax_amount / length(tax_recipients)
 
     for actor in tax_recipients
         book_asset!(get_balance(actor), SUMSY_DEP, tax_share)
-        actor.income += tax_share
+        actor.properties[tax_field] += tax_share
     end
 
     extra = tax_amount - tax_share * length(tax_recipients)
@@ -114,111 +133,96 @@ function distribute_taxes!(model::ABM, tax_amount::Currency)
     if extra != 0
         actor = tax_recipients[rand(1:length(tax_recipients))]
         book_asset!(get_balance(actor), SUMSY_DEP, extra)
-        actor.income += extra
+        actor.properties[tax_field] += extra
     end
 end
 
-function initialize_tax_scheme!(model::ABM, tax_scheme::IncomeTaxScheme)
-    set_tax_properties(model, tax_scheme)
+function collect_vat!(model::ABM, vat_interval::Int, vat::Real)
+    if mod(get_step(model), vat_interval) == 0
+        collected_vat = CUR_0
 
-    add_model_behavior!(model, process_income_taxes!, position = 2)
+        for actor in allagents(model)
+            actor.vat_eligible += actor.vat_share # Add income from redistributed VAT.
+            actor.taxable_income += actor.vat_share
+            actor.vat_share = CUR_0
+
+            vat_to_pay = Currency(actor.vat_eligible * vat)
+
+            if !book_asset!(get_balance(actor), SUMSY_DEP, -vat_to_pay)
+                # Only happens when negative balances are not allowed.
+                vat_to_pay = asset_value(get_balance(actor), SUMSY_DEP)
+                book_asset!(get_balance(actor), SUMSY_DEP, -vat_to_pay)
+                model.vat_faliures += 1
+            end
+
+            actor.vat_eligible = CUR_0
+            actor.paid_vat += vat_to_pay
+            actor.taxable_income -= vat_to_pay # Deduct paid VAT from taxable income.
+            collected_vat += vat_to_pay
+        end
+
+        distribute_taxes!(model, collected_vat, :vat_share)
+
+        model.collected_vat += collected_vat
+    end
 end
 
-function process_income_taxes!(model::ABM)
-    step = get_step(model)
-    income_taxes = model.tax_scheme
-    tax_interval = income_taxes.interval
-
-    if mod(step, tax_interval) == 0
+function process_taxes!(model::ABM,
+                        tax_interval::Int,
+                        tax_free::Real,
+                        tax_brackets::DemTiers,
+                        taxable::F) where {F <: Function}                    
+    if mod(get_step(model), tax_interval) == 0
         collected_tax = CUR_0
 
         for actor in allagents(model)
-            income = actor.income
-            tax = calculate_time_range_demurrage(income,
-                                                    income_taxes.tax_brackets,
-                                                    income_taxes.tax_free,
+            actor.taxable_income += actor.tax_share # Add income from redistributed taxes.
+            actor.vat_eligible += actor.tax_share # That income is also eligible for VAT.
+            actor.tax_share = CUR_0
+            balance = get_balance(actor)
+
+            tax = calculate_time_range_demurrage(taxable(actor),
+                                                    tax_brackets,
+                                                    tax_free,
                                                     tax_interval,
                                                     tax_interval)
-            book_asset!(get_balance(actor), SUMSY_DEP, -tax)
+                                                    
+            if !book_asset!(balance, SUMSY_DEP, -tax)
+                tax = asset_value(balance, SUMSY_DEP)
+                book_asset!(balance, SUMSY_DEP, -tax)
+                model.tax_faliures += 1
+            end
+
+            actor.taxable_income = CUR_0
             actor.paid_tax += tax
             collected_tax += tax
         end
 
         model.collected_taxes += collected_tax
-        income_taxes.distribute_taxes!(model, collected_tax)
+        distribute_taxes!(model, collected_tax, :tax_share)
     end
 end
 
-"""
-    struct IncomeTaxScheme{C <: FixedDecimal} <: TaxScheme{C}
-        * dem_tiers: DemTiers - The tax tax_brackets.
-        * dem_free: C - The demurrage free amount.
-        * num_tax_recipients: Int - The number of tax recipients.
-        * distribute_taxes!: D - Function that distributes taxes among the recipients.
-        * interval: Int - The interval over which demurrage is calculated.
-        * transactional: Bool - Whether or not demurrage is calculated with every transaction.
-        * collect_vat!: V - The function that collects the VAT on every transaction.
-                            It must take the arguments (actor, amount) and must be called when the transaction is processed.
-"""
-struct DemurrageTaxScheme{C <: FixedDecimal, D <: Function, V <: Function} <: TaxScheme{C}
-    dem_tiers::DemTiers
-    dem_free::C
-    num_tax_recipients::Int
-    distribute_taxes!::D
-    interval::Int
-    transactional::Bool
-    collect_vat!::V
+function process_income_taxes!(model::ABM,
+                                tax_interval::Int,
+                                tax_free::Real,
+                                tax_brackets::DemTiers)
+    process_taxes!(model,
+                    tax_interval,
+                    tax_free,
+                    tax_brackets,
+                    x -> x.income)
 end
 
-function DemurrageTaxScheme(dem_tiers::DemSettings,
+function process_dem_taxes!(model,
+                            tax_interval::Int,
                             dem_free::Real,
-                            num_tax_recipients::Int,
-                            distribute_taxes!::Function,
-                            interval::Int;
-                            transactional::Bool = false,
-                            vat::Real = 0,
-                            vat_entry::BalanceEntry = SUMSY_DEP)
-
-    vat! = (x, y) -> collect_vat!(x, y, vat, vat_entry)
-
-    return DemurrageTaxScheme{Currency, typeof(distribute_taxes!), typeof(vat!)}(make_tiers(dem_tiers),
-                                        dem_free,
-                                        num_tax_recipients,
-                                        distribute_taxes!,
-                                        interval,
-                                        transactional,
-                                        vat!)
-end
-
-function initialize_tax_scheme!(model::ABM, tax_scheme::DemurrageTaxScheme)
-    set_tax_properties(model, tax_scheme)
-
-    add_model_behavior!(model, process_dem_taxes!, position = 2)
-end
-
-function process_dem_taxes!(model)
-    step = get_step(model)
-    dem_taxes = model.tax_scheme
-    tax_interval = dem_taxes.interval
-
-    if !dem_taxes.transactional && mod(step, tax_interval) == 0
-        collected_tax = CUR_0
-
-        for actor in allagents(model)
-            balance = get_balance(actor)
-            tax = calculate_time_range_demurrage(asset_value(balance, SUMSY_DEP),
-                                                dem_taxes.dem_tiers,
-                                                dem_taxes.dem_free,
-                                                tax_interval,
-                                                tax_interval)
-            book_asset!(balance, SUMSY_DEP, -tax)
-            actor.paid_tax += tax
-            collected_tax += tax
-        end
-
-        model.collected_taxes += collected_tax
-        dem_taxes.distribute_taxes!(model, collected_tax)
-    end
+                            dem_tiers::DemTiers)
+    process_taxes!(model,
+                    tax_interval,
+                    dem_free,
+                    dem_tiers,
+                    x -> asset_value(get_balance(x), SUMSY_DEP))
 end
 
 # Function not yet used

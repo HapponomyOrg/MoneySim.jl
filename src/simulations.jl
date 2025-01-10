@@ -183,10 +183,10 @@ function run_sumsy_simulation(sumsy::SuMSy,
                                 termination_handler::Union{TerminationHandler, Nothing} = nothing,
                                 initialisations::Vector{<: Function} = Vector{Function}(),
                                 model_adaptations::Vector{<: Function} = Vector{Function}())
-    if sumsy.transactional
-        model = create_sumsy_model(sumsy)
+    if sumsy_params.transactional
+        model = create_sumsy_model(sumsy_params.sumsy_interval)
     else
-        model = create_sumsy_model(sumsy, model_behaviors = process_model_sumsy!)
+        model = create_sumsy_model(sumsy_params.sumsy_interval, model_behaviors = process_model_sumsy!)
     end
     
     run_simulation(model,
@@ -202,15 +202,17 @@ function run_sumsy_simulation(sumsy::SuMSy,
 end
 
 function run_sumsy_simulation(sumsy::SuMSy;
+                                sumsy_interval::Int = 30,
+                                sumsy_transactional::Bool = false,
                                 eligible_actors::Int = 1000,
                                 non_eligible_actors::Int = 0,
                                 num_transactions::Int = 200,
-                                period_length::Int = sumsy.interval,
+                                period_length::Int = sumsy_interval,
                                 sim_length::Int = 150,
                                 distributed::Bool = true,
                                 tax_scheme::Union{Nothing, TaxScheme} = nothing,
                                 population_params::PopulationParams = FixedPopulationParams(eligible_actors + non_eligible_actors,
-                                                                                            create_sumsy_actor),
+                                                                                            m -> create_sumsy_actor(m, sumsy = sumsy)),
                                 data_handler::DataHandler = money_stock_data_handler(period_length),
                                 termination_handler::Union{TerminationHandler, Nothing} = nothing,
                                 initialisations::Vector{<: Function} = Vector{Function}(),
@@ -230,7 +232,9 @@ function run_sumsy_simulation(sumsy::SuMSy;
     end
 
 
-    sumsy_params = StandardSuMSyParams(initial_wealth,
+    sumsy_params = StandardSuMSyParams(sumsy_interval,
+                                        sumsy_transactional,
+                                        initial_wealth,
                                         initial_wealth,
                                         configure_sumsy_actors! = configure_sumsy_actors!,
                                         distribute_wealth! = distributed ? equal_wealth_distribution! : concentrated_wealth_distribution!)
@@ -253,6 +257,8 @@ function run_sumsy_simulation(sumsy::SuMSy;
 end
 
 function run_sumsy_gdp_simulation(sumsy::SuMSy;
+                                    sumsy_interval::Int = 30,
+                                    sumsy_transactional::Bool = false,
                                     eligible_actors::Int = 1000,
                                     non_eligible_actors::Int = 0,
                                     initial_wealth::Real = telo(sumsy),
@@ -261,12 +267,12 @@ function run_sumsy_gdp_simulation(sumsy::SuMSy;
                                     years::Int,
                                     tax_scheme::Union{Nothing, TaxScheme} = nothing,
                                     population_params::PopulationParams = FixedPopulationParams(eligible_actors + non_eligible_actors,
-                                                                                                create_sumsy_actor),
-                                    data_handler::DataHandler = gdp_data_handler(12 * sumsy.interval),
+                                                                                                m -> create_sumsy_actor(m, sumsy = sumsy)),
+                                    data_handler::DataHandler = gdp_data_handler(12 * sumsy_interval),
                                     termination_handler::Union{TerminationHandler, Nothing} = nothing,
                                     initialisations::Vector{<: Function} = Vector{Function}(),
                                     model_adaptations::Vector{<: Function} = Vector{Function}())
-    period = 12 * sumsy.interval
+    period = 12 * sumsy_interval
     sim_params = SimParams(years * period)
 
     if non_eligible_actors > 0
@@ -280,7 +286,9 @@ function run_sumsy_gdp_simulation(sumsy::SuMSy;
     end
 
 
-    sumsy_params = StandardSuMSyParams(initial_wealth,
+    sumsy_params = StandardSuMSyParams(sumsy_interval,
+                                        sumsy_transactional,
+                                        initial_wealth,
                                         initial_wealth,
                                         configure_sumsy_actors! = configure_sumsy_actors!)
     yard_sale_params = GDPYardSaleParams(period,
@@ -303,22 +311,49 @@ function run_sumsy_gdp_simulation(sumsy::SuMSy;
                         model_adaptations = model_adaptations)
 end
 
+function run_age_typed_sumsy_gdp_simulation(sumsy::SuMSy;
+                                            sumsy_interval::Int = 30,
+                                            sumsy_transactional::Bool = false,
+                                            pop_min_18::Int = 0,
+                                            pop_min_18_income::Int = 0,
+                                            pop_18_65::Int = 1000,
+                                            pop_18_65_income::Int = 2000,
+                                            pop_65_plus::Int = 0,
+                                            pop_65_plus_income::Int = 0,
+                                            eligible_actors::Int = 1000,
+                                            non_eligible_actors::Int = 0,
+                                            initial_wealth::Real = telo(sumsy),
+                                            wealth_transfer::Real = 0.2,
+                                            gdp_per_capita::Real,
+                                            years::Int,
+                                            tax_scheme::Union{Nothing, TaxScheme} = nothing,
+                                            data_handler::DataHandler = gdp_data_handler(12 * sumsy.interval),
+                                            termination_handler::Union{TerminationHandler, Nothing} = nothing,
+                                            initialisations::Vector{<: Function} = Vector{Function}(),
+                                            model_adaptations::Vector{<: Function} = Vector{Function}())
+    population_params = AgeTypedPopulationParams(Dict(:min_18 => pop_min_18,
+                                                    :age_18_65 => pop_18_65,
+                                                    :age_65_plus => pop_65_plus,),
+                                                m -> create_sumsy_actor(m, sumsy = sumsy))
+end
+
 function run_consumer_supplier_simulation(sumsy::SuMSy;
+                                            sumsy_interval::Int,
                                             sim_length::Int = 150,
                                             consumers_per_supplier::Int = 100,
                                             fulfilled_demand::Int = 1,
                                             net_profit::Real = 1,
                                             suppliers_gi_eligible = false,
                                             tax_scheme::Union{Nothing, TaxScheme} = nothing,
-                                            population_params = FixedPopulationParams(0, create_sumsy_actor),
-                                            data_handler::DataHandler = full_data_handler(sumsy.interval),
+                                            population_params = FixedPopulationParams(0, m -> create_sumsy_actor(m, sumsy = sumsy)),
+                                            data_handler::DataHandler = full_data_handler(sumsy_interval),
                                             termination_handler::Union{TerminationHandler, Nothing} = nothing,
                                             initialisations::Vector{<: Function} = Vector{Function}(),
                                             model_adaptations::Vector{<: Function} = Vector{Function}())
-    sim_params = SimParams(sim_length * sumsy.interval)
+    sim_params = SimParams(sim_length * sumsy_interval)
 
     gi_eligible_types = suppliers_gi_eligible ? [:supplier, :consumer] : [:consumer]
-    sumsy_params = StandardSuMSyParams(telo(sumsy), configure_sumsy_actors! = model -> typed_gi_actors!(model, gi_eligible_types))
+    sumsy_params = StandardSuMSyParams(sumsy_interval, false, telo(sumsy), configure_sumsy_actors! = model -> typed_gi_actors!(model, gi_eligible_types))
     consumer_supply_params = FixedConsumerSupplyParams(1, consumers_per_supplier, fulfilled_demand, net_profit)
 
     return run_sumsy_simulation(sumsy,

@@ -6,10 +6,12 @@ include("utils.jl")
 export BROKE_THRESHOLD
 export is_broke, one_non_broke
 export remove_index
+export Percentiles, BOTTOM_0_1, BOTTOM_1, BOTTOM_10, BOTTOM_50, LOW_MIDDLE_40, MIDDLE_50, HIGH_MIDDLE_40, TOP_10, TOP_1, TOP_0_1
+export calculate_percentile_ranges
 
 include("population.jl")
 export PopulationParams
-export PopulationVectorParams, FixedPopulationParams, VaryingPopulationParams
+export PopulationVectorParams, FixedPopulationParams, VaryingPopulationParams, TypedPopulationParams
 export adjust_vector_population!
 export create_sumsy_actor!
 export kill_broke_actors!
@@ -29,9 +31,11 @@ export initialize_data_handler!, post_process!
 
 include("data_handler_utils.jl")
 export equity_collector, wealth_collector, deposit_collector
-export sumsy_equity_collector, sumsy_wealth_collector, sumsy_deposit_collector, sumsy_data_collector
-export income_collector!, paid_tax_collector!, paid_vat_collector!
-export tax_collector!, vat_collector!
+export sumsy_equity_collector, sumsy_wealth_collector, sumsy_deposit_collector
+export sumsy_data_collector!
+export income_collector!, expenses_collector!, paid_tax_collector!, paid_vat_collector!
+export gdp_collector!, transactions_collector!, min_transaction_collector!, max_transaction_collector!
+export tax_collector!, failed_tax_collector!, vat_collector!, failed_vat_collector!
 export full_post_processing!, full_sumsy_post_processing!, money_stock_post_processing!, gdp_post_processing!
 export NO_DATA_HANDLER
 export full_data_handler, full_sumsy_data_handler, money_stock_data_handler, gdp_data_handler
@@ -44,8 +48,9 @@ export ConsumerSupplyParams, FixedConsumerSupplyParams, VariableConsumerSupplyPa
 export gdp_yard_sale!, gdp_baseline_yard_sale!
 
 include("tax_scheme.jl")
-export TaxScheme, DemurrageTaxScheme, IncomeTaxScheme
-export initialize_tax_scheme, distribute_taxes!
+export TAX_TYPE, INCOME_TAX, DEMURRAGE_TAX
+export TaxScheme, FixedTaxScheme
+export initialize_tax_scheme
 
 include("model_adaptations.jl")
 export one_time_money_injection!, constant_money_injection!, one_time_money_destruction!, constant_money_destruction!, equal_money_distribution!
@@ -55,12 +60,13 @@ include("behaviors.jl")
 export borrow_income, borrow_when_poor, borrow_when_rich, ubi_borrow_when_poor, ubi_borrow_when_poor_rich
 
 include("money_models.jl")
-export ModelMoneyModelParams, FixedWealthParams, StandardSuMSyParams, InequalitySuMSyParams, InequalityData, DebtBasedParams
-export equal_wealth_distribution!, concentrated_wealth_distribution!, inequal_wealth_distribution!
-export percentage_gi_actors!, mixed_actors!, typed_gi_actors!
+export ModelMoneyModelParams, FixedWealthParams, StandardSuMSyParams, DebtBasedParams
+export create_StandardSuMSyParams
+export InequalityData
+export equal_wealth_distribution!, concentrated_wealth_distribution!, inequal_wealth_distribution!, typed_inequal_wealth_distribution!
+export percentage_gi_actors!, mixed_actors!, typed_gi_actors!, type_based_sumsy_actors!
 
 include("data_analysis.jl")
-export Percentiles, BOTTOM_0_1, BOTTOM_1, BOTTOM_10, BOTTOM_50, LOW_MIDDLE_40, MIDDLE_50, HIGH_MIDDLE_40, TOP_10, TOP_1, TOP_0_1
 export WealthType, PERCENTAGE, NOMINAL, SCALED
 export analyse_money_stock, analyse_wealth, analyse_type_wealth
 
@@ -88,5 +94,8 @@ export run_fixed_wealth_simulation, run_fixed_wealth_gdp_simulation
 export run_sumsy_simulation, run_sumsy_gdp_simulation, run_taxed_sumsy_gdp_simulation
 export run_consumer_supplier_simulation
 export run_debt_based_simulation
+
+include("examples/belgium.jl")
+export simulate_belgium, DEM_TAX, INCOME_TAX_BRACKETS
 
 end

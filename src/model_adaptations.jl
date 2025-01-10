@@ -1,20 +1,20 @@
 using Todo
 
-function one_time_money_injection!(model)
+function one_time_money_injection!(model::ABM)
     if model.step == 1
-        amount = telo(model.sumsy) == CUR_MAX ? telo(BASIC_SUMSY) : telo(model.sumsy)
 
         for actor in allagents(model)
+            sumsy = get_sumsy(actor)
+            amount = telo(sumsy) == CUR_MAX ? telo(BASIC_SUMSY) : telo(sumsy)
             book_asset!(get_balance(actor), SUMSY_DEP, amount)
         end
     end
 end
 
 function constant_money_injection!(model)
-    amount = model.sumsy.income.guaranteed_income / 2
-
-    if process_ready(model.sumsy, model.step)
-        for actor in allagents(model)
+    for actor in allagents(model)
+        if mod(model.step, get_balance(actor).sumsy_interval) == 0
+            amount = get_sumsy(actor).income.guaranteed_income / 2
             book_asset!(get_balance(actor), SUMSY_DEP, amount)
         end
     end
@@ -29,17 +29,19 @@ function one_time_money_destruction!(model)
 end
 
 function constant_money_destruction!(model)
-    amount = -model.sumsy.income.guaranteed_income / 2
-
-    if process_ready(model.sumsy, model.step)
-        for actor in allagents(model)
+    for actor in allagents(model)
+        if mod(model.step, get_balance(actor).sumsy_interval) == 0
+            amount = -get_sumsy(actor).income.guaranteed_income / 2
             book_asset!(get_balance(actor), SUMSY_DEP, max(-sumsy_assets(actor, model.step), amount))
         end
     end
 end
 
 function equal_money_distribution!(model)
-    if process_ready(model.sumsy, model.step)
+    # Assume all actors have the same SuMSy interval.
+    interval = get_balance(first(allagents(model))).sumsy_interval
+
+    if mod(model.step, interval) == 0
         money_stock = CUR_0
 
         for actor in allagents(model)

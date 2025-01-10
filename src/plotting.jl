@@ -161,7 +161,7 @@ function plot_wealth(data::Dict{WealthType, DataFrame},
     return the_plot
 end
 
-function plot_type_wealth(dataframes::Vector{DataFrame}, types::Vector{Symbol}, title = "", labels = nothing!)
+function plot_type_wealth(dataframes::Vector{DataFrame}, types::Vector{Symbol}, title = "", labels = nothing)
     types = unique(types)
     the_plot = plot_type_wealth(dataframes[1], types, title, isnothing(labels) ? nothing! : labels[1])
 
@@ -173,7 +173,7 @@ function plot_type_wealth(dataframes::Vector{DataFrame}, types::Vector{Symbol}, 
     return the_plot
 end
 
-function plot_type_wealth(dataframe::DataFrame, types::Vector{Symbol}, title = "", label = nothing!)
+function plot_type_wealth(dataframe::DataFrame, types::Vector{Symbol}, title = "", label = nothing)
     types = unique(types)
 
 	plot(
