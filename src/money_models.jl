@@ -5,15 +5,20 @@ using FixedPointDecimals
 using DataFrames
 using Todo
 
-abstract type MonetaryModelParams{C <: FixedDecimal} end
+abstract type MonetaryModelParams end
 
 # Fixed wealth
 
-struct FixedWealthParams{C <: FixedDecimal} <: MonetaryModelParams{C}
-    initial_wealth::C
-    wealth_distributed::Bool
-    FixedWealthParams(initial_wealth::Real,
-                        wealth_distributed::Bool) = new{Currency}(initial_wealth, wealth_distributed)
+"""
+    FixedWealthParams
+    * distribute_wealth::Function : a function that distributes the wealth to all actors.
+
+    The distribute_wealth function must take the model as an argument and distribute the wealth to all actors.
+"""
+struct FixedWealthParams{F <: Callable} <: MonetaryModelParams
+    distribute_wealth::F
+    FixedWealthParams(distribute_wealth::Function) = new{typeof(distribute_wealth)}(
+                                                            distribute_wealth)
 end
 
 """
@@ -21,29 +26,79 @@ end
 """
 function initialize_monetary_model!(model::ABM,
                                     fixed_wealth_params::FixedWealthParams)
-    if fixed_wealth_params.wealth_distributed
-        initial_wealth = fixed_wealth_params.initial_wealth
-    else
-        total_wealth = nagents(model) * fixed_wealth_params.initial_wealth
-        initial_wealth = CUR_0
-    end
-
-    for actor in allagents(model)
-        actor.model = model
-        book_asset!(get_balance(actor), SUMSY_DEP, initial_wealth)
-    end
-    
-    if !fixed_wealth_params.wealth_distributed
-        actor = random_agent(model)
-        book_asset!(get_balance(actor), SUMSY_DEP, total_wealth)
-    end
+    fixed_wealth_params.distribute_wealth(model)
 
     return model
 end
 
+# distribute_wealth functions
+
+"""
+    distribute_equal!(model::ABM, initial_wealth::Real)
+    * model::ABM : the model to distribute wealth in.
+    * initial_wealth::Real : the initial wealth per actor.
+
+    Distributes wealth equally to all actors in the model.
+"""
+function distribute_equal!(model::ABM, initial_wealth::Real)
+    for actor in allagents(model)
+        book_asset!(get_balance(actor), SUMSY_DEP, initial_wealth)
+    end
+end
+
+"""
+    concentrate_wealth!(model::ABM, initial_wealth::Real)
+    * model::ABM : the model to distribute wealth in.
+    * initial_wealth::Real : the initial wealth per actor. One actor will end up with n * initial_wealth, where n is the number of actors in the model.
+
+    Concentrates all wealth in a single actor.
+"""
+function concentrate_wealth!(model::ABM, initial_wealth::Real)
+    book_asset!(get_balance(random_agent(model)), SUMSY_DEP, initial_wealth * nagents(model))
+end
+
+"""
+    distribute_inequal!(model::ABM, inequality_data::InequalityData)
+    * model::ABM : the model to distribute wealth in.
+    * inequality_data::InequalityData : the data to use for the distribution.
+"""
+function distribute_inequal!(model::ABM,
+                                inequality_data::InequalityData)
+    distribute_inequal_wealth!(collect(allagents(model)), inequality_data)
+end
+
+"""
+    distribute_inequal!(model::ABM, inequality_data::InequalityData, actor_types::Vector{Symbol})
+    * model::ABM : the model to distribute wealth in.
+    * inequality_data::InequalityData : the data to use for the distribution.
+    * actor_types::Vector{Symbol} : the types of actors to distribute wealth to.
+                                    Wealth will be distributed among each type according to the inequality data.
+"""
+function distribute_inequal!(model::ABM,
+                                inequality_data::InequalityData,
+                                actor_types::Vector{Symbol})
+    typed_actors = Dict{Symbol, Vector{<:AbstractActor}}()
+
+    for actor in allagents(model)
+        for type in actor_types
+            if type in actor.types
+                if !haskey(typed_actors, type)
+                    typed_actors[type] = [actor]
+                else
+                    push!(typed_actors[type], actor)
+                end
+            end
+        end
+    end
+
+    for actors in values(typed_actors)
+        distribute_inequal_wealth!(actors, inequality_data)
+    end
+end
+
 # SuMSy
 
-abstract type SuMSyParams{C <: FixedDecimal} <: MonetaryModelParams{C} end
+abstract type SuMSyParams <: MonetaryModelParams end
 
 """
 SuMSyParams constructor
@@ -51,7 +106,7 @@ SuMSyParams constructor
 SuMSyParams can only be used in conjunction with a SuMSy model.
 Must be called after initialize_population_model!
 """
-struct StandardSuMSyParams{C <: FixedDecimal, FC <: Function, FD <: Function} <: SuMSyParams{C}
+struct StandardSuMSyParams{FC <: Callable, FD <: Callable} <: SuMSyParams
     sumsy_interval::Int
     transactional::Bool
     configure_sumsy_actors!::FC
@@ -59,8 +114,7 @@ struct StandardSuMSyParams{C <: FixedDecimal, FC <: Function, FD <: Function} <:
     StandardSuMSyParams(;sumsy_interval::Int,
                             transactional::Bool,
                             configure_sumsy_actors!::Function,
-                            distribute_wealth!::Function) = new{Currency,
-                                                                typeof(configure_sumsy_actors!),
+                            distribute_wealth!::Function) = new{typeof(configure_sumsy_actors!),
                                                                 typeof(distribute_wealth!)}(sumsy_interval,
                                                                                             transactional,
                                                                                             configure_sumsy_actors!,
@@ -79,13 +133,21 @@ function create_StandardSuMSyParams(;sumsy_interval::Int,
         distribute_wealth! = x -> concentrated_wealth_distribution!(x, initial_gi_wealth, initial_non_gi_wealth)
     end
 
-    return StandardSuMSyParams{Currency, typeof(configure_sumsy_actors!), typeof(distribute_wealth!)}(sumsy_interval,
-                                        transactional,
-                                        configure_sumsy_actors!,
-                                        distribute_wealth!)
+    return StandardSuMSyParams(sumsy_interval = sumsy_interval,
+                                transactional = transactional,
+                                configure_sumsy_actors! = configure_sumsy_actors!,
+                                distribute_wealth! = distribute_wealth!)
 end
 
-function equal_wealth_distribution!(model::ABM, initial_gi_wealth::Real, initial_non_gi_wealth::Real)
+function initialize_monetary_model!(model::ABM,
+                                    sumsy_params::StandardSuMSyParams)
+    sumsy_params.configure_sumsy_actors!(model)
+    sumsy_params.distribute_wealth!(model)
+end
+
+# distribute_wealth functions
+
+function distribute_equal!(model::ABM, initial_gi_wealth::Real, initial_non_gi_wealth::Real)
     for actor in allagents(model)
         if is_gi_eligible(actor)
             book_asset!(get_balance(actor), SUMSY_DEP, initial_gi_wealth)
@@ -95,7 +157,7 @@ function equal_wealth_distribution!(model::ABM, initial_gi_wealth::Real, initial
     end
 end
 
-function concentrated_wealth_distribution!(model::ABM, initial_gi_wealth::Real, initial_non_gi_wealth::Real)
+function concentrate_wealth!(model::ABM, initial_gi_wealth::Real, initial_non_gi_wealth::Real)
     num_gi_eligible = 0
     num_non_gi_eligible = 0
 
@@ -112,6 +174,8 @@ function concentrated_wealth_distribution!(model::ABM, initial_gi_wealth::Real, 
                 initial_gi_wealth * num_gi_eligible
                     + initial_non_gi_wealth * num_non_gi_eligible)
 end
+
+# configure_sumsy_actors! functions
 
 """
     percentage_gi_actors!
@@ -217,244 +281,9 @@ function type_based_sumsy_actors!(model::ABM, sumsy_groups::Dict{Symbol, Tuple{R
     end
 end
 
-function initialize_monetary_model!(model::ABM,
-                                    sumsy_params::StandardSuMSyParams)
-    sumsy_params.configure_sumsy_actors!(model)
-    sumsy_params.distribute_wealth!(model)
-end
-
-# Inequality SuMSy
-
-"""
-    InequalityData
-
-    * top_0_1::Union{Nothing, C} : the average wealth of the top 0.1%. Nothing if not applicable.
-    * top_1::Union{Nothing, C} : the average wealth of the top 1%. Nothing if not applicable.
-    * top_10::C : the average wealth of the top 10%.
-    * high_middle_40::C : the average wealth of the high middle 40%.
-    * low_middle_40::C : the average wealth of the low middle 40%.
-    * bottom_10::C : the average wealth of the bottom 10%.
-    * bottom_1::Union{Nothing, C} : the average wealth of the bottom 1%. Nothing if not applicable.
-
-    When one or more of the optional tiers are defined, the wealth of the remaining actors of the tier(s) it belongs to is recalculated.
-
-    Example:
-    If there are 1000 actors and the average wealth of the top 0.1% is defined, then the one actor that is the top 0.1% is assigned that wealth.
-    For the 9 remaining actors that represent the top 1%, their average wealth is recalculated as follows:
-    avg_wealth = (avg_wealth_of_top_1 * 10 - avg_wealth_of_top_0_1) / 9.
-
-    If top_1 is nothing, it is assumed that top_0_1 is also nothing. The same is true for bottom_1 and bottom_0_1.
-"""
-struct InequalityData{C <: FixedDecimal}
-    top_0_1::Union{Nothing, C}
-    top_1::Union{Nothing, C}
-    top_10::C
-    high_middle_40::C
-    low_middle_40::C
-    bottom_10::C
-    bottom_1::Union{Nothing, C}
-    bottom_0_1::Union{Nothing, C}
-end
-
-function InequalityData(top_0_1::Union{Nothing, Real},
-                        top_1::Union{Nothing, Real},
-                        top_10::Real,
-                        high_middle_40::Real,
-                        low_middle_40::Real,
-                        bottom_10::Real,
-                        bottom_1::Union{Nothing, Real},
-                        bottom_0_1::Union{Nothing, Real};
-                        money_per_head::Union{Nothing, Real} = nothing,
-                        allow_negatives::Bool = false)
-    money_wealth_ratio = 1
-
-    @todo_str "Correct upward shift so that ratios are maintained."
-    # Adjust up if negatives are not allowed
-    if !allow_negatives
-        bottom = 0
-
-        if !isnothing(bottom_0_1)
-            bottom = min(bottom, bottom_0_1)
-        elseif !isnothing(bottom_1)
-            bottom = min(bottom, bottom_1)
-        else
-            bottom = min(bottom, bottom_10)
-        end
-
-        if bottom < 0
-            if !isnothing(top_0_1)
-                top_0_1 -= bottom
-            end
-
-            if !isnothing(top_1)
-                top_1 -= bottom
-            end
-
-            top_10 -= bottom
-            high_middle_40 -= bottom
-            low_middle_40 -= bottom
-            bottom_10 -= bottom
-
-            if !isnothing(bottom_1)
-                bottom_1 -= bottom
-            end
-
-            if !isnothing(bottom_0_1)
-                bottom_0_1 -= bottom
-            end
-        end
-    end
-
-    # Scale to money per head
-    if !isnothing(money_per_head)
-        avg_wealth = 0.1 * top_10 + 0.4 * high_middle_40 + 0.4 * low_middle_40 + 0.1 * bottom_10
-        money_wealth_ratio = money_per_head / avg_wealth
-
-        if !isnothing(top_0_1)
-            top_0_1 *= money_wealth_ratio
-        end
-    
-        if !isnothing(top_1)
-            top_1 *= money_wealth_ratio
-        end
-    
-        top_10 *= money_wealth_ratio
-        high_middle_40 *= money_wealth_ratio
-        low_middle_40 *= money_wealth_ratio
-        bottom_10 *= money_wealth_ratio
-    
-        if !isnothing(bottom_1)
-            bottom_1 *= money_wealth_ratio
-        end
-    
-        if !isnothing(bottom_0_1)
-            bottom_0_1 *= money_wealth_ratio
-        end
-    end
-
-    return InequalityData{Currency}(top_0_1,
-                                    top_1,
-                                    top_10,
-                                    high_middle_40,
-                                    low_middle_40,
-                                    bottom_10,
-                                    bottom_1,
-                                    bottom_0_1)
-end
-
-function distribute_inequal_wealth!(actors::Vector{<:AbstractActor},
-                                    inequality_data::InequalityData)
-    num_actors = length(actors)
-    percentiles = calculate_percentile_ranges(num_actors)
-    wealth_vector = Vector{Currency}()
-
-    bottom_0_1 = inequality_data.bottom_0_1
-    bottom_1 = inequality_data.bottom_1
-    bottom_10 = inequality_data.bottom_10
-    top_10 = inequality_data.top_10
-    top_1 = inequality_data.top_1
-    top_0_1 = inequality_data.top_0_1
-
-    if bottom_1 !== nothing && num_actors >= 100
-        if bottom_0_1 !== nothing && num_actors >= 1000
-            for _ in percentiles[1]
-                push!(wealth_vector, bottom_0_1)
-            end
-
-            bottom_1 = (bottom_1 * 10 - bottom_0_1) / 9
-
-            for _ in (percentiles[1].stop + 1):percentiles[2].stop
-                push!(wealth_vector, bottom_1)
-            end
-        else
-            for _ in percentiles[2]
-                push!(wealth_vector, bottom_1)
-            end
-        end
-
-        bottom_10 = (bottom_10 * 10 - bottom_1) / 9
-
-        for _ in (percentiles[2].stop + 1):percentiles[3].stop
-            push!(wealth_vector, bottom_10)
-        end
-    else
-        for _ in percentiles[3]
-            push!(wealth_vector, bottom_10)
-        end
-    end
-
-    for _ in percentiles[5]
-        push!(wealth_vector, inequality_data.low_middle_40)
-    end
-
-    for _ in percentiles[6]
-        push!(wealth_vector, inequality_data.high_middle_40)
-    end
-
-    if top_1 !== nothing && num_actors >= 100
-        if top_0_1 !== nothing && num_actors >= 1000
-            for _ in percentiles[9]
-                push!(wealth_vector, top_0_1)
-            end
-
-            top_1 = (top_1 * 10 - top_0_1) / 9
-
-            for _ in percentiles[8].start:(percentiles[9].start - 1)
-                push!(wealth_vector, top_1)
-            end
-        else
-            for _ in percentiles[8]
-                push!(wealth_vector, top_1)
-            end
-        end
-
-        top_10 = (top_10 * 10 - top_1) / 9
-
-        for _ in percentiles[7].start:(percentiles[8].start - 1)
-            push!(wealth_vector, top_10)
-        end
-    else
-        for _ in percentiles[7]
-            push!(wealth_vector, top_10)
-        end
-    end
-
-    for actor in actors
-        book_asset!(get_balance(actor), SUMSY_DEP, wealth_vector[num_actors], set_to_value = true)
-        num_actors -= 1
-    end
-end
-
-function typed_inequal_wealth_distribution!(model::ABM,
-                                            inequality_data::InequalityData,
-                                            actor_types::Vector{Symbol})
-    typed_actors = Dict{Symbol, Vector{<:AbstractActor}}()
-
-    for actor in allagents(model)
-        for type in actor_types
-            if type in actor.types
-                if !haskey(typed_actors, type)
-                    typed_actors[type] = [actor]
-                else
-                    push!(typed_actors[type], actor)
-                end
-            end
-        end
-    end
-
-    for actors in values(typed_actors)
-        distribute_inequal_wealth!(actors, inequality_data)
-    end
-end
-
-function inequal_wealth_distribution!(model::ABM,
-                                        inequality_data::InequalityData)
-    distribute_inequal_wealth!(allagents(model), inequality_data)
-end
-
 # Debt based with borrowing
 
-struct DebtBasedParams{C <: FixedDecimal} <: MonetaryModelParams{C}
+struct DebtBasedParams{C <: FixedDecimal} <: MonetaryModelParams
     initial_wealth::C    
     DebtBasedParams(num_actors::Int,
                     initial_wealth::Real) = new{Currency}(num_actors,

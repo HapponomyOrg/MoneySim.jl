@@ -6,7 +6,7 @@ abstract type PopulationParams end
 struct FixedPopulationParams{F <: Function} <: PopulationParams
     population::Integer
     create_actor!::F
-    FixedPopulationParams(population::Integer,
+    FixedPopulationParams(;population::Integer,
                             create_actor! = create_monetary_actor) = new{typeof(create_actor!)}(population, create_actor!)
 end
 
@@ -115,22 +115,23 @@ struct TypedPopulationParams{FC <: Function} <: PopulationParams
 end
 
 function initialize_population_model!(model::ABM, population_params::TypedPopulationParams)
-    actor_types = population_params.actor_types
+    actor_percentages = population_params.actor_types
+    actor_numbers = Dict{Symbol, Int}()
     num_actors = population_params.num_actors
 
-    for (type, percentage) in actor_types
-        actor_types[type] = round(percentage * num_actors)
+    for (type, percentage) in actor_percentages
+        actor_numbers[type] = Int(round(percentage * num_actors))
     end
 
-    population = Int(sum(values(actor_types)))
+    population = Int(sum(values(actor_numbers)))
 
     if population < num_actors
-        actor_types[population_params.adjust_up] += num_actors - population
+        actor_numbers[population_params.adjust_up] += num_actors - population
     elseif population > num_actors
-        actor_types[population_params.adjust_down] -= population - num_actors
+        actor_numbers[population_params.adjust_down] -= population - num_actors
     end
 
-    for (type, num) in actor_types
+    for (type, num) in actor_numbers
         for _ in 1:num
             add_type!(add_actor!(model, population_params.create_actor!(model)), type)
         end

@@ -49,30 +49,37 @@ function sumsy_deposit_collector(actor)
     return sumsy_assets(actor, get_step(actor.model))
 end
 
+function taxed_amount_collector!(actor)
+    taxed_amount = actor.data_taxed_amount
+    actor.data_taxed_amount = CUR_0
+
+    return taxed_amount
+end
+
 function paid_tax_collector!(actor)
-    paid_tax = actor.paid_tax
-    actor.paid_tax = CUR_0
+    paid_tax = actor.data_paid_tax
+    actor.data_paid_tax = CUR_0
 
     return paid_tax
 end
 
 function paid_vat_collector!(actor)
-    paid_vat = actor.paid_vat
-    actor.paid_vat = CUR_0
+    paid_vat = actor.data_paid_vat
+    actor.data_paid_vat = CUR_0
 
     return paid_vat
 end
 
 function income_collector!(actor)
-    income = actor.periodic_income
-    actor.periodic_income = CUR_0
+    income = actor.data_income
+    actor.data_income = CUR_0
 
     return income
 end
 
 function expenses_collector!(actor)
-    expenses = actor.periodic_expenses
-    actor.periodic_expenses = CUR_0
+    expenses = actor.data_expenses
+    actor.data_expenses = CUR_0
 
     return expenses
 end
@@ -80,66 +87,66 @@ end
 # Model data collectors
 
 function gdp_collector!(model::ABM)
-    gdp = model.gdp
-    model.gdp = CUR_0
+    gdp = model.data_gdp
+    model.data_gdp = CUR_0
 
     return gdp
 end
 
 function transactions_collector!(model::ABM)
-    transactions = model.transactions
-    model.transactions = 0
+    transactions = model.data_transactions
+    model.data_transactions = 0
 
     return transactions
 end
 
 function min_transaction_collector!(model::ABM)
-    min_transaction = model.min_transaction
-    model.min_transaction = typemax(Currency)
+    min_transaction = model.data_min_transaction
+    model.data_min_transaction = typemax(Currency)
 
     return min_transaction
 end
 
 function max_transaction_collector!(model::ABM)
-    max_transaction = model.max_transaction
-    model.max_transaction = typemin(Currency)
+    max_transaction = model.data_max_transaction
+    model.data_max_transaction = typemin(Currency)
 
     return max_transaction
 end
 
 function sumsy_data_collector!(model::ABM)
-    gi = model.total_gi
-    demurrage = model.total_demurrage
-    model.total_gi = CUR_0
-    model.total_demurrage = CUR_0
+    gi = model.data_total_gi
+    demurrage = model.data_total_demurrage
+    model.data_total_gi = CUR_0
+    model.data_total_demurrage = CUR_0
 
     return (gi, demurrage, gi - demurrage)
 end
 
 function tax_collector!(model::ABM)
-    collected_taxes = model.collected_taxes
-    model.collected_taxes = CUR_0
+    collected_taxes = model.data_collected_taxes
+    model.data_collected_taxes = CUR_0
 
     return collected_taxes
 end
 
 function failed_tax_collector!(model::ABM)
-    failed_taxes = model.tax_faliures
-    model.tax_faliures = 0
+    failed_taxes = model.data_tax_faliures
+    model.data_tax_faliures = 0
 
     return failed_taxes
 end
 
 function vat_collector!(model::ABM)
-    collected_vat = model.collected_vat
-    model.collected_vat = CUR_0
+    collected_vat = model.data_collected_vat
+    model.data_collected_vat = CUR_0
 
     return collected_vat
 end
 
 function failed_vat_collector!(model::ABM)
-    failed_vat = model.vat_faliures
-    model.vat_faliures = 0
+    failed_vat = model.data_vat_faliures
+    model.data_vat_faliures = 0
 
     return failed_vat
 end

@@ -13,7 +13,7 @@ struct IntervalDataHandler{F} <: DataHandler
     function IntervalDataHandler(;interval::Int = 1,
                                     actor_data_collectors::Vector = [],
                                     model_data_collectors::Vector = [],
-                                    post_processing!::Function = no_post_processing!)
+                                    post_processing!::Function = (ad, md) -> (ad, md))
         return new{typeof(post_processing!)}(interval,
                     actor_data_collectors,
                     model_data_collectors,

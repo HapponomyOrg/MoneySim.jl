@@ -1,6 +1,7 @@
 module MoneySim
 
 using EconoSim
+using Infiltrator
 
 include("utils.jl")
 export BROKE_THRESHOLD
@@ -33,7 +34,7 @@ include("data_handler_utils.jl")
 export equity_collector, wealth_collector, deposit_collector
 export sumsy_equity_collector, sumsy_wealth_collector, sumsy_deposit_collector
 export sumsy_data_collector!
-export income_collector!, expenses_collector!, paid_tax_collector!, paid_vat_collector!
+export income_collector!, taxed_amount_collector!, expenses_collector!, paid_tax_collector!, paid_vat_collector!
 export gdp_collector!, transactions_collector!, min_transaction_collector!, max_transaction_collector!
 export tax_collector!, failed_tax_collector!, vat_collector!, failed_vat_collector!
 export full_post_processing!, full_sumsy_post_processing!, money_stock_post_processing!, gdp_post_processing!
@@ -41,15 +42,17 @@ export NO_DATA_HANDLER
 export full_data_handler, full_sumsy_data_handler, money_stock_data_handler, gdp_data_handler
 export do_collect_data
 
-include("behaviour_models.jl")
-export BehaviourParams
-export YardSaleParams, StandardYardSaleParams, TaxedYardSaleParams, GDPYardSaleParams
+include("transaction_models.jl")
+export TransactionParams
+export BareBonesParams, YardSaleParams, StandardYardSaleParams, TaxedYardSaleParams, GDPYardSaleParams
 export ConsumerSupplyParams, FixedConsumerSupplyParams, VariableConsumerSupplyParams
+export add_income!, add_expenses!
 export gdp_yard_sale!, gdp_baseline_yard_sale!
 
 include("tax_scheme.jl")
-export TAX_TYPE, INCOME_TAX, DEMURRAGE_TAX
+export TAX_TYPE, INCOME_TAX, DEMURRAGE_TAX, VAT_ONLY
 export TaxScheme, FixedTaxScheme
+export distribute_taxes!
 export initialize_tax_scheme
 
 include("model_adaptations.jl")
@@ -59,11 +62,14 @@ export DemTaxes, initialize_dem_taxes!, process_dem_taxes!, distribute_dem_taxes
 include("behaviors.jl")
 export borrow_income, borrow_when_poor, borrow_when_rich, ubi_borrow_when_poor, ubi_borrow_when_poor_rich
 
+include("inequality.jl")
+export InequalityData
+export distribute_inequal!
+
 include("money_models.jl")
 export ModelMoneyModelParams, FixedWealthParams, StandardSuMSyParams, DebtBasedParams
 export create_StandardSuMSyParams
-export InequalityData
-export equal_wealth_distribution!, concentrated_wealth_distribution!, inequal_wealth_distribution!, typed_inequal_wealth_distribution!
+export distribute_equal!, concentrate_wealth!, distribute_inequal!
 export percentage_gi_actors!, mixed_actors!, typed_gi_actors!, type_based_sumsy_actors!
 
 include("data_analysis.jl")
@@ -96,6 +102,7 @@ export run_consumer_supplier_simulation
 export run_debt_based_simulation
 
 include("examples/belgium.jl")
-export simulate_belgium, DEM_TAX, INCOME_TAX_BRACKETS
+export DEM_TAX, INCOME_TAX_BRACKETS
+export simulate_fixed_belgium, simulate_sumsy_belgium
 
 end

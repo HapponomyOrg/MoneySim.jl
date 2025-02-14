@@ -34,25 +34,26 @@ function plot_money_stock(dataframes::Union{DataFrame,Vector{DataFrame}},
         money_stock_labels = [money_stock_labels]
     end
 
-    for i in 1:length(dataframes)
-        label = money_stock_labels[i]
+    min_y = typemax(Currency)
+    max_y = typemin(Currency)
 
-        min_money_stock = minimum(dataframes[i].money_stock)
-        max_money_stock = maximum(dataframes[i].money_stock)
+    for i in 1:length(dataframes)
+        min_money_stock = isnothing(theoretical_min) ? minimum(dataframes[i].money_stock) : min(theoretical_min, minimum(dataframes[i].money_stock))
+        max_money_stock = isnothing(theoretical_max) ? maximum(dataframes[i].money_stock) : max(theoretical_max, maximum(dataframes[i].money_stock))
 
         if max_money_stock - min_money_stock < 1
             if isnothing(theoretical_min) && isnothing(theoretical_max)
                 min_y = round(min_money_stock) - 0.5
                 max_y = round(max_money_stock) + 0.5
             elseif isnothing(theoretical_min)
-                min_y = theoretical_max - 0.5
-                max_y = theoretical_max + 0.5
+                min_y = min(min_money_stock, theoretical_max - 0.5)
+                max_y = max(max_money_stock, theoretical_max + 0.5)
             elseif isnothing(theoretical_max)
-                min_y = theoretical_min - 0.5
-                max_y = theoretical_min + 0.5
+                min_y = min(min_money_stock, theoretical_min - 0.5)
+                max_y = max(max_money_stock, theoretical_min + 0.5)
             else
-                min_y = theoretical_min - 0.5
-                max_y = theoretical_max + 0.5
+                min_y = min(min_money_stock, theoretical_min - 0.5)
+                max_y = max(max_money_stock, theoretical_max + 0.5)
             end
         else
             if isnothing(theoretical_min) && isnothing(theoretical_max)
@@ -69,6 +70,10 @@ function plot_money_stock(dataframes::Union{DataFrame,Vector{DataFrame}},
                 max_y = max(theoretical_max, max_money_stock) + (max(theoretical_max, max_money_stock) - min(theoretical_min, min_money_stock)) / 10
             end
         end
+    end
+
+    for i in 1:length(dataframes)
+        label = money_stock_labels[i]
 
         if i == 1
             p = @df dataframes[i] plot(:money_stock, title=title, label=label, yrange=(min_y, max_y), xlabel="Periods", ylabel="Money stock")
@@ -151,7 +156,8 @@ function plot_wealth(data::Dict{WealthType, DataFrame},
 		label = labels[1],
 		title = title,
 		xlabel = "Time",
-		ylabel = ylabel
+		ylabel = ylabel,
+        legend = :inside
 	)
 
     for i in 2:length(percentiles)
@@ -232,38 +238,46 @@ function plot_non_broke_actors(dataframe::DataFrame, title::String="")
     plot(dataframe[!, :non_broke_actors], title=title, label="Non broke actors", xlabel="Time", ylabel="Non broke actors")
 end
 
-function plot_collected_tax(tax_target::Real,
+function plot_collected_tax(full_tax_target::Real,
+                            net_tax_target::Real,
+                            real_income::Real,
                             dataframe::Union{DataFrame, Vector{DataFrame}},
                             labels::Union{String, Vector{String}},
                             title::String="Collected taxes")
     if typeof(dataframe) == DataFrame
-        dataframe = [copy(dataframe)]
+        dataframes = [copy(dataframe)]
     else
+        dataframes = Vector{DataFrame}()
+
         for i in 1:length(dataframe)
-            dataframe[i] = copy(dataframe[i])
+            push!(dataframes, copy(dataframe[i]))
         end
     end
 
-    for i in 1:length(dataframe)
-        deleteat!(dataframe[i], 1)
+    for i in 1:length(dataframes)
+        deleteat!(dataframes[i], 1)
     end
 
     if typeof(labels) == String
         labels = [labels]
     end
 
-    the_plot = plot(fill(tax_target, size(dataframe[1][!, :collected_tax])[1]), label="Tax target", color="blue", title=title, xlabel = "Years", ylabel = "Tax")
+    the_plot = plot(fill(full_tax_target, size(dataframes[1][!, :collected_tax])[1]),
+                    label="Full Tax Target",
+                    color="red",
+                    title=title,
+                    xlabel = "Years",
+                    ylabel = "Tax",
+                    legend = :inside)
+    plot!(fill(net_tax_target, size(dataframes[1][!, :collected_tax])[1]), label="Net Tax Target", color="blue")
+    plot!(fill(real_income, size(dataframes[1][!, :collected_tax])[1]), label="Real income", color="green")
 
     for i in 1:length(dataframe)
-        plot!(dataframe[i][!, :collected_tax], label=labels[i])
+        plot!(dataframes[i][!, :collected_tax], label=labels[i])
     end
 
-    # for i in 1:length(dataframe)
-    #     plot!(dataframe[i][!, :collected_vat], label=labels[i] * " VAT")
-    # end
-
     for i in 1:length(dataframe)
-        plot!(dataframe[i][!, :collected_tax] + dataframe[i][!, :collected_vat], label=labels[i] * " + VAT")
+        plot!(dataframes[i][!, :collected_tax] + dataframes[i][!, :collected_vat], label=labels[i] * " + VAT")
     end
 
     return the_plot

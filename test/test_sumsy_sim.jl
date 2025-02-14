@@ -1,5 +1,7 @@
 using EconoSim
 using MoneySim
+using Test
+using Agents
 
 GI = 2000
 d = 0.01
