@@ -278,15 +278,19 @@ function gdp_yard_sale!(model::ABM,
     end
 
     gdp = model.gdp
+    transactions = 0
 
     # This can raise this cycle's GDP above the limit of model.min_gdp_per_cycle.
     for actor in allagents(model)
-        gdp += actor.income
+        income = actor.income
+        gdp += income
 
-        if actor.income > 0
-            model.data_transactions += 1
+        if income > 0
+            transactions += 1
         end
     end
+
+    model.data_transactions += transactions
 
     amount = 0
     min_transaction = model.data_min_transaction

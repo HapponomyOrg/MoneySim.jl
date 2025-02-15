@@ -137,6 +137,7 @@ end
 function plot_wealth(data::Dict{WealthType, DataFrame},
                     percentiles::Vector{Percentiles} = collect(instances(Percentiles));
                     title::String="",
+                    xlabel::String = "Time",
                     labels = nothing,
                     type::WealthType = PERCENTAGE)
     dataframe = data[type]
@@ -155,7 +156,7 @@ function plot_wealth(data::Dict{WealthType, DataFrame},
 		dataframe[!, Symbol(percentiles[1])],
 		label = labels[1],
 		title = title,
-		xlabel = "Time",
+		xlabel = xlabel,
 		ylabel = ylabel,
         legend = :inside
 	)

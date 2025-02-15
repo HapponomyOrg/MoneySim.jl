@@ -18,7 +18,7 @@ function check_termination(model::ABM)
     end
 
     if model.termination_flag && model.terminate(model)
-        model.run_steps = model.step
+        model.run_steps = get_step(model)
     end
 end
 
