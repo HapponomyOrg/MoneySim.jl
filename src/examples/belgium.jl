@@ -283,14 +283,14 @@ function simulate_sumsy_belgium(;sim_length::Int = 15 * YEAR,
                                 model_behaviors = process_model_sumsy!)
 
     sim_params = SimParams(sim_length)
-    population_params = TypedPopulationParams(num_actors = num_actors,
-                                                actor_types = population_types,
-                                                adjust_up = adjust_pop_up,
-                                                adjust_down = adjust_pop_down,
-                                                create_actor! = m -> create_sumsy_actor!(m,
-                                                                                        sumsy = SuMSy(2000, 0, DEMOGRAPHIC_DEM),
-                                                                                        sumsy_interval = MONTH,
-                                                                                        allow_negative_sumsy = allow_negative_sumsy))
+    population_params = RelativeTypedPopulationParams(num_actors = num_actors,
+                                                    actor_types = population_types,
+                                                    adjust_up = adjust_pop_up,
+                                                    adjust_down = adjust_pop_down,
+                                                    create_actor! = m -> create_sumsy_actor!(m,
+                                                                                            sumsy = SuMSy(2000, 0, DEMOGRAPHIC_DEM),
+                                                                                            sumsy_interval = MONTH,
+                                                                                            allow_negative_sumsy = allow_negative_sumsy))
     transaction_params = GDPYardSaleParams(gdp_period = YEAR,
                                             gdp_per_capita = GDP_PER_CAPITA * gdp_scaling,
                                             wealth_transfer_range = wealth_transfer:wealth_transfer:wealth_transfer,

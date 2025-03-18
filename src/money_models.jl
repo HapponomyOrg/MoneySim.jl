@@ -128,9 +128,9 @@ function create_StandardSuMSyParams(;sumsy_interval::Int,
                                     initial_non_gi_wealth::Real = 0,
                                     distribute::Bool = true)
     if distribute
-        distribute_wealth! = x -> equal_wealth_distribution!(x, initial_gi_wealth, initial_non_gi_wealth)
+        distribute_wealth! = x -> distribute_equal!(x, initial_gi_wealth, initial_non_gi_wealth)
     else
-        distribute_wealth! = x -> concentrated_wealth_distribution!(x, initial_gi_wealth, initial_non_gi_wealth)
+        distribute_wealth! = x -> concentrate_wealth!(x, initial_gi_wealth, initial_non_gi_wealth)
     end
 
     return StandardSuMSyParams(sumsy_interval = sumsy_interval,

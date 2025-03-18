@@ -338,13 +338,18 @@ end
 function run_consumer_supplier_simulation(sumsy::SuMSy;
                                             sumsy_interval::Int,
                                             sim_length::Int = 150,
+                                            num_suppliers::Int = 1,
                                             consumers_per_supplier::Int = 100,
                                             fulfilled_demand::Int = 1,
                                             net_profit::Real = 1,
                                             suppliers_gi_eligible = false,
                                             tax_scheme::Union{Nothing, TaxScheme} = nothing,
-                                            population_params = FixedPopulationParams(population = 0,
-                                                                                        create_actor! = m -> create_sumsy_actor!(m, sumsy = sumsy)),
+                                            population_params = AbsoluteTypedPopulationParams(actor_numbers = Dict(:supplier => num_suppliers,
+                                                                                                                    :consumer => consumers_per_supplier * num_suppliers),
+                                                                                        create_actor! = m -> create_sumsy_actor!(m,
+                                                                                                                                sumsy = sumsy,
+                                                                                                                                initialize = false, 
+                                                                                                                                sumsy_interval = sumsy_interval)),
                                             data_handler::DataHandler = full_data_handler(sumsy_interval),
                                             termination_handler::Union{TerminationHandler, Nothing} = nothing,
                                             initialisations::Vector{<: Function} = Vector{Function}(),
@@ -356,7 +361,7 @@ function run_consumer_supplier_simulation(sumsy::SuMSy;
                                                 transactional = false,
                                                 configure_sumsy_actors! = model -> typed_gi_actors!(model, gi_eligible_types),
                                                 initial_gi_wealth = telo(sumsy))
-    consumer_supply_params = FixedConsumerSupplyParams(1, consumers_per_supplier, fulfilled_demand, net_profit)
+    consumer_supply_params = FixedConsumerSupplyParams(num_suppliers, consumers_per_supplier, fulfilled_demand, net_profit)
 
     return run_sumsy_simulation(sumsy_params,
                                 sim_params = sim_params,

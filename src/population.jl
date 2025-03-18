@@ -84,10 +84,29 @@ function adjust_vector_population!(model::ABM)
     end
 end
 
+struct AbsoluteTypedPopulationParams{FC <: Function} <: PopulationParams
+    actor_numbers::Dict{Symbol, Int}
+    create_actor!::FC
+    AbsoluteTypedPopulationParams(;actor_numbers::Dict{Symbol, Int},
+                                    create_actor!::Function = create_monetary_actor) =
+                                            new{typeof(create_actor!)}(actor_numbers,
+                                                                        create_actor!)
+end
+
+function initialize_population_model!(model::ABM, population_params::AbsoluteTypedPopulationParams)
+    actor_numbers = population_params.actor_numbers
+
+    for (type, num) in actor_numbers
+        for _ in 1:num
+            add_type!(add_actor!(model, population_params.create_actor!(model)), type)
+        end
+    end
+end
+
 """
-    TypedPopulationParams{FC <: Function}
+    RelativeTypedPopulationParams{FC <: Function}
     * num_actors::Int - The number of actors to be created for the simulation.
-    * types::Dict{Symbol, Int} - A dictionary of age types and their respective percentages.
+    * actor_types::Dict{Symbol, Int} - A dictionary of age types and their respective percentages.
     * adjust_up::Symbol - THe symbol of the age type used if the number of actors needs to be adjusted up.
     * adjust_down::Symbol - The symbol of the age type used if the number of actors needs to be adjusted down.
     * create_actor!::FC - A function that creates an actor for the simulation.
@@ -96,25 +115,25 @@ end
     The numbers in the types dictionary are scaled to the number of actual actors in the simulation.
     The scaled number of actors is adjusted up or down if the sum of the scaled numbers do not exactly match the number of actors.
 """
-struct TypedPopulationParams{FC <: Function} <: PopulationParams
+struct RelativeTypedPopulationParams{FC <: Function} <: PopulationParams
     num_actors::Int
     actor_types::Dict{Symbol, Float64}
     adjust_up::Symbol
     adjust_down::Symbol
     create_actor!::FC
-    TypedPopulationParams(;num_actors::Int,
-                            actor_types::Dict{Symbol, <:Real},
-                            adjust_up::Symbol,
-                            adjust_down::Symbol,
-                            create_actor!::Function = create_monetary_actor) =
-                                    new{typeof(create_actor!)}(num_actors,
-                                                                actor_types,
-                                                                adjust_up,
-                                                                adjust_down,
-                                                                create_actor!)
+    RelativeTypedPopulationParams(;num_actors::Int,
+                                    actor_types::Dict{Symbol, <:Real},
+                                    adjust_up::Symbol,
+                                    adjust_down::Symbol,
+                                    create_actor!::Function = create_monetary_actor) =
+                                            new{typeof(create_actor!)}(num_actors,
+                                                                        actor_types,
+                                                                        adjust_up,
+                                                                        adjust_down,
+                                                                        create_actor!)
 end
 
-function initialize_population_model!(model::ABM, population_params::TypedPopulationParams)
+function initialize_population_model!(model::ABM, population_params::RelativeTypedPopulationParams)
     actor_percentages = population_params.actor_types
     actor_numbers = Dict{Symbol, Int}()
     num_actors = population_params.num_actors

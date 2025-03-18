@@ -12,7 +12,7 @@ export calculate_percentile_ranges
 
 include("population.jl")
 export PopulationParams
-export PopulationVectorParams, FixedPopulationParams, VaryingPopulationParams, TypedPopulationParams
+export PopulationVectorParams, FixedPopulationParams, VaryingPopulationParams, AbsoluteTypedPopulationParams, RelativeTypedPopulationParams
 export adjust_vector_population!
 export create_sumsy_actor!
 export kill_broke_actors!
@@ -104,5 +104,7 @@ export run_debt_based_simulation
 include("examples/belgium.jl")
 export DEM_TAX, INCOME_TAX_BRACKETS
 export simulate_fixed_belgium, simulate_sumsy_belgium
+
+include("examples/alternative_sim.jl")
 
 end

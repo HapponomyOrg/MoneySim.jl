@@ -11,7 +11,7 @@ function adjusted_asset_value!(actor::BalanceActor)
     balance = get_balance(actor)
 
     if balance isa SuMSyBalance && is_transactional(balance)
-        adjust_sumsy_balance!(balance, actor.model.step)
+        adjust_sumsy_balance!(balance, actor.get_step(model))
     end
 
     return asset_value(balance, SUMSY_DEP)
@@ -183,7 +183,6 @@ function add_gdp_properties!(model::ABM, params::YardSaleParams)
     properties[:current_gdp_cycle] = 1
     properties[:gdp] = CUR_0
     properties[:min_gdp_per_cycle] = model.data_gdp / model.gdp_period
-    properties[:data_transactions] = 0
     properties[:data_min_transaction] = typemax(Currency)
     properties[:data_max_transaction] = typemin(Currency)
 end
@@ -201,6 +200,7 @@ end
 function initialize_yard_sale!(model::ABM, params::YardSaleParams)
     properties = abmproperties(model)
 
+    properties[:data_transactions] = 0
     properties[:wealth_transfer_range] = params.wealth_transfer_range
     properties[:minimal_wealth_transfer] = params.minimal_wealth_transfer
     properties[:non_broke_actor_ids] = Vector{Int}(undef, nagents(model))
@@ -258,6 +258,8 @@ function yard_sale!(model::ABM,
             break
         end
     end
+
+    model.data_transactions += transactions
 end
 
 """
@@ -290,8 +292,6 @@ function gdp_yard_sale!(model::ABM,
         end
     end
 
-    model.data_transactions += transactions
-
     amount = 0
     min_transaction = model.data_min_transaction
     max_transaction = model.data_max_transaction
@@ -299,10 +299,13 @@ function gdp_yard_sale!(model::ABM,
 
     while gdp < max_gdp && length(model.non_broke_actor_ids) > 1
         _, _, amount = atomic_yard_sale!(model, determine_direction)
+        transactions += 1
         gdp += amount
         min_transaction = min(min_transaction, amount)
         max_transaction = max(max_transaction, amount)
     end
+
+    model.data_transactions += transactions
 
     model.data_min_transaction = min_transaction
     model.data_max_transaction = max_transaction
@@ -349,7 +352,6 @@ function atomic_yard_sale!(model::ABM,
     transfer_asset!(model, source, destination, SUMSY_DEP, amount)
     add_expenses!(source, amount)
     add_income!(destination, amount)
-    model.data_transactions += 1
 
     if model.remove_broke_actors
         if is_broke(target1)
@@ -460,7 +462,36 @@ function initialize_transaction_model!(model::ABM, params::FixedConsumerSupplyPa
     num_consumers() = params.consumers_per_supplier
     demand() = params.demand
 
-    add_suppliers!(params.num_suppliers, price, num_consumers, demand, model)
+    connect_consumers_with_suppliers!(num_consumers, price, demand, model)
+end
+
+function connect_consumers_with_suppliers!(num_consumers, price, demand, model::ABM)
+    supliers = []
+    consumers = []
+
+    for actor in allagents(model)
+        if has_type(actor, :supplier)
+            push!(supliers, actor)
+        elseif has_type(actor, :consumer)
+            push!(consumers, actor)
+        end
+    end
+
+    consumer_index = 1
+
+    for supplier in supliers
+        supplier.price = price()
+        supplier.model = model
+
+        for _ in 1:num_consumers()
+            consumer = consumers[consumer_index]
+            consumer.supplier = supplier
+            consumer.demand = demand
+            consumer.model = model
+            add_behavior!(consumer, satisfy_demand!)
+            consumer_index += 1
+        end
+    end
 end
 
 function initialize_transaction_model!(model::ABM, params::VariableConsumerSupplierParams)
@@ -506,5 +537,5 @@ function satisfy_demand!(model::ABM, actor::BalanceActor)
                     get_balance(actor.supplier),
                     SUMSY_DEP,
                     demand * price,
-                    timestamp = model.step)
+                    timestamp = get_step(model))
 end
