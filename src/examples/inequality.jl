@@ -9,6 +9,15 @@ const M2 = Currency(639000000000)
 # Average of year 2023
 # Source: https://tradingeconomics.com/belgium/money-supply-m2
 
+const AVG_INCOME = 4318
+# Source: https://www.jobat.be/nl/art/belg-verdient-gemiddeld-4318-euro#:~:text=1%20van%20895-,Belg%20verdient%20gemiddeld%204.318%20euro,die%20worden%20steeds%20beter%20beloond.
+
+const AVG_COST_OF_LIVING = 927.80
+# Source = https://werelddata.nl/kosten-van-levensonderhoud/belgie#:~:text=In%20het%20kort,5.1%25%20lager%20dan%20in%20Nederland.
+
+const AVG_RENT = 1007
+# Source: https://www.livios.be/nl/artikel/100605/problemen-op-de-huurmarkt-stijgende-huurprijzen-en-tekort-aan-huurwoningen/#:~:text=Huren%20is%20er%20ook%20niet,gemiddeld%20841%20euro%20per%20maand.
+
 const INCOME_TAX_BRACKETS = [(0.1, 0.25), (15200, 0.4), (26830, 0.45), (46440, 0.5)]
 # Source https://financien.belgium.be/nl/particulieren/belastingaangifte/belastingtarieven-inkomen/belastingtarieven#q1
 
@@ -23,6 +32,12 @@ const PERCENT_18_TO_64 = POP_18_TO_64 / POPULATION
 const PERCENT_65_PLUS = POP_65_PLUS / POPULATION
 
 const M2_PER_CAPITA = M2 / POPULATION
+
+const AVG_GROSS_MONTHLY_INCOME = 4076
+const AVG_GROSS_YEARLY_INCOME = AVG_GROSS_MONTHLY_INCOME * 12
+# Source: https://statbel.fgov.be/nl/themas/werk-opleiding/lonen-en-arbeidskosten/gemiddelde-bruto-maandlonen
+
+const AVG_NET_MONTHLY_INCOME = (AVG_GROSS_YEARLY_INCOME - calculate_time_range_demurrage(AVG_GROSS_YEARLY_INCOME, make_tiers(INCOME_TAX_BRACKETS), 0, 1, 1, false)) / 12
 
 const GDP_PER_CAPITA = 44361
 # GDP per capita for Belgium in 2023.
@@ -66,15 +81,16 @@ const DEMOGRAPHIC_DEM = AVG_GI / M2_PER_CAPITA
 
 const DEM_TAX = SUMSY_MONTHLY_EXPENSES_PER_CAPITA / M2_PER_CAPITA
 
-const INEQUALITY_DATA = InequalityData(9347930,     # Top 0.1%
-                                        3988639.8,    # Top 1%
-                                        1388465.6,    # Top 10%
-                                        266649.9,     # High middle 40%
-                                        51125.0871,   # Low middle 40%
-                                        -709.6,       # Bottom 10%
-                                        -44162.4,     # Bottom 1%
+const INEQUALITY_DATA = InequalityData(11198961.8532,     # Top 0.1%
+                                        4765562.6228,    # Top 1%
+                                        1661647.7412,    # Top 10%
+                                        320263.1638,     # High middle 40%
+                                        61451.1864,   # Low middle 40%
+                                        -848.8797,       # Bottom 10%
+                                        -52810.3328,     # Bottom 1%
                                         nothing,      # Bottom 0.1% - data not available
                                         money_per_head = M2_PER_CAPITA)
+# Source https://wid.world - Belgium, 2023, Euro (accessed 0n 14-04-2025)
 
 const MONTH = 1
 const YEAR = 12
