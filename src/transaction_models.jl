@@ -11,7 +11,7 @@ function adjusted_asset_value!(actor::BalanceActor)
     balance = get_balance(actor)
 
     if balance isa SuMSyBalance && is_transactional(balance)
-        adjust_sumsy_balance!(balance, actor.get_step(model))
+        adjust_sumsy_balance!(balance, get_step(actor.model))
     end
 
     return asset_value(balance, SUMSY_DEP)
@@ -406,12 +406,29 @@ function coinflip(target_1::AbstractActor,
     return source, destination
 end
 
+"""
+    wealth_weighted_direction(target_1::AbstractActor,
+                                asset_value_1::Currency,
+                                target_2::AbstractActor,
+                                asset_value_2::Currency,
+                                avg_money_stock::Currency,
+                                wealth_factor::Real = 1.0)
+    * target_1: Actor 1
+    * asset_value_1: Asset value of actor 1
+    * target_2: Actor 2
+    * asset_value_2: Asset value of actor 2
+    * wealth_factor: Relative importance of wealth. This determines the advantage of the wealthier actor. Higher values mean higher advantage.
+    * avg_money_stock: Average money stock of all actors
+    * scaling_factor: Factor to use for scaling the wealth advantage.
+"""
 function wealth_weighted_direction(target_1::AbstractActor,
                                     asset_value_1::Currency,
                                     target_2::AbstractActor,
-                                    asset_value_2::Currency,
-                                    wealth_factor::Real = 1.0)
-    probabliity_1_to_2 = (asset_value_1 - asset_value_2) / max(asset_value_1, asset_value_2) * wealth_factor / 2 + 0.5
+                                    asset_value_2::Currency;
+                                    wealth_factor::Real = 1.0,
+                                    avg_money_stock::Currency,
+                                    scaling_factor::Real = 1.0)
+    probabliity_1_to_2 = (wealth_factor * (asset_value_1 - asset_value_2) / avg_money_stock * scaling_factor) + 0.5
 
     if rand() <= probabliity_1_to_2
         source = target_1
