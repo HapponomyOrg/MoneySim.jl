@@ -3,12 +3,15 @@ module MoneySim
 using EconoSim
 using Infiltrator
 
+include("types.jl")
+export TAX_TYPE, INCOME_TAX, DEMURRAGE_TAX, VAT_ONLY
+
 include("utils.jl")
 export BROKE_THRESHOLD
 export is_broke, one_non_broke
 export remove_index
 export Percentiles, BOTTOM_0_1, BOTTOM_1, BOTTOM_10, BOTTOM_50, LOW_MIDDLE_40, MIDDLE_50, HIGH_MIDDLE_40, TOP_10, TOP_1, TOP_0_1
-export calculate_percentile_ranges
+export calculate_percentile_ranges, calculate_taxes
 
 include("population.jl")
 export PopulationParams
@@ -50,7 +53,6 @@ export add_income!, add_expenses!
 export gdp_yard_sale!, gdp_baseline_yard_sale!
 
 include("tax_scheme.jl")
-export TAX_TYPE, INCOME_TAX, DEMURRAGE_TAX, VAT_ONLY
 export TaxScheme, FixedTaxScheme
 export distribute_taxes!
 export initialize_tax_scheme
@@ -101,10 +103,7 @@ export run_sumsy_simulation, run_sumsy_gdp_simulation, run_taxed_sumsy_gdp_simul
 export run_consumer_supplier_simulation
 export run_debt_based_simulation
 
-include("examples/belgium.jl")
-export DEM_TAX, INCOME_TAX_BRACKETS
-export simulate_fixed_belgium, simulate_sumsy_belgium
-
+include("examples/inequality.jl")
 include("examples/alternative_sim.jl")
 
 end

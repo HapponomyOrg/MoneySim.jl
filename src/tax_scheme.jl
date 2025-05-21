@@ -1,7 +1,5 @@
 using Random
 
-@enum TAX_TYPE INCOME_TAX = 1 DEMURRAGE_TAX = 2 VAT_ONLY = 3
-
 abstract type TaxScheme{C <: FixedDecimal} end
 
 """
