@@ -7,7 +7,13 @@ set_currency_precision!(4)
 
 const M2 = Currency(639000000000)
 # Average of year 2023
-# Source: https://tradingeconomics.com/belgium/money-supply-m2
+# Source: https://tradingeconomics.com/belgium/money-supply-M
+
+const M3 = Currency(674000000000)
+# Average of year 2023
+# Source: https://tradingeconomics.com/belgium/money-supply-m3
+
+const M = M3
 
 const AVG_INCOME = 4318
 # Source: https://www.jobat.be/nl/art/belg-verdient-gemiddeld-4318-euro#:~:text=1%20van%20895-,Belg%20verdient%20gemiddeld%204.318%20euro,die%20worden%20steeds%20beter%20beloond.
@@ -31,7 +37,7 @@ const PERCENT_MIN_18 = POP_MIN_18 / POPULATION
 const PERCENT_18_TO_64 = POP_18_TO_64 / POPULATION
 const PERCENT_65_PLUS = POP_65_PLUS / POPULATION
 
-const M2_PER_CAPITA = M2 / POPULATION
+const M_PER_CAPITA = M / POPULATION
 
 const AVG_GROSS_MONTHLY_INCOME = 4076
 const AVG_GROSS_YEARLY_INCOME = AVG_GROSS_MONTHLY_INCOME * 12
@@ -77,9 +83,9 @@ const GI_18_TO_64 = 2000
 const GI_65_PLUS = AVG_MONTHLY_PENSION
 
 const AVG_GI = (GI_MIN_18 * POP_MIN_18 + GI_18_TO_64 * POP_18_TO_64 + GI_65_PLUS * POP_65_PLUS) / POPULATION
-const DEMOGRAPHIC_DEM = AVG_GI / M2_PER_CAPITA
+const DEMOGRAPHIC_DEM = AVG_GI / M_PER_CAPITA
 
-const DEM_TAX = SUMSY_MONTHLY_EXPENSES_PER_CAPITA / M2_PER_CAPITA
+const DEM_TAX = SUMSY_MONTHLY_EXPENSES_PER_CAPITA / M_PER_CAPITA
 
 const INEQUALITY_DATA = InequalityData(11198961.8532,     # Top 0.1%
                                         4765562.6228,    # Top 1%
@@ -89,8 +95,8 @@ const INEQUALITY_DATA = InequalityData(11198961.8532,     # Top 0.1%
                                         -848.8797,       # Bottom 10%
                                         -52810.3328,     # Bottom 1%
                                         nothing,      # Bottom 0.1% - data not available
-                                        money_per_head = M2_PER_CAPITA)
-# Source https://wid.world - Belgium, 2023, Euro (accessed 0n 14-04-2025)
+                                        money_per_head = M_PER_CAPITA)
+# Source https://wid.world - Belgium, 2023, Euro (accessed on 14-04-2025)
 
 const MONTH = 1
 const YEAR = 12
@@ -193,7 +199,7 @@ function simulate_fixed_belgium(;sim_length::Int = 200 * YEAR,
         model = create_sumsy_model(sumsy_interval = MONTH,
                                     model_behaviors = process_model_sumsy!)
         create_actor! = m -> create_sumsy_actor!(m,
-                                                    sumsy = SuMSy(2000, 0, 2000 / M2_PER_CAPITA),
+                                                    sumsy = SuMSy(2000, 0, 2000 / M_PER_CAPITA),
                                                     sumsy_interval = MONTH,
                                                     allow_negative_sumsy = true)
     else
@@ -203,7 +209,7 @@ function simulate_fixed_belgium(;sim_length::Int = 200 * YEAR,
 
     sim_params = SimParams(sim_length)
 
-    population_params = TypedPopulationParams(num_actors = num_actors,
+    population_params = RelativeTypedPopulationParams(num_actors = num_actors,
                                                 actor_types = population_types,
                                                 adjust_up = adjust_pop_up,
                                                 adjust_down = adjust_pop_down,
@@ -218,7 +224,7 @@ function simulate_fixed_belgium(;sim_length::Int = 200 * YEAR,
     if !isnothing(inequality_data)
         monetary_params = FixedWealthParams(m -> distribute_inequal!(m, inequality_data))
     else
-        monetary_params = FixedWealthParams(m -> distribute_equal!(m, M2_PER_CAPITA))
+        monetary_params = FixedWealthParams(m -> distribute_equal!(m, M_PER_CAPITA))
     end
 
     if !isnothing(tax_type)

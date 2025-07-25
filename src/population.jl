@@ -7,7 +7,7 @@ struct FixedPopulationParams{F <: Function} <: PopulationParams
     population::Integer
     create_actor!::F
     FixedPopulationParams(;population::Integer,
-                            create_actor! = create_monetary_actor) = new{typeof(create_actor!)}(population, create_actor!)
+                            create_actor! = create_monetary_actor!) = new{typeof(create_actor!)}(population, create_actor!)
 end
 
 function initialize_population_model!(model::ABM, population_params::FixedPopulationParams)
@@ -88,7 +88,7 @@ struct AbsoluteTypedPopulationParams{FC <: Function} <: PopulationParams
     actor_numbers::Dict{Symbol, Int}
     create_actor!::FC
     AbsoluteTypedPopulationParams(;actor_numbers::Dict{Symbol, Int},
-                                    create_actor!::Function = create_monetary_actor) =
+                                    create_actor!::Function = create_monetary_actor!) =
                                             new{typeof(create_actor!)}(actor_numbers,
                                                                         create_actor!)
 end
@@ -125,7 +125,7 @@ struct RelativeTypedPopulationParams{FC <: Function} <: PopulationParams
                                     actor_types::Dict{Symbol, <:Real},
                                     adjust_up::Symbol,
                                     adjust_down::Symbol,
-                                    create_actor!::Function = create_monetary_actor) =
+                                    create_actor!::Function = create_monetary_actor!) =
                                             new{typeof(create_actor!)}(num_actors,
                                                                         actor_types,
                                                                         adjust_up,

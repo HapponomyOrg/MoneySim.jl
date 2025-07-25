@@ -109,6 +109,7 @@ function run_fixed_wealth_simulation(;
                                     num_actors::Int = 1000,
                                     num_transactions::Int = 200,
                                     initial_wealth::Real = 200000,
+                                    wealth_transfer::Union{StepRange, StepRangeLen} = 0.2:0.2:0.2,
                                     remove_broke_actors::Bool = true,
                                     sim_length::Int = 150,
                                     period::Int = 30,
@@ -122,7 +123,7 @@ function run_fixed_wealth_simulation(;
     sim_params = SimParams(sim_length * period)
     fixed_wealth_params = FixedWealthParams(x -> distribute_equal!(x, initial_wealth))
     yard_sale_params = StandardYardSaleParams(num_transactions:num_transactions,
-                                                0.2:0.2:0.2,
+                                                wealth_transfer,
                                                 0,
                                                 remove_broke_actors)
 
