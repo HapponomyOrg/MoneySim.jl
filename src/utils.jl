@@ -42,15 +42,18 @@ end
 @enum Percentiles BOTTOM_0_1 BOTTOM_1 BOTTOM_10 BOTTOM_50 LOW_MIDDLE_40 HIGH_MIDDLE_40 TOP_10 TOP_1 TOP_0_1
 
 function calculate_percentile_ranges(num_actors::Int)
-    bottom_0_1 = 1:Int64(round(num_actors / 1000))
-    bottom_1 = 1:Int64(round(num_actors / 100))
-    bottom_10 = 1:Int64(round(num_actors / 10))
-    bottom_50 = 1:Int64(round(num_actors / 2))
-    low_middle_40 = (bottom_10[end] + 1):Int64(round(num_actors / 2))
-    high_middle_40 = (low_middle_40[end] + 1):Int64(round(num_actors - num_actors / 10))
-    top_10 = (high_middle_40[end] + 1):num_actors
-    top_1 = Int64(round(num_actors - num_actors / 100 + 1)):num_actors
-    top_0_1 = Int64(round(num_actors + 1 - num_actors / 1000)):num_actors
+    bottom_0_1 = 1:max(Int64(round(num_actors / 1000)), 1)
+    bottom_1 = 1:max(Int64(round(num_actors / 100)), 1)
+    bottom_10 = 1:max(Int64(round(num_actors / 10)), 1)
+    bottom_50 = 1:max(Int64(round(num_actors / 2)), 1)
+
+    low_middle_40 = min(bottom_10[end] + 1, Int64(round(num_actors / 2))):Int64(round(num_actors / 2))
+    high_middle_40 = (low_middle_40[end] + 1):max(Int64(round(num_actors - num_actors / 10)), low_middle_40[end] + 1)
+
+    top_10 = min(high_middle_40[end] + 1, num_actors):num_actors
+    top_1 = min(Int64(round(num_actors - num_actors / 100 + 1)), num_actors):num_actors
+    top_0_1 = min(Int64(round(num_actors + 1 - num_actors / 1000)), num_actors):num_actors
+
     return [bottom_0_1, bottom_1, bottom_10, bottom_50, low_middle_40, high_middle_40, top_10, top_1, top_0_1]
 end
 
