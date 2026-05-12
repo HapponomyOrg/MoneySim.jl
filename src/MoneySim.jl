@@ -1,10 +1,10 @@
 module MoneySim
 
+@enum TAX_TYPE NO_TAX INCOME_TAX DEMURRAGE_TAX VAT_ONLY
+export TAX_TYPE, INCOME_TAX, DEMURRAGE_TAX, VAT_ONLY
+
 using EconoSim
 using Infiltrator
-
-include("types.jl")
-export TAX_TYPE, INCOME_TAX, DEMURRAGE_TAX, VAT_ONLY
 
 include("utils.jl")
 export BROKE_THRESHOLD
@@ -54,6 +54,7 @@ export gdp_yard_sale!, gdp_baseline_yard_sale!
 
 include("tax_scheme.jl")
 export TaxScheme, FixedTaxScheme
+export DistributionType, D_TAX, D_VAT
 export distribute_taxes!
 export initialize_tax_scheme
 
@@ -66,7 +67,7 @@ export borrow_income, borrow_when_poor, borrow_when_rich, ubi_borrow_when_poor, 
 
 include("inequality.jl")
 export InequalityData
-export distribute_inequal!
+export distribute_inequal!, scale_inequality_data
 
 include("money_models.jl")
 export ModelMoneyModelParams, FixedWealthParams, StandardSuMSyParams, DebtBasedParams
@@ -75,7 +76,7 @@ export distribute_equal!, concentrate_wealth!, distribute_inequal!
 export percentage_gi_actors!, mixed_actors!, typed_gi_actors!, type_based_sumsy_actors!
 
 include("data_analysis.jl")
-export WealthType, PERCENTAGE, NOMINAL, SCALED
+export WealthType, PERCENTAGE, AVERAGE, NOMINAL, SCALED, WEALTH_GINI, INCOME_GINI
 export analyse_money_stock, analyse_wealth, analyse_type_wealth
 
 include("termination_handler.jl")
@@ -103,7 +104,19 @@ export run_sumsy_simulation, run_sumsy_gdp_simulation, run_taxed_sumsy_gdp_simul
 export run_consumer_supplier_simulation
 export run_debt_based_simulation
 
-include("examples/inequality.jl")
-include("examples/alternative_sim.jl")
+include("country_simulations/country_data.jl")
+include("country_simulations/data_be.jl")
+include("country_simulations/data_nl.jl")
+include("country_simulations/inequality_sim.jl")
+export PopulationType, P_FIXED, P_DEMOGRAPHIC
+export MonetaryType, M_FIXED, M_SUMSY, M_DEBT_BASED
+export WealthDistribution, W_EQUAL, W_UNEQUAL
+export WealtScale, WS_WEALTH, WS_MONEY_STOCK
+export IncomeScale, IS_INCOME, IS_GDP
+export Taxes, T_NO_TAX, T_INCOME_TAX, T_DEM_TAX, T_GDP_FLAT_TAX, T_VAT_ONLY
+export MONTH, YEAR
+export Country, BE, NL
+export simulate_country
+export average_wealth
 
 end

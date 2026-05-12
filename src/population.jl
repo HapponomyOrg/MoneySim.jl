@@ -106,7 +106,7 @@ end
 """
     RelativeTypedPopulationParams{FC <: Function}
     * num_actors::Int - The number of actors to be created for the simulation.
-    * actor_types::Dict{Symbol, Int} - A dictionary of age types and their respective percentages.
+    * actor_types::Dict{Symbol, Float64} - A dictionary of age types and their respective percentages.
     * adjust_up::Symbol - THe symbol of the age type used if the number of actors needs to be adjusted up.
     * adjust_down::Symbol - The symbol of the age type used if the number of actors needs to be adjusted down.
     * create_actor!::FC - A function that creates an actor for the simulation.

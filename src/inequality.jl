@@ -13,15 +13,7 @@ using Agents
     * low_middle_40::C : the average wealth of the low middle 40%.
     * bottom_10::C : the average wealth of the bottom 10%.
     * bottom_1::Union{Nothing, C} : the average wealth of the bottom 1%. Nothing if not applicable.
-
-    When one or more of the optional tiers are defined, the wealth of the remaining actors of the tier(s) it belongs to is recalculated.
-
-    Example:
-    If there are 1000 actors and the average wealth of the top 0.1% is defined, then the one actor that is the top 0.1% is assigned that wealth.
-    For the 9 remaining actors that represent the top 1%, their average wealth is recalculated as follows:
-    avg_wealth = (avg_wealth_of_top_1 * 10 - avg_wealth_of_top_0_1) / 9.
-
-    If top_1 is nothing, it is assumed that top_0_1 is also nothing. The same is true for bottom_1 and bottom_0_1.
+    * bottom_0_1::Union{Nothing, C} : the average wealth of the bottom 1%. Nothing if not applicable.
 """
 struct InequalityData{C <: FixedDecimal}
     top_0_1::Union{Nothing, C}
@@ -32,6 +24,28 @@ struct InequalityData{C <: FixedDecimal}
     bottom_10::C
     bottom_1::Union{Nothing, C}
     bottom_0_1::Union{Nothing, C}
+    InequalityData(top_0_1::Union{Nothing, Real},
+                    top_1::Union{Nothing, Real},
+                    top_10::Real,
+                    high_middle_40::Real,
+                    low_middle_40::Real,
+                    bottom_10::Real,
+                    bottom_1::Union{Nothing, Real},
+                    bottom_0_1::Union{Nothing, Real}) = new{Currency}(top_0_1,
+                                                            top_1,
+                                                            top_10,
+                                                            high_middle_40,
+                                                            low_middle_40,
+                                                            bottom_10,
+                                                            bottom_1,
+                                                            bottom_0_1)
+end
+
+function average_wealth(inequality_data::InequalityData)
+    return Currency(inequality_data.bottom_10 * 0.1
+                    + inequality_data.low_middle_40 * 0.4
+                    + inequality_data.high_middle_40 * 0.4
+                    + inequality_data.top_10 * 0.1)
 end
 
 function adjust_for_overlap(slice_0_1::Union{Nothing, Real},
@@ -54,68 +68,13 @@ function adjust_for_overlap(slice_0_1::Union{Nothing, Real},
 end
 
 """
-    InequalityData(top_0_1::Union{Nothing, Real},
-                   top_1::Union{Nothing, Real},
-                   top_10::Real,
-                   high_middle_40::Real,
-                   low_middle_40::Real,
-                   bottom_10::Real,
-                   bottom_1::Union{Nothing, Real},
-                   bottom_0_1::Union{Nothing, Real};
-                   money_per_head::Union{Nothing, Real} = nothing,
-                   allow_negatives::Bool = false)
+    adjust_for_overlap(inequality_data::InequalityData, num_actors::Int)
 
-    * top_0_1::Union{Nothing, Real} : the average wealth of the top 0.1%. Nothing if not applicable.
-    * top_1::Union{Nothing, Real} : the average wealth of the top 1%. Nothing if not applicable.
-    * top_10::Real : the average wealth of the top 10%.
-    * high_middle_40::Real : the average wealth of the high middle 40%.
-    * low_middle_40::Real : the average wealth of the low middle 40%.
-    * bottom_10::Real : the average wealth of the bottom 10%.
-    * bottom_1::Union{Nothing, Real} : the average wealth of the bottom 1%. Nothing if not applicable.
-    * bottom_0_1::Union{Nothing, Real} : the average wealth of the bottom 0.1%. Nothing if not applicable.
-    * money_per_head::Union{Nothing, Real} : the amount of money per head. Nothing if not applicable.
-                                             If defined, the wealth of each tier is proportionally scaled to this value.
-    * allow_negatives::Bool : whether or not to allow negative wealth. Default is false.
-
-    Returns an InequalityData object.
+    Adjusts the inequality data for overlap in the percentiles according to the number of actors.
+    If there are not enough actors to represent all percentiles, the 
 """
-function InequalityData(top_0_1::Union{Nothing, Real},
-                        top_1::Union{Nothing, Real},
-                        top_10::Real,
-                        high_middle_40::Real,
-                        low_middle_40::Real,
-                        bottom_10::Real,
-                        bottom_1::Union{Nothing, Real},
-                        bottom_0_1::Union{Nothing, Real};
-                        money_per_head::Union{Nothing, Real} = nothing)
-    money_wealth_ratio = 1
-
-    # Scale to money per head
-    if !isnothing(money_per_head)
-        avg_money = round(top_10 * 0.1
-                            + high_middle_40 * 0.4
-                            + low_middle_40 * 0.4
-                            + bottom_10 * 0.1,
-                            digits = 4)
-        money_wealth_ratio = money_per_head / avg_money
-    end
-
-    return InequalityData{Currency}(isnothing(top_0_1) ? nothing : top_0_1 * money_wealth_ratio,
-                                    isnothing(top_1) ? nothing : top_1 * money_wealth_ratio,
-                                    top_10 * money_wealth_ratio,
-                                    high_middle_40 * money_wealth_ratio,
-                                    low_middle_40 * money_wealth_ratio,
-                                    bottom_10 * money_wealth_ratio,
-                                    isnothing(bottom_1) ? nothing : bottom_1 * money_wealth_ratio,
-                                    isnothing(bottom_0_1) ? nothing : bottom_0_1 * money_wealth_ratio)
-end
-
-function distribute_inequal_wealth!(actors::Vector{<:AbstractActor},
-                                    inequality_data::InequalityData)
-    num_actors = length(actors)
-    percentiles = calculate_percentile_ranges(num_actors)
-    wealth_vector = Vector{Currency}()
-
+function adjust_for_overlap(inequality_data::InequalityData,
+                            num_actors::Int)
     bottom_0_1 = inequality_data.bottom_0_1
     bottom_1 = inequality_data.bottom_1
     bottom_10 = inequality_data.bottom_10
@@ -133,6 +92,61 @@ function distribute_inequal_wealth!(actors::Vector{<:AbstractActor},
         top_0_1, top_1, top_10 = adjust_for_overlap(nothing, nothing, top_10)
         bottom_0_1, bottom_1, bottom_10 = adjust_for_overlap(nothing, nothing, bottom_10)
     end
+
+    return bottom_0_1, bottom_1, bottom_10, top_10, top_1, top_0_1
+end
+
+"""
+    scale_inequality_data(InequalityData::inequality_data, amount_per_capita::Real)
+
+    Scales every percentile to match the new average amount per capita.
+    * inequality_data::InequalityData - The original inequality data.
+    * amount_per_capita::Real - The average wealth/income/capital per capita to scale to.
+    * Returns: a new, scaled InequalityData structure.
+"""
+function scale_inequality_data(inequality_data::InequalityData, amount_per_capita::Real)
+    avg_amount = round(inequality_data.top_10 * 0.1
+                        + inequality_data.high_middle_40 * 0.4
+                        + inequality_data.low_middle_40 * 0.4
+                        + inequality_data.bottom_10 * 0.1,
+                        digits = 4)
+
+    scaled_amount_ratio = amount_per_capita / avg_amount
+
+    return InequalityData(isnothing(inequality_data.top_0_1) ? nothing : inequality_data.top_0_1 * scaled_amount_ratio,
+                            isnothing(inequality_data.top_1) ? nothing : inequality_data.top_1 * scaled_amount_ratio,
+                            inequality_data.top_10 * scaled_amount_ratio,
+                            inequality_data.high_middle_40 * scaled_amount_ratio,
+                            inequality_data.low_middle_40 * scaled_amount_ratio,
+                            inequality_data.bottom_10 * scaled_amount_ratio,
+                            isnothing(inequality_data.bottom_1) ? nothing : inequality_data.bottom_1 * scaled_amount_ratio,
+                            isnothing(inequality_data.bottom_0_1) ? nothing : inequality_data.bottom_0_1 * scaled_amount_ratio)
+end
+
+"""
+    distribute_inequal_wealth!(actors::Vector{<:AbstractActor},
+                                inequality_data::InequalityData)
+    Distributes the wealth among the actors according to the inequality data.
+
+    When one or more of the optional tiers of inequality data are defined, the wealth of the remaining actors of the tier(s) it belongs to is recalculated.
+
+    Example:
+    If there are 1000 actors and the average wealth of the top 0.1% is defined, then the one actor that is the top 0.1% is assigned that wealth.
+    For the 9 remaining actors that represent the top 1%, their average wealth is recalculated as follows:
+    avg_wealth = (avg_wealth_of_top_1 * 10 - avg_wealth_of_top_0_1) / 9.
+
+    If top_1 is nothing, it is assumed that top_0_1 is also nothing. The same is true for bottom_1 and bottom_0_1.
+
+    * actors::Vector{<:AbstractActor} - The vector of actors the wealth needs to be distributed among.
+    * inequality_data::InequalityData - The inequality data to use.
+"""
+function distribute_inequal_wealth!(actors::Vector{<:AbstractActor},
+                                    inequality_data::InequalityData)
+    num_actors = length(actors)
+    percentiles = calculate_percentile_ranges(num_actors)
+    wealth_vector = Vector{Currency}()
+
+    bottom_0_1, bottom_1, bottom_10, top_10, top_1, top_0_1 = adjust_for_overlap(inequality_data, num_actors)
 
     if num_actors >= 100
         if num_actors >= 1000

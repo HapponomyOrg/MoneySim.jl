@@ -19,17 +19,17 @@ end
 
 # General simulation
 
-function run_simulation(model::ABM;
-                        sim_params::SimParams,
-                        population_params::PopulationParams = FixedPopulationParams(population = 1000),
-                        monetary_params::MonetaryModelParams,
-                        transaction_params::Union{TransactionParams, Nothing} = nothing,
-                        tax_scheme::Union{Nothing, TaxScheme} = nothing,
-                        data_handler::Union{DataHandler, Nothing} = nothing,
-                        termination_handler::Union{TerminationHandler, Nothing} = nothing,
-                        initialisations::Vector{<: Function} = Vector{Function}(),
-                        model_adaptations::Vector{<: Function} = Vector{Function}(),
-                        collect_initial_data::Bool = true)
+function initialize_simulation!(model::ABM;
+                                sim_params::SimParams,
+                                population_params::PopulationParams = FixedPopulationParams(population = 1000),
+                                monetary_params::MonetaryModelParams,
+                                transaction_params::Union{TransactionParams, Nothing} = nothing,
+                                tax_scheme::Union{Nothing, TaxScheme} = nothing,
+                                data_handler::Union{DataHandler, Nothing} = nothing,
+                                termination_handler::Union{TerminationHandler, Nothing} = nothing,
+                                model_initialisations::Vector{<: Function} = Vector{Function}(),
+                                actor_initialisations::Vector{<: Function} = Vector{Function}(),
+                                model_adaptations::Vector{<: Function} = Vector{Function}())
     set_random_seed!(sim_params.lock_random_generator)
 
     properties = abmproperties(model)
@@ -56,18 +56,89 @@ function run_simulation(model::ABM;
         m_collectors = []
     end
 
-    if !isnothing(termination_handler)
-        initialize_termination_handler!(model, termination_handler)
+    for initialisation in model_initialisations
+        initialisation(model)
     end
 
-    for initialisation in initialisations
-        initialisation(model)
+    for initialisation in actor_initialisations
+        for actor in allagents(model)
+            initialisation(actor)
+        end
     end
 
     for model_adaptation in model_adaptations
         add_model_behavior!(model, model_adaptation)
     end
 
+    if !isnothing(termination_handler)
+        initialize_termination_handler!(model, termination_handler)
+    end
+
+    return when, a_collectors, m_collectors
+end
+
+"""
+    run_simulation(model::ABM;
+                    sim_params::SimParams,
+                    population_params::PopulationParams = FixedPopulationParams(population = 1000),
+                    monetary_params::MonetaryModelParams,
+                    transaction_params::Union{TransactionParams, Nothing} = nothing,
+                    tax_scheme::Union{Nothing, TaxScheme} = nothing,
+                    data_handler::Union{DataHandler, Nothing} = nothing,
+                    termination_handler::Union{TerminationHandler, Nothing} = nothing,
+                    model_initialisations::Vector{<: Function} = Vector{Function}(),
+                    actor_initialisations::Vector{<: Function} = Vector{Function}(),
+                    model_adaptations::Vector{<: Function} = Vector{Function}(),
+                    collect_initial_data::Bool = true)
+
+    * model::ABM : 
+    sim_params::SimParams : 
+    population_params::PopulationParams : 
+    monetary_params::MonetaryModelParams : 
+    transaction_params::Union{TransactionParams, Nothing} : 
+    tax_scheme::Union{Nothing, TaxScheme} : 
+    data_handler::Union{DataHandler, Nothing} : 
+    termination_handler::Union{TerminationHandler, Nothing} : 
+    model_initialisations::Vector{<: Function} : 
+    actor_initialisations::Vector{<: Function} : 
+    model_adaptations::Vector{<: Function} : 
+    collect_initial_data::Bool : 
+
+    Run the simulation based on the configuration parameters.
+    If every module adds model behavior after the other modules, the simulation does the following in order:
+    - Model level activity:
+        - Population evolvement.
+        - Monetary policy.
+        - Execution of the transaction model.
+        - Taxation and redistribution.
+        - Additional model behaviour.
+        - Check for termination.
+    
+    Individual actor activation should be handled in the appropriate modules. No default actor activation is executed.
+"""
+function run_simulation(model::ABM;
+                        sim_params::SimParams,
+                        population_params::PopulationParams = FixedPopulationParams(population = 1000),
+                        monetary_params::MonetaryModelParams,
+                        transaction_params::Union{TransactionParams, Nothing} = nothing,
+                        tax_scheme::Union{Nothing, TaxScheme} = nothing,
+                        data_handler::Union{DataHandler, Nothing} = nothing,
+                        termination_handler::Union{TerminationHandler, Nothing} = nothing,
+                        model_initialisations::Vector{<: Function} = Vector{Function}(),
+                        actor_initialisations::Vector{<: Function} = Vector{Function}(),
+                        model_adaptations::Vector{<: Function} = Vector{Function}(),
+                        collect_initial_data::Bool = true)
+    when, a_collectors, m_collectors = initialize_simulation!(model,
+                                                                sim_params = sim_params,
+                                                                population_params = population_params,
+                                                                monetary_params = monetary_params,
+                                                                transaction_params = transaction_params,
+                                                                tax_scheme = tax_scheme,
+                                                                data_handler = data_handler,
+                                                                termination_handler = termination_handler,
+                                                                model_initialisations = model_initialisations,
+                                                                actor_initialisations = actor_initialisations,
+                                                                model_adaptations = model_adaptations)
     actor_data, model_data = run_econo_model!(model,
                                             sim_params.sim_length,
                                             adata = a_collectors,
@@ -87,7 +158,8 @@ function run_fixed_wealth_simulation(fixed_wealth_params::FixedWealthParams;
                                     tax_scheme::Union{Nothing, TaxScheme} = nothing,
                                     data_handler::Union{DataHandler, Nothing} = nothing,
                                     termination_handler::Union{TerminationHandler, Nothing} = nothing,
-                                    initialisations::Vector{<: Function} = Vector{Function}(),
+                                    model_initialisations::Vector{<: Function} = Vector{Function}(),
+                                    actor_initialisations::Vector{<: Function} = Vector{Function}(),
                                     model_adaptations::Vector{<: Function} = Vector{Function}(),
                                     collect_initial_data::Bool = true)
     model = create_econo_model()
@@ -100,7 +172,8 @@ function run_fixed_wealth_simulation(fixed_wealth_params::FixedWealthParams;
                     tax_scheme = tax_scheme,
                     data_handler = data_handler,
                     termination_handler = termination_handler,
-                    initialisations = initialisations,
+                    model_initialisations = model_initialisations,
+                    actor_initialisations = actor_initialisations,
                     model_adaptations = model_adaptations,
                     collect_initial_data = collect_initial_data)
 end
@@ -110,22 +183,25 @@ function run_fixed_wealth_simulation(;
                                     num_transactions::Int = 200,
                                     initial_wealth::Real = 200000,
                                     wealth_transfer::Union{StepRange, StepRangeLen} = 0.2:0.2:0.2,
-                                    remove_broke_actors::Bool = true,
+                                    min_wealth_transfer::Real = 0,
+                                    waa::Real = 0,
                                     sim_length::Int = 150,
                                     period::Int = 30,
                                     population_params::PopulationParams = FixedPopulationParams(population = num_actors),
                                     tax_scheme::Union{Nothing, TaxScheme} = nothing,
                                     data_handler::DataHandler = full_data_handler(period),
                                     termination_handler::Union{TerminationHandler, Nothing} = nothing,
-                                    initialisations::Vector{<: Function} = Vector{Function}(),
+                                    model_initialisations::Vector{<: Function} = Vector{Function}(),
+                                    actor_initialisations::Vector{<: Function} = Vector{Function}(),
                                     model_adaptations::Vector{<: Function} = Vector{Function}(),
                                     collect_initial_data::Bool = true)
     sim_params = SimParams(sim_length * period)
     fixed_wealth_params = FixedWealthParams(x -> distribute_equal!(x, initial_wealth))
-    yard_sale_params = StandardYardSaleParams(num_transactions:num_transactions,
-                                                wealth_transfer,
-                                                0,
-                                                remove_broke_actors)
+    yard_sale_params = StandardYardSaleParams(transaction_range = num_transactions:num_transactions,
+                                                wealth_transfer_range = wealth_transfer,
+                                                minimal_wealth_transfer = min_wealth_transfer,
+                                                wealth_advantage_adjustment = waa,
+                                                average_wealth = initial_wealth)
 
     run_fixed_wealth_simulation(fixed_wealth_params,
                                 sim_params = sim_params,
@@ -134,7 +210,8 @@ function run_fixed_wealth_simulation(;
                                 tax_scheme = tax_scheme,
                                 data_handler = data_handler,
                                 termination_handler = termination_handler,
-                                initialisations = initialisations,
+                                model_initialisations = model_initialisations,
+                                actor_initialisations = actor_initialisations,
                                 model_adaptations = model_adaptations,
                                 collect_initial_data = collect_initial_data)
 end
@@ -142,24 +219,27 @@ end
 function run_fixed_wealth_gdp_simulation(;
                                         num_actors::Int,
                                         initial_wealth::Real = 200000,
-                                        remove_broke_actors::Bool = true,
                                         wealth_transfer::Real = 0.2,
+                                        min_wealth_transfer::Real = 0,
+                                        waa::Real = 0,
                                         gdp_per_capita::Real,
                                         years::Int,
                                         population_params::PopulationParams = FixedPopulationParams(population = num_actors),
                                         tax_scheme::Union{Nothing, TaxScheme} = nothing,
-                                        data_handler::DataHandler = gdp_data_handler(),
+                                        data_handler::DataHandler = isnothing(tax_scheme) ? raw_gdp_data_handler() : gdp_data_handler(),
                                         termination_handler::Union{TerminationHandler, Nothing} = nothing,
-                                        initialisations::Vector{<: Function} = Vector{Function}(),
+                                        model_initialisations::Vector{<: Function} = Vector{Function}(),
+                                        actor_initialisations::Vector{<: Function} = Vector{Function}(),
                                         model_adaptations::Vector{<: Function} = Vector{Function}())
     sim_params = SimParams(years)
     fixed_wealth_params = FixedWealthParams(x -> distribute_equal!(x, initial_wealth))
-    yard_sale_params = GDPYardSaleParams(1, # Period length is set to 1 year
-                                        gdp_per_capita,
-                                        wealth_transfer:wealth_transfer:wealth_transfer,
-                                        0,
-                                        remove_broke_actors,
-                                        gdp_yard_sale!)
+    yard_sale_params = GDPYardSaleParams(gdp_period = 1, # Period length is set to 1 year
+                                        gdp_per_capita = gdp_per_capita,
+                                        wealth_transfer_range = wealth_transfer:wealth_transfer:wealth_transfer,
+                                        minimal_wealth_transfer = min_wealth_transfer,
+                                        adjust_income! = nothing,
+                                        wealth_advantage_adjustment = waa,
+                                        average_wealth = initial_wealth)
 
     run_fixed_wealth_simulation(fixed_wealth_params,
                                 population_params = population_params,
@@ -168,7 +248,8 @@ function run_fixed_wealth_gdp_simulation(;
                                 tax_scheme = tax_scheme,
                                 data_handler = data_handler,
                                 termination_handler = termination_handler,
-                                initialisations = initialisations,
+                                model_initialisations = model_initialisations,
+                                actor_initialisations = actor_initialisations,
                                 model_adaptations = model_adaptations)
 end
 
@@ -185,7 +266,8 @@ function run_sumsy_simulation(sumsy_params::SuMSyParams;
                                 tax_scheme::Union{Nothing, TaxScheme} = nothing,
                                 data_handler::Union{DataHandler, Nothing} = nothing,
                                 termination_handler::Union{TerminationHandler, Nothing} = nothing,
-                                initialisations::Vector{<: Function} = Vector{Function}(),
+                                model_initialisations::Vector{<: Function} = Vector{Function}(),
+                                actor_initialisations::Vector{<: Function} = Vector{Function}(),
                                 model_adaptations::Vector{<: Function} = Vector{Function}())
     if sumsy_params.transactional
         model = create_sumsy_model(sumsy_interval = sumsy_params.sumsy_interval)
@@ -201,7 +283,8 @@ function run_sumsy_simulation(sumsy_params::SuMSyParams;
                     tax_scheme = tax_scheme,
                     data_handler = data_handler,
                     termination_handler = termination_handler,
-                    initialisations = initialisations,
+                    model_initialisations = model_initialisations,
+                    actor_initialisations = actor_initialisations,
                     model_adaptations = model_adaptations)
 end
 
@@ -214,6 +297,9 @@ function run_sumsy_simulation(sumsy::SuMSy;
                                 period_length::Int = sumsy_interval,
                                 sim_length::Int = 150,
                                 distributed::Bool = true,
+                                wealth_transfer::Real = 0.2,
+                                min_wealth_transfer::Real = 0,
+                                waa::Real = 0,
                                 population_params::PopulationParams = FixedPopulationParams(population = eligible_actors + non_eligible_actors,
                                                                                             create_actor! = m -> create_sumsy_actor!(m,
                                                                                                                                     sumsy = sumsy,
@@ -222,14 +308,15 @@ function run_sumsy_simulation(sumsy::SuMSy;
                                 tax_scheme::Union{Nothing, TaxScheme} = nothing,
                                 data_handler::DataHandler = money_stock_data_handler(period_length),
                                 termination_handler::Union{TerminationHandler, Nothing} = nothing,
-                                initialisations::Vector{<: Function} = Vector{Function}(),
+                                model_initialisations::Vector{<: Function} = Vector{Function}(),
+                                actor_initialisations::Vector{<: Function} = Vector{Function}(),
                                 model_adaptation::Union{Function, Nothing} = nothing)
     sim_params = SimParams(sim_length * period_length)
 
     initial_wealth = telo(sumsy)
 
     if non_eligible_actors > 0
-        configure_sumsy_actors! = model -> mixed_actors!(model, eligible_actors)
+        configure_sumsy_actors! = model -> mixed_actors!(model, num_gi_actors = eligible_actors)
     else
         configure_sumsy_actors! = mixed_actors!
     end
@@ -245,10 +332,11 @@ function run_sumsy_simulation(sumsy::SuMSy;
                                                 initial_gi_wealth = initial_wealth,
                                                 initial_non_gi_wealth = initial_wealth,
                                                 distribute = distributed)
-    transaction_params = StandardYardSaleParams(num_transactions:num_transactions,
-                                                0.2:0.2:0.2,
-                                                0,
-                                                false)
+    transaction_params = StandardYardSaleParams(transaction_range = num_transactions:num_transactions,
+                                                wealth_transfer_range = wealth_transfer:wealth_transfer:wealth_transfer,
+                                                minimal_wealth_transfer = min_wealth_transfer,
+                                                wealth_accumulation_advantage = waa,
+                                                average_wealth = initial_wealth)
     model_adaptations = isnothing(model_adaptation) ? Vector{Function}() : Vector{Function}([model_adaptation])
 
     run_sumsy_simulation(sumsy_params,
@@ -258,7 +346,8 @@ function run_sumsy_simulation(sumsy::SuMSy;
                             tax_scheme = tax_scheme,
                             data_handler = data_handler,
                             termination_handler = termination_handler,
-                            initialisations = initialisations,
+                            model_initialisations = model_initialisations,
+                            actor_initialisations = actor_initialisations,
                             model_adaptations = model_adaptations)
 end
 
@@ -269,6 +358,7 @@ function run_sumsy_gdp_simulation(sumsy::SuMSy;
                                     non_eligible_actors::Int = 0,
                                     initial_wealth::Real = telo(sumsy),
                                     wealth_transfer::Real = 0.2,
+                                    waa = 0,
                                     gdp_per_capita::Real,
                                     years::Int,
                                     tax_scheme::Union{Nothing, TaxScheme} = nothing,
@@ -276,13 +366,14 @@ function run_sumsy_gdp_simulation(sumsy::SuMSy;
                                                                                                 create_actor! = m -> create_sumsy_actor!(m, sumsy = sumsy)),
                                     data_handler::DataHandler = gdp_data_handler(12 * sumsy_interval),
                                     termination_handler::Union{TerminationHandler, Nothing} = nothing,
-                                    initialisations::Vector{<: Function} = Vector{Function}(),
+                                    model_initialisations::Vector{<: Function} = Vector{Function}(),
+                                    actor_initialisations::Vector{<: Function} = Vector{Function}(),
                                     model_adaptations::Vector{<: Function} = Vector{Function}())
     period = 12 * sumsy_interval
     sim_params = SimParams(years * period)
 
     if non_eligible_actors > 0
-        configure_sumsy_actors! = model -> mixed_actors!(model, eligible_actors)
+        configure_sumsy_actors! = model -> mixed_actors!(model, num_gi_actors = eligible_actors)
     else
         configure_sumsy_actors! = mixed_actors!
     end
@@ -297,12 +388,12 @@ function run_sumsy_gdp_simulation(sumsy::SuMSy;
                                         initial_wealth,
                                         initial_wealth,
                                         configure_sumsy_actors! = configure_sumsy_actors!)
-    yard_sale_params = GDPYardSaleParams(period,
-                                        gdp_per_capita,
-                                        wealth_transfer:wealth_transfer:wealth_transfer,
-                                        0,
-                                        false,
-                                        gdp_yard_sale!)
+    yard_sale_params = GDPYardSaleParams(gdp_period = period,
+                                        gdp_per_capita = gdp_per_capita,
+                                        wealth_transfer_range = wealth_transfer:wealth_transfer:wealth_transfer,
+                                        minimal_wealth_transfer = 0,
+                                        wealth_advantage_adjustment = waa,
+                                        average_wealth = initial_wealth)
 
 
     run_sumsy_simulation(sumsy_params,
@@ -312,7 +403,8 @@ function run_sumsy_gdp_simulation(sumsy::SuMSy;
                             tax_scheme = tax_scheme,
                             data_handler = data_handler,
                             termination_handler = termination_handler,
-                            initialisations = initialisations,
+                            model_initialisations = model_initialisations,
+                            actor_initialisations = actor_initialisations,
                             model_adaptations = model_adaptations)
 end
 
@@ -334,7 +426,8 @@ function run_age_typed_sumsy_gdp_simulation(sumsy::SuMSy;
                                             tax_scheme::Union{Nothing, TaxScheme} = nothing,
                                             data_handler::DataHandler = gdp_data_handler(12 * sumsy.interval),
                                             termination_handler::Union{TerminationHandler, Nothing} = nothing,
-                                            initialisations::Vector{<: Function} = Vector{Function}(),
+                                            model_initialisations::Vector{<: Function} = Vector{Function}(),
+                                            actor_initialisations::Vector{<: Function} = Vector{Function}(),
                                             model_adaptations::Vector{<: Function} = Vector{Function}())
     population_params = AgeTypedPopulationParams(Dict(:min_18 => pop_min_18,
                                                     :age_18_65 => pop_18_65,
@@ -359,16 +452,20 @@ function run_consumer_supplier_simulation(sumsy::SuMSy;
                                                                                                                                 sumsy_interval = sumsy_interval)),
                                             data_handler::DataHandler = full_data_handler(sumsy_interval),
                                             termination_handler::Union{TerminationHandler, Nothing} = nothing,
-                                            initialisations::Vector{<: Function} = Vector{Function}(),
+                                            model_initialisations::Vector{<: Function} = Vector{Function}(),
+                                            actor_initialisations::Vector{<: Function} = Vector{Function}(),
                                             model_adaptations::Vector{<: Function} = Vector{Function}())
     sim_params = SimParams(sim_length * sumsy_interval)
 
     gi_eligible_types = suppliers_gi_eligible ? [:supplier, :consumer] : [:consumer]
     sumsy_params = create_StandardSuMSyParams(sumsy_interval = sumsy_interval,
                                                 transactional = false,
-                                                configure_sumsy_actors! = model -> typed_gi_actors!(model, gi_eligible_types),
+                                                configure_sumsy_actors! = model -> typed_gi_actors!(model, gi_actor_types = gi_eligible_types),
                                                 initial_gi_wealth = telo(sumsy))
-    consumer_supply_params = FixedConsumerSupplyParams(num_suppliers, consumers_per_supplier, fulfilled_demand, net_profit)
+    consumer_supply_params = FixedConsumerSupplyParams(num_suppliers = num_suppliers,
+                                                        consumers_per_supplier = consumers_per_supplier,
+                                                        demand = fulfilled_demand,
+                                                        price = net_profit)
 
     return run_sumsy_simulation(sumsy_params,
                                 sim_params = sim_params,
@@ -377,7 +474,8 @@ function run_consumer_supplier_simulation(sumsy::SuMSy;
                                 tax_scheme = tax_scheme,
                                 data_handler = data_handler,
                                 termination_handler = termination_handler,
-                                initialisations = initialisations,
+                                model_initialisations = model_initialisations,
+                                actor_initialisations = actor_initialisations,
                                 model_adaptations = model_adaptations)
 end
 
@@ -388,7 +486,8 @@ function run_debt_based_simulation(debt_based_params::DebtBasedParams;
                                     population_params::PopulationParams = FixedPopulationParams(population = 1000),
                                     data_handler::Union{DataHandler, Nothing} = nothing,
                                     termination_handler::Union{TerminationHandler, Nothing} = nothing,
-                                    initialisations::Vector{<: Function} = Vector{Function}(),
+                                    model_initialisations::Vector{<: Function} = Vector{Function}(),
+                                    actor_initialisations::Vector{<: Function} = Vector{Function}(),
                                     model_adaptations::Vector{<: Function} = Vector{Function}())
     model = create_econo_model()
 
@@ -400,7 +499,8 @@ function run_debt_based_simulation(debt_based_params::DebtBasedParams;
                     tax_scheme = tax_scheme,
                     data_handler = data_handler,
                     termination_handler = termination_handler,
-                    initialisations = initialisations,
+                    model_initialisations = model_initialisations,
+                    actor_initialisations = actor_initialisations,
                     model_adaptations = model_adaptations)
 end
 
@@ -410,6 +510,6 @@ function set_random_seed!(lock_random_generator::Bool)
     if lock_random_generator
         Random.seed!(35646516187576568)
     else
-        Random.seed(Integer(round(time())))
+        Random.seed!(Integer(round(time())))
     end
 end

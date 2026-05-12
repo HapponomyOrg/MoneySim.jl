@@ -21,15 +21,15 @@ using Test
     @test inequality_data.bottom_1 == 1
     @test inequality_data.bottom_0_1 == 0
 
-    inequality_data = InequalityData(4000000,   # Top 0.1%
-                                        400000, # Top 1%
-                                        40000,  # Top 10%
-                                        4000,   # High middle 40%
-                                        400,    # Low middle 40%
-                                        40,     # Bottom 10%
-                                        4,      # Bottom 1%
-                                        0,      # Bottom 0.1%
-                                        money_per_head = 5764)
+    inequality_data = scale_inequality_data(InequalityData(4000000,   # Top 0.1%
+                                                            400000, # Top 1%
+                                                            40000,  # Top 10%
+                                                            4000,   # High middle 40%
+                                                            400,    # Low middle 40%
+                                                            40,     # Bottom 10%
+                                                            4,      # Bottom 1%
+                                                            0),      # Bottom 0.1%,
+                                            5764)
 
     @test (inequality_data.top_10 * 0.1
             + inequality_data.high_middle_40 * 0.4
@@ -76,15 +76,15 @@ end
 end
 
 @testset "Update InequalityData for overlap" begin
-    inequality_data = InequalityData(4000000,   # Top 0.1%
-                                        400000, # Top 1%
-                                        40000,  # Top 10%
-                                        4000,   # High middle 40%
-                                        400,    # Low middle 40%
-                                        40,     # Bottom 10%
-                                        4,      # Bottom 1%
-                                        0,      # Bottom 0.1%
-                                        money_per_head = 5764)
+    inequality_data = scale_inequality_data(InequalityData(4000000,   # Top 0.1%
+                                                            400000, # Top 1%
+                                                            40000,  # Top 10%
+                                                            4000,   # High middle 40%
+                                                            400,    # Low middle 40%
+                                                            40,     # Bottom 10%
+                                                            4,      # Bottom 1%
+                                                            0),      # Bottom 0.1%
+                                            5764)
 
 top_0_1, top_1, top_10 = MoneySim.adjust_for_overlap(inequality_data.top_0_1,
                                                     inequality_data.top_1,
@@ -110,15 +110,15 @@ POP_18_TO_64 = 4029828 + 804889 + 2215697
 POP_65_PLUS = 1430423 + 161548 + 718838
 POPULATION = POP_MIN_18 + POP_18_TO_64 + POP_65_PLUS
 M2_PER_CAPITA = M2 / POPULATION
-inequality_data = InequalityData(9347930,     # Top 0.1%
-                                3988639.8,    # Top 1%
-                                1388465.6,    # Top 10%
-                                266649.9,     # High middle 40%
-                                51125.0871,   # Low middle 40%
-                                -709.6,       # Bottom 10%
-                                -44162.4,     # Bottom 1%
-                                nothing,      # Bottom 0.1% - data not available
-                                money_per_head = M2_PER_CAPITA)
+inequality_data = scale_inequality_data(InequalityData(9347930,     # Top 0.1%
+                                                        3988639.8,    # Top 1%
+                                                        1388465.6,    # Top 10%
+                                                        266649.9,     # High middle 40%
+                                                        51125.0871,   # Low middle 40%
+                                                        -709.6,       # Bottom 10%
+                                                        -44162.4,     # Bottom 1%
+                                                        nothing),      # Bottom 0.1% - data not available
+                                        M2_PER_CAPITA)
 
 top_0_1, top_1, top_10 = MoneySim.adjust_for_overlap(inequality_data.top_0_1,
                                                     inequality_data.top_1,

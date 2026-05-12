@@ -146,6 +146,8 @@ function plot_wealth(data::Dict{WealthType, DataFrame},
 
     if type == PERCENTAGE
         ylabel *= "% Wealth"
+    elseif type == AVERAGE
+        ylabel = "Average wealth"
     elseif type == NOMINAL
         ylabel *= "Wealth"
     elseif type == SCALED

@@ -7,10 +7,6 @@ function equity_collector(actor)
     return liability_value(get_balance(actor), EQUITY)
 end
 
-function wealth_collector(actor)
-    return max(CUR_0, liability_value(get_balance(actor), EQUITY))
-end
-
 function deposit_collector(actor)
     return asset_value(get_balance(actor), SUMSY_DEP)
 end
@@ -28,25 +24,22 @@ function sumsy_equity_collector(actor)
     return liability_value(get_balance(actor), EQUITY) + g - d
 end
 
-"""
-    sumsy_data_collector(actor)
-
-Returns a tuple, consisting of the guaranteed income and demurrage for the current step.
-
-    This only returns tuples that are different from (0, 0) if either SuMSy is configured to be transactional,
-    or when the data is not collected at the end of a period.
-"""
-function sumsy_data_collector(actor)
-    step = get_step(actor.model)
-    return calculate_adjustments(get_balance(actor), step)
-end
-
-function sumsy_wealth_collector(actor)
-    return max(CUR_0, sumsy_equity_collector(actor))
-end
-
 function sumsy_deposit_collector(actor)
     return sumsy_assets(actor, get_step(actor.model))
+end
+
+function gi_collector(actor)
+    gi = actor.data_gi
+    actor.data_gi = CUR_0
+
+    return gi
+end
+
+function demurrage_collector(actor)
+    dem = actor.data_demurrage
+    actor.data_demurrage = CUR_0
+
+    return dem
 end
 
 function taxed_amount_collector!(actor)
@@ -68,6 +61,20 @@ function paid_vat_collector!(actor)
     actor.data_paid_vat = CUR_0
 
     return paid_vat
+end
+
+function tax_share_collector!(actor)
+    tax_share = actor.data_tax_share
+    actor.data_tax_share = CUR_0
+
+    return tax_share
+end
+
+function vat_share_collector!(actor)
+    vat_share = actor.data_vat_share
+    actor.data_vat_share = CUR_0
+
+    return vat_share
 end
 
 function income_collector!(actor)
@@ -93,6 +100,10 @@ function gdp_collector!(model::ABM)
     return gdp
 end
 
+function accumulated_debt_collector(model::ABM)
+    return model.accumulated_debt
+end
+
 function transactions_collector!(model::ABM)
     transactions = model.data_transactions
     model.data_transactions = 0
@@ -112,6 +123,20 @@ function max_transaction_collector!(model::ABM)
     model.data_max_transaction = typemin(Currency)
 
     return max_transaction
+end
+
+function total_gi_collector!(model::ABM)
+    gi = model.data_total_gi
+    model.data_total_gi = CUR_0
+
+    return gi
+end
+
+function total_demurrage_collector!(model::ABM)
+    dem = model.data_total_demurrage
+    model.data_total_demurrage = CUR_0
+
+    return dem
 end
 
 function sumsy_data_collector!(model::ABM)
@@ -166,7 +191,7 @@ end
 # Full data handler
 
 function full_post_processing!(actor_data, model_data)
-    rename!(actor_data, 3 => :deposit, 4 => :equity, 5 => :wealth)
+    rename!(actor_data, 3 => :deposit, 4 => :equity)
     rename!(model_data, 2 => :num_actors, 3 => :non_broke_actors)
 
     return actor_data, model_data
@@ -174,7 +199,6 @@ end
 
 full_data_handler(interval::Int) = IntervalDataHandler(interval = interval,
                                                         actor_data_collectors = [equity_collector,
-                                                            wealth_collector,
                                                             deposit_collector,
                                                             :types],
                                                         model_data_collectors = [nagents, non_broke_actors],
@@ -183,7 +207,7 @@ full_data_handler(interval::Int) = IntervalDataHandler(interval = interval,
 # Full SuMSy data handler
 
 function full_sumsy_post_processing!(actor_data, model_data)
-    rename!(actor_data, 3 => :deposit, 4 => :equity, 5 => :wealth)
+    rename!(actor_data, 3 => :deposit, 4 => :equity)
     rename!(model_data, 2 => :num_actors)
     
     sumsy_data = model_data[!, :sumsy_data_collector!]
@@ -207,7 +231,6 @@ end
 
 full_sumsy_data_handler(interval::Int) = IntervalDataHandler(interval = interval,
                                                                 actor_data_collectors = [equity_collector,
-                                                                                        wealth_collector,
                                                                                         deposit_collector,
                                                                                         :types],
                                                                 model_data_collectors = [nagents,
@@ -228,15 +251,46 @@ money_stock_data_handler(interval::Int) = IntervalDataHandler(interval = interva
                                                                 model_data_collectors = [nagents],
                                                                 post_processing! = money_stock_post_processing!)
 
+# Raw GDP Data handler
+
+function raw_gdp_post_processing!(actor_data, model_data)
+    actor_data, model_data = full_post_processing!(actor_data, model_data)
+
+    rename!(actor_data,
+            5 => :income)
+
+    rename!(model_data,
+            3 => :non_broke_actors,
+            4 => :gdp,
+            5 => :transactions,
+            6 => :min_transaction,
+            7 => :max_transaction)
+
+    return actor_data, model_data
+end
+
+raw_gdp_data_handler(interval::Int = 1) = IntervalDataHandler(interval = interval,
+                                                        actor_data_collectors = [equity_collector,
+                                                                                deposit_collector,
+                                                                                income_collector!,
+                                                                                :types],
+                                                        model_data_collectors = [nagents,
+                                                                                non_broke_actors,
+                                                                                gdp_collector!,
+                                                                                transactions_collector!,
+                                                                                min_transaction_collector!,
+                                                                                max_transaction_collector!],
+                                                        post_processing! = raw_gdp_post_processing!)
+
 # GDP data handler
 
 function gdp_post_processing!(actor_data, model_data)
     actor_data, model_data = full_post_processing!(actor_data, model_data)
 
     rename!(actor_data,
-            6 => :income,
-            7 => :paid_tax,
-            8 => :paid_vat)
+            5 => :income,
+            6 => :paid_tax,
+            7 => :paid_vat)
 
     rename!(model_data,
             3 => :non_broke_actors,
@@ -252,7 +306,6 @@ end
 
 gdp_data_handler(interval::Int = 1) = IntervalDataHandler(interval = interval,
                                                         actor_data_collectors = [equity_collector,
-                                                                                wealth_collector,
                                                                                 deposit_collector,
                                                                                 income_collector!,
                                                                                 paid_tax_collector!,
