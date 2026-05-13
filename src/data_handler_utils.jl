@@ -28,14 +28,14 @@ function sumsy_deposit_collector(actor)
     return sumsy_assets(actor, get_step(actor.model))
 end
 
-function gi_collector(actor)
+function gi_collector!(actor)
     gi = actor.data_gi
     actor.data_gi = CUR_0
 
     return gi
 end
 
-function demurrage_collector(actor)
+function demurrage_collector!(actor)
     dem = actor.data_demurrage
     actor.data_demurrage = CUR_0
 

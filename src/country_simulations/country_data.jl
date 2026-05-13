@@ -234,8 +234,8 @@ function get_gdp_per_capita(country::Country; period::Int = MONTH)
     return Currency(get_country_data(country).government_data.gdp * period / get_population(country))
 end
 
-function get_government_debt(country::Country)
-    return get_country_data(country).government_data.debt
+function get_government_debt_per_capita(country::Country)
+    return Currency(get_country_data(country).government_data.debt / get_population(country))
 end
 
 function get_expenses_per_capita(country::Country; period::Int = MONTH)
@@ -318,7 +318,7 @@ function get_sumsy_expenses_per_capita(country::Country; period::Int = MONTH)
             - get_unemployment_cost_per_capita(country, period = period)
 end
 
-function calculate_demurrage(country::Country, flat_gi::Bool = true)
+function calculate_demurrage(country::Country, flat_gi::Bool = true, period = MONTH)
     if flat_gi
         return make_tiers(get_flat_gi(country, period = period) / get_m_per_capita(country))
     else

@@ -1,6 +1,7 @@
 using EconoSim
 using MoneySim
 using DataFrames
+using Agents
 
 @enum PopulationType P_FIXED P_DEMOGRAPHIC
 @enum MonetaryType M_FIXED M_SUMSY M_DEBT_BASED
@@ -152,6 +153,20 @@ function adjust_tax_distribution!(model::ABM,
     end
 end
 
+function average_wealth(model::ABM)
+    total_wealth = CUR_0
+    
+    for actor in allagents(model)
+        total_wealth += asset_value(get_balance(actor), SUMSY_DEP)
+    end
+
+    return Currency(total_wealth / nagents(model))
+end
+
+function gdp_growth(model::ABM, period::Int, gdp_growth_per_year::Number)
+    return gdp_growth_per_year / 12 * period
+end
+
 function simulate_country(country::Country;
                             sim_length = 100 * YEAR,
                             data_collection_interval::Int = YEAR,
@@ -162,6 +177,7 @@ function simulate_country(country::Country;
                             population_type::PopulationType = P_FIXED,
                             wealth_distribution::WealthDistribution = W_EQUAL,
                             gdp_scaling::Real = 1.0,
+                            gdp_growth_per_year::Real = 0,
                             wealth_transfer::Real = 0.2,
                             wealth_accumulation_advantage::Real = 0,
                             taxes::Taxes,
@@ -191,7 +207,7 @@ function simulate_country(country::Country;
 
     properties = abmproperties(model)
     properties[:country] = country
-    properties[:accumulated_debt] = get_government_debt(country)
+    properties[:accumulated_debt] = get_government_debt_per_capita(country) * num_actors
 
     if population_type == P_FIXED
         population_params = FixedPopulationParams(population = num_actors,
@@ -213,11 +229,11 @@ function simulate_country(country::Country;
 
     transaction_params = GDPYardSaleParams(gdp_period = MONTH,
                                             gdp_per_capita = get_gdp_per_capita(country, period = MONTH) * gdp_scaling,
+                                            gdp_growth = (m, p) -> gdp_growth(m, p, gdp_growth_per_year),
                                             wealth_transfer_range = wealth_transfer:wealth_transfer:wealth_transfer,
                                             minimal_wealth_transfer = 0,
                                             wealth_accumulation_advantage = wealth_accumulation_advantage,
-                                            average_wealth = get_m_per_capita(country),
-                                            adjust_income! = monetary_type == M_SUMSY ? m -> reset_gi!(m) : nothing)
+                                            average_wealth = average_wealth)
 
     if wealth_distribution == W_EQUAL
         distribute_wealth! = m -> distribute_equal!(m, get_m_per_capita(country))
@@ -276,13 +292,18 @@ function simulate_country(country::Country;
 
             adjust_distribution! = distribute_real_expenditures ? adjust_tax_distribution! : nothing
         elseif taxes == T_DEM_TAX
-            post_process_data! = a, m -> post_process_sim_data!(a, m, true)
+            post_process_data! = (a, m) -> post_process_sim_data!(a, m, true)
             tax_type = DEMURRAGE_TAX
-            tax_brackets = calculate_dem_tax(country)
+            tax_brackets = calculate_dem_tax(country, period = tax_interval)
             adjust_distribution! = nothing
         elseif taxes == T_VAT_ONLY
             post_process_data! = post_process_sim_data!
             tax_type = VAT_ONLY
+            tax_brackets = 0
+            adjust_distribution! = nothing
+        elseif taxes == T_NO_TAX
+            post_process_data! = post_process_sim_data!
+            tax_type = NO_TAX
             tax_brackets = 0
             adjust_distribution! = nothing
         end
@@ -316,7 +337,7 @@ function simulate_country(country::Country;
 
     if monetary_type == M_SUMSY
         push!(actor_data_handlers, gi_collector!)
-        push!(actor_data_handlers, dem_collector!)
+        push!(actor_data_handlers, demurrage_collector!)
     end
 
     if population_type == P_DEMOGRAPHIC

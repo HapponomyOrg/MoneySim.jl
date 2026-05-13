@@ -111,17 +111,17 @@ struct StandardYardSaleParams{C <: FixedDecimal, DF, AF, AW} <: YardSaleParams
                             determine_direction::Function = coinflip,
                             adjust_income! = nothing,
                             wealth_accumulation_advantage::Real = 0,
-                            average_wealth::Real) = new{Currency,
-                                                    typeof(determine_direction),
-                                                    typeof(adjust_income!),
-                                                    typeof(average_wealth)}(
-                                                    transaction_range,
-                                                    wealth_transfer_range,
-                                                    minimal_wealth_transfer,
-                                                    determine_direction,
-                                                    adjust_income!,
-                                                    wealth_accumulation_advantage,
-                                                    average_wealth)
+                            average_wealth::Union{Real, Function}) = new{Currency,
+                                                                        typeof(determine_direction),
+                                                                        typeof(adjust_income!),
+                                                                        typeof(average_wealth)}(
+                                                                        transaction_range,
+                                                                        wealth_transfer_range,
+                                                                        minimal_wealth_transfer,
+                                                                        determine_direction,
+                                                                        adjust_income!,
+                                                                        wealth_accumulation_advantage,
+                                                                        average_wealth)
 end
 
 """
@@ -132,9 +132,10 @@ struct GDPYardSaleParams{C <: FixedDecimal} <: YardSaleParams{C}
     * minimal_wealth_transfer::C - The minimal amount of wealth that needs to be transferred.
     * yard_sale! - The function that determines the direction and amount of each transaction, based on the other parameters.
 """
-struct GDPYardSaleParams{C <: FixedDecimal, DF, AF, AW} <: YardSaleParams
+struct GDPYardSaleParams{C <: FixedDecimal, GF, DF, AF, AW} <: YardSaleParams
     gdp_period::Int
     gdp_per_capita::C
+    gdp_growth::GF
     wealth_transfer_range::StepRange{Percentage, Percentage}
     minimal_wealth_transfer::C
     determine_direction::DF
@@ -143,36 +144,44 @@ struct GDPYardSaleParams{C <: FixedDecimal, DF, AF, AW} <: YardSaleParams
     average_wealth::AW # A Function or C
     GDPYardSaleParams(;gdp_period::Int,
                         gdp_per_capita::Real,
+                        gdp_growth::Function = 0,
                         wealth_transfer_range::Union{StepRange, StepRangeLen},
                         minimal_wealth_transfer::Real,
                         determine_direction::Function = coinflip,
-                        adjust_income! = nothing,
-                        wealth_accumulation_advantage::Number = 0,
-                        average_wealth) = new{Currency,
-                                                typeof(determine_direction),
-                                                typeof(adjust_income!),
-                                                typeof(average_wealth)}(
-                                                gdp_period,
-                                                gdp_per_capita,
-                                                wealth_transfer_range,
-                                                minimal_wealth_transfer,
-                                                determine_direction,
-                                                adjust_income!,
-                                                wealth_accumulation_advantage,
-                                                average_wealth)
+                        adjust_income!::Union{Nothing, Function} = nothing,
+                        wealth_accumulation_advantage::Real = 0,
+                        average_wealth::Union{Real, Function}) = new{Currency,
+                                                                    typeof(gdp_growth),
+                                                                    typeof(determine_direction),
+                                                                    typeof(adjust_income!),
+                                                                    typeof(average_wealth)}(
+                                                                    gdp_period,
+                                                                    gdp_per_capita,
+                                                                    gdp_growth,
+                                                                    wealth_transfer_range,
+                                                                    minimal_wealth_transfer,
+                                                                    determine_direction,
+                                                                    adjust_income!,
+                                                                    wealth_accumulation_advantage,
+                                                                    average_wealth)
 end
 
 """
 struct GDPTypedYardSaleParams{C <: FixedDecimal} <: YardSaleParams{C}
     * gdp_period::Int - The number of cycles per GDP period.
     * gdp_per_capita::C - The GDP per actor over a period.
+    * gdp_growth::Function - A function that takes a model and the GDP period as parameters and returns a growth rate for that period.
     * wealth_transfer_range::Dict{Symbol, StepRange{Percentage, Percentage}} - The range of percentage values to be used in the wealth transfer.
     * income_probabliity::Dict{Symbol, Real} - The probability of income for each actor type.
-    * yard_sale! - The function that determines the direction and amount of each transaction, based on the other parameters.
+    * determine_direction::Function - The function that determines the direction of the transaction.
+    * adjust_income!::Function - A function or nothing that adjusts the income of the actors before transactions are executed.
+    * wealth_acumulation_advantage::Real - A number between 0 and 1 that represents wealth accumulation advantage.
+    * average_wealth::Union{Real, Function} - A number or function 
 """
-struct GDPTypedYardSaleParams{C <: FixedDecimal, DF, AF, AW} <: YardSaleParams
+struct GDPTypedYardSaleParams{C <: FixedDecimal, GF, DF, AF, AW} <: YardSaleParams
     gdp_period::Int
     gdp_per_capita::C
+    gdp_growth::GF
     wealth_transfer_range::Dict{Symbol, StepRange{Percentage, Percentage}}
     income_probabliity::Dict{Symbol, Real}
     determine_direction::DF
@@ -181,23 +190,26 @@ struct GDPTypedYardSaleParams{C <: FixedDecimal, DF, AF, AW} <: YardSaleParams
     average_wealth::AW # A Function or C
     GDPTypedYardSaleParams(;gdp_period::Int,
                             gdp_per_capita::Real,
+                            gdp_growth::Function,
                             wealth_transfer_range::Dict{Symbol, Union{StepRange, StepRangeLen}},
                             income_probabliity::Dict{Symbol, Real},
                             determine_direction::Function = coinflip,
-                            adjust_income! = nothing,
-                            wealth_accumulation_advantage::Number = 0,
-                            average_wealth) = new{Currency,
-                                                    typeof(determine_direction),
-                                                    typeof(adjust_income!),
-                                                    typeof(average_wealth)}(
-                                                    gdp_period,
-                                                    gdp_per_capita,
-                                                    wealth_transfer_range,
-                                                    income_probabliity,
-                                                    determine_direction,
-                                                    adjust_income!,
-                                                    wealth_accumulation_advantage,
-                                                    average_wealth)
+                            adjust_income!::Union{Nothing, Function} = nothing,
+                            wealth_accumulation_advantage::Real = 0,
+                            average_wealth::Union{Real, Function}) = new{Currency,
+                                                                    typeof(gdp_growth),
+                                                                    typeof(determine_direction),
+                                                                    typeof(adjust_income!),
+                                                                    typeof(average_wealth)}(
+                                                                    gdp_period,
+                                                                    gdp_per_capita,
+                                                                    gdp_growth,
+                                                                    wealth_transfer_range,
+                                                                    income_probabliity,
+                                                                    determine_direction,
+                                                                    adjust_income!,
+                                                                    wealth_accumulation_advantage,
+                                                                    average_wealth)
 end
 
 function initialize_transaction_model!(model::ABM, params::StandardYardSaleParams)
@@ -219,6 +231,8 @@ function add_gdp_properties!(model::ABM, params::YardSaleParams)
     properties[:gdp_period] = params.gdp_period
     properties[:current_gdp_cycle] = 1
     properties[:min_gdp_per_cycle] = model.data_gdp / model.gdp_period
+    properties[:max_gdp] = CUR_0
+    properties[:gdp_growth] = params.gdp_growth
     properties[:data_min_transaction] = typemax(Currency)
     properties[:data_max_transaction] = typemin(Currency)
 end
@@ -313,6 +327,7 @@ function gdp_yard_sale!(model::ABM,
 
     gdp = model.gdp
     transactions = 0
+    avg_wealth = model.avg_wealth(model)
 
     if !isnothing(adjust_income!)
         adjust_income!(model)
@@ -331,11 +346,11 @@ function gdp_yard_sale!(model::ABM,
     amount = 0
     min_transaction = model.data_min_transaction
     max_transaction = model.data_max_transaction
-    max_gdp = model.min_gdp_per_cycle * model.current_gdp_cycle
+    max_gdp = model.max_gdp + model.min_gdp_per_cycle
     non_broke_actor_ids = collect(allids(model))
 
     while gdp < max_gdp && length(non_broke_actor_ids) > 1
-        _, _, amount = atomic_yard_sale!(model, determine_direction, non_broke_actor_ids)
+        _, _, amount = atomic_yard_sale!(model, determine_direction, non_broke_actor_ids, avg_wealth)
 
         if amount != 0
             transactions += 1
@@ -360,11 +375,14 @@ function gdp_yard_sale!(model::ABM,
         model.gdp += gdp - model.gdp
         model.current_gdp_cycle += 1
     end
+
+    model.min_gdp_per_cycle = (1 + model.gdp_growth(model, model.gdp_period)) * model.min_gdp_per_cycle
 end
 
 function atomic_yard_sale!(model::ABM,
                             determine_direction::Function,
-                            non_broke_actor_ids::Vector{Int64})
+                            non_broke_actor_ids::Vector{Int64},
+                            avg_wealth::Real)
     # Make sure two different random agents are picked.
     num_non_broke_actors = length(non_broke_actor_ids)
 
@@ -376,7 +394,7 @@ function atomic_yard_sale!(model::ABM,
     target_id_2 = remove_index(non_broke_actor_ids, target_index_1)[target_index_2]
     target2 = model[target_id_2]
 
-    source, destination, amount = yard_sale_transfer(model, target1, target2, determine_direction)
+    source, destination, amount = yard_sale_transfer(model, target1, target2, avg_wealth, determine_direction)
     
     if amount != 0
         transfer_asset!(model, source, destination, SUMSY_DEP, amount)
@@ -400,10 +418,10 @@ end
 function yard_sale_transfer(model::ABM,
                             target1::AbstractActor,
                             target2::AbstractActor,
+                            avg_wealth::Real,
                             determine_direction::Function = coinflip)
     transfer_rate = rand(model.wealth_transfer_range)
     waa = model.waa
-    avg_wealth = model.avg_wealth
 
     av1 = max(CUR_0, adjusted_asset_value!(target1))
     av2 = max(CUR_0, adjusted_asset_value!(target2))
@@ -422,17 +440,6 @@ function yard_sale_transfer(model::ABM,
     # End temp code
 
     return source, destination, amount
-end
-
-
-
-function coinflip(target_1::AbstractActor,
-                    asset_value_1::Currency,
-                    target_2::AbstractActor,
-                    asset_value_2::Currency,
-                    waa::Number,
-                    avg_wealth::Function)
-    return coinflip(target_1, asset_value_1, target_2, asset_value_2, waa, avg_wealth(target1.model))
 end
 
 function coinflip(target_1::AbstractActor,
