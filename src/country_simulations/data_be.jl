@@ -56,12 +56,9 @@ function set_country_data_be()
     gdp = 596321000000
     gov_income = 292624000000
     gov_expenses = 317595000000
+    gov_debt = 614991000000
     gov_interest_cost = 11926000000
     # Source: https://www.nbb.be/doc/dq/n/dq3/histo/nndb2410.pdf
-
-    gov_debt = Currency((473.82 + 480.67 + 492.41 + 493.34 + 492.70 + 493.95 + 488.77 + 493.05 + 511.78 + 506.58 + 506.33 + 504.79) * 1000000 / 12)
-    # Source: https://www.debtagency.be/sites/default/files/content/download/files/indicators_historical.pdf
-    # Average debt in 2023
 
     gov_vat_income = 37828100000 # 2023
     # Source https://dataexplorer.nbb.be/vis?tm=vat&pg=0&snb=13&df[ds]=disseminate&df[id]=DF_NFGOVTSC_DISS&df[ag]=BE2&df[vs]=1.0&dq=A..S1300&lom=LASTNPERIODS&lo=6&to[TIME_PERIOD]=false

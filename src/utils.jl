@@ -33,7 +33,7 @@ function one_non_broke(model::ABM)
     return true
 end
 
-function remove_index(vector::Vector{Int}, index::Int)
+function remove_index!(vector::Vector{Int}, index::Int)
     res = Vector{Int}(vector)
 
     return deleteat!(res, index)

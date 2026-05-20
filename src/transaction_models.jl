@@ -257,35 +257,28 @@ function initialize_yard_sale!(model::ABM, params::YardSaleParams)
     properties[:avg_wealth] = params.average_wealth
 
     # Calculate broke threshold
-    if params.minimal_wealth_transfer > 0
-        properties[BROKE_THRESHOLD] = CUR_0
-    else
-        min_transfer_rate = first(params.wealth_transfer_range)
-        increment = Currency(1)
+    min_transfer_rate = first(params.wealth_transfer_range)
+    increment = Currency(1)
 
-        for _ in 1:get_currency_precision(increment)
-            increment *= Currency(0.1)
-        end
-
-        transfer_amount = CUR_0
-        broke_threshold = CUR_0
-
-        while transfer_amount == CUR_0
-            broke_threshold += increment
-            transfer_amount = Currency(min_transfer_rate * broke_threshold)
-        end
-
-        properties[BROKE_THRESHOLD] = broke_threshold
+    for _ in 1:get_currency_precision(increment)
+        increment *= Currency(0.1)
     end
 
-    i = 1
+    transfer_amount = CUR_0
+    broke_threshold = CUR_0
+
+    while transfer_amount == CUR_0
+        broke_threshold += increment
+        transfer_amount = Currency(min_transfer_rate * broke_threshold)
+    end
+
+    properties[BROKE_THRESHOLD] = broke_threshold + increment # Playing it safe
 
     for actor in allagents(model)
         actor.income = CUR_0
         actor.expenses = CUR_0
         actor.data_income = CUR_0
         actor.data_expenses = CUR_0
-        i += 1
     end
 end
 
@@ -383,15 +376,30 @@ function atomic_yard_sale!(model::ABM,
                             determine_direction::Function,
                             non_broke_actor_ids::Vector{Int64},
                             avg_wealth::Real)
-    # Make sure two different random agents are picked.
     num_non_broke_actors = length(non_broke_actor_ids)
 
     target_index_1 = rand(1:num_non_broke_actors)
     target_id_1 = non_broke_actor_ids[target_index_1]
     target1 = model[target_id_1]
 
-    target_index_2 = rand(1:num_non_broke_actors - 1)
-    target_id_2 = remove_index(non_broke_actor_ids, target_index_1)[target_index_2]
+    target_index_2 = rand(1:num_non_broke_actors)
+
+    # Make sure two different random agents are picked.
+    if target_index_1 == target_index_2
+        if target_index_2 == 1
+            target_index_2 += 1
+        elseif target_index_2 == num_non_broke_actors
+            target_index_2 -= 1
+        else
+            if rand() < 0.5
+                target_index_2 += 1
+            else
+                target_index_2 -= 1
+            end
+        end
+    end 
+
+    target_id_2 = non_broke_actor_ids[target_index_2]
     target2 = model[target_id_2]
 
     source, destination, amount = yard_sale_transfer(model, target1, target2, avg_wealth, determine_direction)
@@ -431,6 +439,11 @@ function yard_sale_transfer(model::ABM,
             Currency(min_balance * transfer_rate))
 
     source, destination = determine_direction(target1, av1, target2, av2, waa, avg_wealth)
+
+    if amount > 0 && amount > asset_value(get_balance(source), SUMSY_DEP)
+        value = asset_value(get_balance(source), SUMSY_DEP)
+        throw("Transaction amount ($amount) > asset value ($value)")
+    end
     
     # Temp code
     # gdp_data = DataFrame(cycle = cycle = "s" * string(get_step(model)), amount = amount, bal_1 = av1, bal_2 = av2)

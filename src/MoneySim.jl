@@ -9,7 +9,7 @@ using Infiltrator
 include("utils.jl")
 export BROKE_THRESHOLD
 export is_broke, one_non_broke
-export remove_index
+export remove_index!
 export Percentiles, BOTTOM_0_1, BOTTOM_1, BOTTOM_10, BOTTOM_50, LOW_MIDDLE_40, MIDDLE_50, HIGH_MIDDLE_40, TOP_10, TOP_1, TOP_0_1
 export calculate_percentile_ranges, calculate_taxes
 
@@ -54,7 +54,7 @@ export gdp_yard_sale!, gdp_baseline_yard_sale!
 
 include("tax_scheme.jl")
 export TaxScheme, FixedTaxScheme
-export DistributionType, D_TAX, D_VAT
+export CollectionType, D_TAX, D_VAT
 export distribute_taxes!
 export initialize_tax_scheme
 
