@@ -32,7 +32,8 @@ function simulation_a1()
                     theoretical_max = telo(GI, d) * N_GI)
 end
 
-function simulation_a2()GI = 2000
+function simulation_a2()
+    GI = 2000
     d = 0.01
     tu = 30
     
@@ -59,7 +60,8 @@ function simulation_a2()GI = 2000
                     theoretical_max = telo(GI, d) * N_GI)
 end
 
-function simulation_b1()GI = 2000
+function simulation_b1()
+    GI = 2000
     d = 0.01
     tu = 30
     
@@ -87,7 +89,8 @@ function simulation_b1()GI = 2000
                     theoretical_max = telo(GI, d) * N_GI)
 end
 
-function simulation_b2()GI = 2000
+function simulation_b2()
+    GI = 2000
     d = 0.01
     tu = 30
     
@@ -115,7 +118,8 @@ function simulation_b2()GI = 2000
                     theoretical_max = telo(GI, d) * N_GI)
 end
 
-function simulation_s1()GI = 2000
+function simulation_s1()
+    GI = 2000
     d = 0.01
     tu = 30
     
