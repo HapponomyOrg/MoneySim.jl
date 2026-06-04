@@ -76,8 +76,8 @@ export distribute_equal!, concentrate_wealth!, distribute_inequal!
 export percentage_gi_actors!, mixed_actors!, typed_gi_actors!, type_based_sumsy_actors!
 
 include("data_analysis.jl")
-export WealthType, PERCENTAGE, AVERAGE, NOMINAL, SCALED, WEALTH_GINI, INCOME_GINI
-export analyse_money_stock, analyse_wealth, analyse_type_wealth
+export WealthType, W_PERCENTAGE, W_AVERAGE, W_NOMINAL, W_SCALED, WEALTH_GINI, I_PERCENTAGE, I_AVERAGE, I_NOMINAL, INCOME_GINI
+export analyse_aggregate, analyse_data, analyse_type_data
 
 include("termination_handler.jl")
 export TerminationHandler, NoTerminationHandler, FlaggedTerminationHandler
@@ -107,6 +107,7 @@ export run_debt_based_simulation
 include("country_simulations/country_data.jl")
 include("country_simulations/data_be.jl")
 include("country_simulations/data_nl.jl")
+include("country_simulations/data_test.jl")
 include("country_simulations/inequality_sim.jl")
 export PopulationType, P_FIXED, P_DEMOGRAPHIC
 export MonetaryType, M_FIXED, M_SUMSY, M_DEBT_BASED
@@ -115,7 +116,7 @@ export WealtScale, WS_WEALTH, WS_MONEY_STOCK
 export IncomeScale, IS_INCOME, IS_GDP
 export Taxes, T_NO_TAX, T_INCOME_TAX, T_DEM_TAX, T_GDP_FLAT_TAX, T_VAT_ONLY
 export MONTH, YEAR
-export Country, BE, NL
+export Country, BE, NL, TEST
 export simulate_country
 export average_wealth
 

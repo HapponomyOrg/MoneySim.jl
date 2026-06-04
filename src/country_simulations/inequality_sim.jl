@@ -157,28 +157,44 @@ function adjust_tax_distribution!(model::ABM,
     end
 end
 
-function adjust_tax!(model::ABM,
-                    collection_type::CollectionType,
-                    tax_brackets::DemTiers,
-                    calculation_interval::Int,
-                    total_tax::Real,
-                    adjust_up::Bool,
-                    adjust_down::Bool)
-    if collection_type == D_TAX
-        country = model.country
+function calculate_sumsy_expenses(country::Country, tax_interval::Int)
+    return get_net_expenses_per_capita(country, period = tax_interval)
+            + get_pension_cost_per_capita(country, period = tax_interval)
+            - get_percentage_population(country, POP_65_PLUS) * num_actors * get_flat_gi(country) # pension cost covered ny Gini
+            - get_unemployment_cost_per_capita(country, period = tax_interval)
+end
+
+function determine_gdp_tax(model::ABM,
+                            calculation_interval::Int,
+                            adjust_up::Bool,
+                            adjust_down::Bool,
+                            deficit_spending::Bool,
+                            expenses::Real)
+    country = model.country
+    flat_tax = deficit_spending ? calculate_flat_gdp_income_tax(country) : calculate_flat_gdp_expense_tax(country,
+                                                                                                            period = calculation_interval,
+                                                                                                            expenses_per_capita = expenses)
+
+    if adjust_up
         full_expenses = get_net_expenses_per_capita(country, period = calculation_interval) * nagents(model)
+        full_tax = full_expenses / (model.min_gdp_per_cycle * calculation_interval)
 
-        if adjust_up && full_expenses > total_tax
-            return full_expenses / (model.min_gdp_per_cycle * calculation_interval)
+        if flat_tax < full_tax
+            return full_tax
         end
-
-        if adjust_down && full_expenses < total_tax
-            debt_reduction = max(model.accumulated_debt / 100, 0)
-            return (full_expenses + debt_reduction) / (model.min_gdp_per_cycle * calculation_interval)
-        end
-
-        return tax_brackets
     end
+
+    if adjust_down
+        full_expenses = get_net_expenses_per_capita(country, period = calculation_interval) * nagents(model)
+        debt_reduction = max(model.accumulated_debt / 100, 0)
+        reduced_tax = (full_expenses + debt_reduction) / (model.min_gdp_per_cycle * calculation_interval)
+
+        if reduced_tax < flat_tax
+            return reduced_tax
+        end
+    end
+
+    return flat_tax
 end
 
 function average_wealth(model::ABM)
@@ -211,6 +227,7 @@ function simulate_country(country::Country;
                             taxes::Taxes,
                             adjust_tax_up::Bool = false,
                             adjust_tax_down::Bool = false,
+                            deficit_spending::Bool = true,
                             tax_interval::Int = MONTH,
                             vat_active::Bool = false,
                             vat_interval::Int = MONTH,
@@ -317,7 +334,18 @@ function simulate_country(country::Country;
         if taxes == T_INCOME_TAX || taxes == T_GDP_FLAT_TAX
             post_process_data! = post_process_sim_data!
             tax_type = INCOME_TAX
-            tax_brackets = taxes == T_INCOME_TAX ? get_income_tax_brackets(country) : calculate_flat_gdp_tax(country)
+
+            if taxes == T_INCOME_TAX
+                get_tax = (_, _) -> get_income_get_tax(country)
+            else # taxes == T_GDP_FLAT_TAX
+                get_tax = (m,
+                            calculation_interval) -> determine_gdp_tax(m,
+                                                                        calculation_interval,
+                                                                        adjust_tax_up,
+                                                                        adjust_tax_down,
+                                                                        deficit_spending,
+                                                                        )
+            end
 
             gdp_per_capita = get_gdp_per_capita(country, period = taxes == T_INCOME_TAX ? YEAR : MONTH)
             wealth_inequality = overlap_adjusted_inequality_data(get_wealth_inequality(country), num_actors)
@@ -332,54 +360,39 @@ function simulate_country(country::Country;
                                             income_inequality)
 
             adjust_distribution! = distribute_real_expenditures ? adjust_tax_distribution! : nothing
-
-            if adjust_tax_up || adjust_tax_down
-                adjust_taxes! = (m,
-                                collection_type,
-                                tax_brackets,
-                                calculation_interval,
-                                total_tax) -> adjust_tax!(m,
-                                                            collection_type,
-                                                            tax_brackets,
-                                                            calculation_interval,
-                                                            total_tax,
-                                                            adjust_tax_up,
-                                                            adjust_tax_down)
-            end
         elseif taxes == T_DEM_TAX
             post_process_data! = (a, m) -> post_process_sim_data!(a, m, true)
             tax_type = DEMURRAGE_TAX
-            tax_brackets = calculate_dem_tax(country, period = tax_interval)
+            tax_expenses = calculate_sumsy_expenses(country, tax_interval)
+            get_tax = (_, _) -> calculate_dem_tax(country, period = tax_interval, expenses_per_capita = tax_expenses)
             adjust_distribution! = nothing
         elseif taxes == T_VAT_ONLY
             post_process_data! = post_process_sim_data!
             tax_type = VAT_ONLY
-            tax_brackets = 0
+            get_tax = (_, _) -> 0
             adjust_distribution! = nothing
         elseif taxes == T_NO_TAX
             post_process_data! = post_process_sim_data!
             tax_type = NO_TAX
-            tax_brackets = 0
+            get_tax = (_, _) -> 0
             adjust_distribution! = nothing
         end
 
         if vat_active
-            vat = calculate_avg_vat(country)
+            vat = (_, _) -> calculate_avg_vat(country)
         else
-            vat = 0
+            vat = (_, _) -> 0
         end
 
         tax_scheme = FixedTaxScheme(tax_type,
                                     tax_recipients = round(num_actors * percentage_tax_recipients),
                                     tax_calculation_interval = tax_interval,
                                     tax_redistribution_interval = MONTH,
-                                    tax_brackets = tax_brackets,
-                                    tax_free = 0,
+                                    get_tax = get_tax,
                                     vat_interval = vat_interval,
-                                    vat = vat,
+                                    get_vat = vat,
                                     initial_income! = init_income!,
-                                    adjust_distribution! = adjust_distribution!,
-                                    adjust_tax! = adjust_taxes!)
+                                    adjust_distribution! = adjust_distribution!)
     end
 
     # Data handlers

@@ -10,12 +10,9 @@ abstract type TaxScheme{C <: FixedDecimal} end
         * tax_recipients: Int - The number of tax recipients.
         * tax_calculation_interval: Int - The interval for tax calculation.
         * tax_redistribution_interval: Int - The interval to collect and distribute taxes. Must be <= tax calculation interval.
-        * tax_brackets: DemTiers - The tax brackets.
-        * tax_free: C - The tax free bracket.
-        * add_tax_share_to_income: Bool - Whether or not to add the redistributed tax share to income.
+        * get_tax: Function - Returns the tax brackets. Can be DemSettings or DemTiers. Takes the model and calculation_interval as parameters.
         * vat_interval: Int - The interval vor VAT collection.
-        * vat: Real - The VAT rate.
-        * add_vat_share_to_income: Bool - Whether or not to add the redistributed VAT share to income.
+        * get_vat: Function - Get the VAT rate. Takes the model and calculation interval as parameters. Returns a number between 0 and 1.
         * initial_income!: Function - Set the initial income of the actors.
         * adjust_distribution!: Function - Adjust the distribution amount.
                                             Takes the model, the collection type (D_TAX or D_VAT) and the initial amount as a parameter and returns the adjusted amount.
@@ -26,53 +23,42 @@ abstract type TaxScheme{C <: FixedDecimal} end
     The interval for tax calculation and tax redistribution can be different. In that case, partial collection and redistribution is handled at redistribution intervals.
     At the last interval all remaining taxes are collected and redistributed.
 """
-struct FixedTaxScheme{C <: FixedDecimal, FI, FD, FA} <: TaxScheme{C}
+struct FixedTaxScheme{C <: FixedDecimal, FT, FV, FI, FD} <: TaxScheme{C}
     type::TAX_TYPE
     tax_recipients::Int
     tax_calculation_interval::Int
     tax_redistribution_interval::Int
-    tax_brackets::DemTiers
-    tax_free::C
-    add_tax_share_to_income::Bool
+    get_tax::FT
     vat_interval::Int
-    vat::Real
+    get_vat::FV
     deduct_vat_from_taxes::Bool
-    add_vat_share_to_income::Bool
     initial_income!::FI
     adjust_distribution!::FD
-    adjust_tax!::FA
 
     FixedTaxScheme(tax_type::TAX_TYPE;
                     tax_recipients::Int = 0,
                     tax_calculation_interval::Int = MONTH,
                     tax_redistribution_interval::Int = MONTH,
-                    tax_brackets::DemSettings = 0,
-                    tax_free::Real = 0,
-                    add_tax_share_to_income::Bool = false,
+                    get_tax::Function,
                     vat_interval::Real = tax_calculation_interval,
-                    vat::Real = 0,
+                    get_vat::Function = (_, _) -> 0,
                     deduct_vat_from_taxes::Bool = false,
-                    add_vat_share_to_income::Bool = false,
                     initial_income!::Union{Nothing, Function} = nothing,
-                    adjust_distribution!::Union{Nothing, Function},
-                    adjust_tax!::Union{Nothing, Function} = nothing) = new{Currency,
-                                                                                typeof(initial_income!),
-                                                                                typeof(adjust_distribution!),
-                                                                                typeof(adjust_tax!)}(
-                                                            tax_type,
-                                                            tax_recipients,
-                                                            tax_calculation_interval,
-                                                            min(tax_redistribution_interval, tax_calculation_interval),
-                                                            make_tiers(tax_brackets),
-                                                            tax_free,
-                                                            add_tax_share_to_income,
-                                                            vat_interval,
-                                                            vat,
-                                                            deduct_vat_from_taxes,
-                                                            add_vat_share_to_income,
-                                                            initial_income!,
-                                                            adjust_distribution!,
-                                                            adjust_tax!)
+                    adjust_distribution!::Union{Nothing, Function}) = new{Currency,
+                                                                            typeof(get_tax),
+                                                                            typeof(get_vat),
+                                                                            typeof(initial_income!),
+                                                                            typeof(adjust_distribution!)}(
+                                                                            tax_type,
+                                                                            tax_recipients,
+                                                                            tax_calculation_interval,
+                                                                            min(tax_redistribution_interval, tax_calculation_interval),
+                                                                            get_tax,
+                                                                            vat_interval,
+                                                                            get_vat,
+                                                                            deduct_vat_from_taxes,
+                                                                            initial_income!,
+                                                                            adjust_distribution!)
 end
 
 function register_income_and_expenses!(model::ABM, tax_type::TAX_TYPE)
@@ -87,9 +73,6 @@ end
 
 function initialize_tax_scheme!(model::ABM, tax_scheme::FixedTaxScheme)
     properties = abmproperties(model)
-    properties[:add_tax_share_to_income] = tax_scheme.add_tax_share_to_income
-    properties[:add_vat_share_to_income] = tax_scheme.add_vat_share_to_income
-
     properties[:tax_recipients] = create_tax_recipients(model, tax_scheme.tax_recipients)
 
     properties[:tax_redistribution_step] = 0
@@ -126,16 +109,12 @@ function initialize_tax_scheme!(model::ABM, tax_scheme::FixedTaxScheme)
         add_model_behavior!(model,
                             m -> calculate_dem_taxes!(m,
                                                     tax_scheme.tax_calculation_interval,
-                                                    tax_scheme.tax_free,
-                                                    tax_scheme.tax_brackets,
-                                                    tax_scheme.adjust_tax!))
+                                                    tax_scheme.get_tax))
     elseif tax_scheme.type == INCOME_TAX
         add_model_behavior!(model,
                             m -> calculate_income_taxes!(m,
                                                         tax_scheme.tax_calculation_interval,
-                                                        tax_scheme.tax_free,
-                                                        tax_scheme.tax_brackets,
-                                                        tax_scheme.adjust_tax!))
+                                                        tax_scheme.get_tax))
     end
 
     if tax_scheme.type != NO_TAX
@@ -145,11 +124,11 @@ function initialize_tax_scheme!(model::ABM, tax_scheme::FixedTaxScheme)
                                                                     tax_scheme.adjust_distribution!))
     end
 
-    if tax_scheme.vat != 0
+    if tax_scheme.get_vat(model, tax_scheme.vat_interval) != 0
         add_model_behavior!(model,
                             m -> collect_and_distribute_vat!(m,
                                                 tax_scheme.vat_interval,
-                                                tax_scheme.vat,
+                                                tax_scheme.get_vat,
                                                 tax_scheme.deduct_vat_from_taxes))
     end
 end
@@ -164,13 +143,13 @@ function create_tax_recipients(model::ABM, num_tax_recipients::Int)
     return tax_recipients
 end
 
-function collect_and_distribute_vat!(model::ABM, vat_interval::Int, vat::Real, deduct_vat_from_taxes::Bool)
+function collect_and_distribute_vat!(model::ABM, vat_interval::Int, get_vat::Function, deduct_vat_from_taxes::Bool)
     if mod(get_step(model), vat_interval) == 0
         collected_vat = CUR_0
 
         for actor in allagents(model)
             balance = get_balance(actor)
-            vat_to_pay = Currency(actor.vat_eligible * vat)
+            vat_to_pay = Currency(actor.vat_eligible * get_vat(model, vat_interval))
 
             if !book_asset!(balance, SUMSY_DEP, -vat_to_pay)
                 vat_to_pay = asset_value(balance, SUMSY_DEP)
@@ -197,25 +176,22 @@ function collect_and_distribute_vat!(model::ABM, vat_interval::Int, vat::Real, d
             amount_to_distribute = adjust_distribution!(model, D_VAT, collected_vat)
         end
 
-        distribute_amount!(model, amount_to_distribute, :data_vat_share, model.add_vat_share_to_income)
+        distribute_amount!(model, amount_to_distribute, :data_vat_share)
     end
 end
 
 function calculate_taxes!(model::ABM,
                         tax_calculation_interval::Int,
-                        tax_free::Real,
-                        tax_brackets::DemTiers,
-                        taxable::Function,
-                        adjust_tax!::Union{Nothing, Function})                   
+                        tax_free::Function,
+                        get_tax::Function,
+                        taxable::Function)                   
     if mod(get_step(model), tax_calculation_interval) == 0
-        calculated_tax = CUR_0
-
         for actor in allagents(model)
             taxable_amount = taxable(actor) - actor.tax_deduction
 
             tax_to_pay = calculate_time_range_demurrage(taxable_amount,
-                                                        tax_brackets,
-                                                        tax_free,
+                                                        make_tiers(get_tax(model, tax_calculation_interval)),
+                                                        tax_free(actor),
                                                         tax_calculation_interval,
                                                         tax_calculation_interval,
                                                         false)
@@ -223,44 +199,48 @@ function calculate_taxes!(model::ABM,
             actor.tax_to_pay = tax_to_pay
             actor.taxable_income = CUR_0
             actor.tax_deduction = CUR_0
-            calculated_tax += tax_to_pay
+
+            # Temp
+            if tax_to_pay < 0
+                taxable_amount = taxable(actor)
+                tax_deduction = actor.tax_deduction
+                throw("Tax to pay < 0: $tax_to_pay - Taxable = $taxable_amount - Tax deduction = $tax_deduction")
+            end
+
+            if tax_to_pay > 0 && tax_to_pay > asset_value(get_balance(actor), SUMSY_DEP)
+                income = actor.income
+                expenses = actor.expenses
+                b = asset_value(get_balance(actor), SUMSY_DEP)
+                throw("$Taxes - $tax_to_pay - higher than balance $b - Income = $income - Expenses = $expenses - Taxable amount = $taxable_amount")
+            end
+            # End temp
         end
 
         model.tax_redistribution_step = 0
-
-        if !isnothing(adjust_tax!)
-            model.tax_brackets = make_tiers(adjust_tax!(model, D_TAX, tax_brackets, tax_calculation_interval, calculated_tax))
-        end
     end
 end
 
 function calculate_income_taxes!(model::ABM,
                                 tax_calculation_interval::Int,
-                                tax_free::Real,
-                                tax_brackets::DemTiers,
-                                adjust_tax!::Union{Nothing, Function})    
+                                get_tax::Function)    
     calculate_taxes!(model,
                     tax_calculation_interval,
-                    tax_free,
-                    tax_brackets,
-                    a -> a.taxable_income,
-                    adjust_tax!)
+                    a -> 0, # Tax free is in tax brackets
+                    get_tax,
+                    a -> a.taxable_income)
 end
 
 function calculate_dem_taxes!(model,
                             tax_calculation_interval::Int,
-                            dem_free::Real,
-                            dem_tiers::DemTiers,
-                            adjust_tax!::Union{Nothing, Function})
+                            get_dem_tax::Function)
     calculate_taxes!(model,
                     tax_calculation_interval,
-                    dem_free,
-                    dem_tiers,
-                    a -> asset_value(get_balance(a), SUMSY_DEP),
-                    adjust_tax!)
+                    a -> get_dem_free(get_balance(a)), # Dem free is actor dependant
+                    get_dem_tax,
+                    a -> asset_value(get_balance(a), SUMSY_DEP))
 end
 
-function distribute_amount!(model::ABM, collected_amount::Real, share_symbol::Symbol, add_share_to_income::Bool)
+function distribute_amount!(model::ABM, collected_amount::Real, share_symbol::Symbol)
     tax_recipients = model.tax_recipients
 
     if !isempty(tax_recipients)
@@ -269,10 +249,6 @@ function distribute_amount!(model::ABM, collected_amount::Real, share_symbol::Sy
         for actor in tax_recipients
             book_asset!(get_balance(actor), SUMSY_DEP, share)
             setproperty!(actor, share_symbol, getproperty(actor, share_symbol) + share)
-
-            if add_share_to_income
-                add_income!(actor, share)
-            end
         end
 
         extra = collected_amount - share * length(tax_recipients)
@@ -281,10 +257,6 @@ function distribute_amount!(model::ABM, collected_amount::Real, share_symbol::Sy
             actor = tax_recipients[rand(1:length(tax_recipients))]
             book_asset!(get_balance(actor), SUMSY_DEP, extra)
             setproperty!(actor, share_symbol, getproperty(actor, share_symbol) + extra)
-
-            if add_share_to_income
-                add_income!(actor, extra)
-            end
         end
     end
 end
@@ -301,6 +273,7 @@ function collect_and_distribute_taxes!(model::ABM,
 
         for actor in allagents(model)
             balance = get_balance(actor)
+            # value = asset_value(balance, SUMSY_DEP) # Temp
             tax_slice = Currency(actor.tax_to_pay / tax_coefficient)
                                                     
             if !book_asset!(balance, SUMSY_DEP, -tax_slice)
@@ -308,6 +281,10 @@ function collect_and_distribute_taxes!(model::ABM,
                 book_asset!(balance, SUMSY_DEP, -tax_slice)
                 model.data_tax_faliures += 1
             end
+
+            # if step > 1 && tax_slice > 0 && asset_value(balance, SUMSY_DEP) < 0
+            #     throw("Step $step - Taxes pushed balance in red: $value - tax slice: $tax_slice")
+            # end
 
             actor.tax_to_pay -= tax_slice
             actor.data_taxed_amount += tax_slice
@@ -323,7 +300,7 @@ function collect_and_distribute_taxes!(model::ABM,
             amount_to_distribute = adjust_distribution!(model, D_TAX, calculation_interval, collected_tax)
         end
 
-        distribute_amount!(model, amount_to_distribute, :data_tax_share, model.add_tax_share_to_income)
+        distribute_amount!(model, amount_to_distribute, :data_tax_share)
         model.tax_redistribution_step += 1
     end
 end

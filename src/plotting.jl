@@ -139,18 +139,18 @@ function plot_wealth(data::Dict{WealthType, DataFrame},
                     title::String="",
                     xlabel::String = "Time",
                     labels = nothing,
-                    type::WealthType = PERCENTAGE)
+                    type::WealthType = W_PERCENTAGE)
     dataframe = data[type]
     labels = isnothing(labels) ? percentiles_to_labels(percentiles) : labels
     ylabel = ""
 
-    if type == PERCENTAGE
+    if type == W_PERCENTAGE
         ylabel *= "% Wealth"
-    elseif type == AVERAGE
+    elseif type == W_AVERAGE
         ylabel = "Average wealth"
-    elseif type == NOMINAL
+    elseif type == W_NOMINAL
         ylabel *= "Wealth"
-    elseif type == SCALED
+    elseif type == W_SCALED
         ylabel *= "Scaled wealth"
     end
 

@@ -260,7 +260,7 @@ function initialize_yard_sale!(model::ABM, params::YardSaleParams)
     min_transfer_rate = first(params.wealth_transfer_range)
     increment = Currency(1)
 
-    for _ in 1:get_currency_precision(increment)
+    for _ in 1:2 # Transactions below 0.01 are not significant and only slow things down
         increment *= Currency(0.1)
     end
 
@@ -282,21 +282,39 @@ function initialize_yard_sale!(model::ABM, params::YardSaleParams)
     end
 end
 
+function get_non_broke_actor_ids(model::ABM)
+    non_broke_actor_ids = Vector{Int}()
+
+    for actor in allagents(model)
+        if !is_broke(model, actor)
+            append!(non_broke_actor_ids, actor.id)
+
+            if asset_value(get_balance(actor), SUMSY_DEP) < 0
+                b = asset_value(get_balance(actor), SUMSY_DEP)
+                throw("Error in non-broke actors - $b")
+            end
+        end
+    end
+
+    return non_broke_actor_ids
+end
+
 function yard_sale!(model::ABM,
                     determine_direction::Function,
                     adjust_income!)
     reset_income_expenses!(model)
+    avg_wealth = model.avg_wealth(model)
 
     if !isnothing(adjust_income!)
         adjust_income!(model)
     end
 
     transactions = rand(model.transaction_range)
-    non_broke_actor_ids = collect(allids(model))
+    non_broke_actor_ids = get_non_broke_actor_ids(model)
 
     for _ in 1:transactions
         if length(non_broke_actor_ids) > 1
-            atomic_yard_sale!(model, determine_direction, non_broke_actor_ids)
+            atomic_yard_sale!(model, determine_direction, non_broke_actor_ids, avg_wealth)
         else
             break
         end
@@ -339,10 +357,11 @@ function gdp_yard_sale!(model::ABM,
     amount = 0
     min_transaction = model.data_min_transaction
     max_transaction = model.data_max_transaction
-    max_gdp = model.max_gdp + model.min_gdp_per_cycle
-    non_broke_actor_ids = collect(allids(model))
+    model.max_gdp += model.min_gdp_per_cycle
+    max_gdp = model.max_gdp
+    non_broke_actor_ids = get_non_broke_actor_ids(model)
 
-    while gdp < max_gdp && length(non_broke_actor_ids) > 1
+    while gdp <= max_gdp && length(non_broke_actor_ids) > 1
         _, _, amount = atomic_yard_sale!(model, determine_direction, non_broke_actor_ids, avg_wealth)
 
         if amount != 0
@@ -362,6 +381,7 @@ function gdp_yard_sale!(model::ABM,
 
     # Set the next GDP cycle number
     if mod(model.current_gdp_cycle, model.gdp_period) == 0
+        model.max_gdp = CUR_0
         model.gdp = CUR_0
         model.current_gdp_cycle = 1
     else
@@ -405,18 +425,42 @@ function atomic_yard_sale!(model::ABM,
     source, destination, amount = yard_sale_transfer(model, target1, target2, avg_wealth, determine_direction)
     
     if amount != 0
+        # Temp
+        sb = asset_value(get_balance(source), SUMSY_DEP)
+        db = asset_value(get_balance(destination), SUMSY_DEP)
+        # End temp
+
         transfer_asset!(model, source, destination, SUMSY_DEP, amount)
         add_expenses!(source, amount)
         add_income!(destination, amount)
+
+        # Temp
+        if sb - amount != asset_value(get_balance(source), SUMSY_DEP) ||
+            db + amount != asset_value(get_balance(destination), SUMSY_DEP)
+            throw("Transfer error")
+        end
+        # End temp
     end
 
     if model.minimal_wealth_transfer == 0
-        if is_broke(target1)
+        if is_broke(model, target1)
             deleteat!(non_broke_actor_ids, findall(x -> x == target_id_1, non_broke_actor_ids)[1])
+
+            # Temp
+            if length(non_broke_actor_ids) == num_non_broke_actors
+                throw("Broke actor not deleted")
+            end
+            # End temp
         end
 
-        if is_broke(target2)
+        if is_broke(model, target2)
             deleteat!(non_broke_actor_ids, findall(x -> x == target_id_2, non_broke_actor_ids)[1])
+
+            # Temp
+            if length(non_broke_actor_ids) == num_non_broke_actors
+                throw("Broke actor not deleted")
+            end
+            # End temp
         end
     end
 
@@ -430,6 +474,12 @@ function yard_sale_transfer(model::ABM,
                             determine_direction::Function = coinflip)
     transfer_rate = rand(model.wealth_transfer_range)
     waa = model.waa
+
+    if is_broke(model, target1) || is_broke(model, target2)
+        sb = asset_value(get_balance(target1), SUMSY_DEP)
+        db = asset_value(get_balance(target2), SUMSY_DEP)
+        throw("Broke transaction: $sb <=> $db")
+    end
 
     av1 = max(CUR_0, adjusted_asset_value!(target1))
     av2 = max(CUR_0, adjusted_asset_value!(target2))

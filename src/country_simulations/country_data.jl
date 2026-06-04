@@ -1,7 +1,7 @@
 using EconoSim
 using FixedPointDecimals
 
-@enum Country BE NL
+@enum Country BE NL TEST
 @enum WealthScale WS_WEALTH WS_MONEY_STOCK
 @enum IncomeScale IS_INCOME IS_GDP
 @enum AgeGroup POP_MIN_18 POP_18_TO_64 POP_65_PLUS
@@ -278,8 +278,12 @@ function calculate_avg_vat(country::Country)
     return get_vat_income_per_capita(country, period = YEAR) / get_income_per_capita(country, period = YEAR)
 end
 
-function calculate_flat_gdp_tax(country::Country)
+function calculate_flat_gdp_income_tax(country::Country)
     return get_income_per_capita(country) / get_gdp_per_capita(country)
+end
+
+function calculate_flat_gdp_expense_tax(country::Country; period = YEAR, expenses_per_capita::Real)
+    return expenses_per_capita / get_gdp_per_capita(country, period = period)
 end
 
 # SuMSy data
@@ -312,12 +316,6 @@ function get_sumsy_groups(country::Country; period::Int = MONTH)
     return scaled_sumsy_groups
 end
 
-function get_sumsy_expenses_per_capita(country::Country; period::Int = MONTH)
-    return get_net_expenses_per_capita(country, period = period)
-            - get_pension_cost_per_capita(country, period = period)
-            - get_unemployment_cost_per_capita(country, period = period)
-end
-
 function calculate_demurrage(country::Country, flat_gi::Bool = true, period = MONTH)
     if flat_gi
         return make_tiers(get_flat_gi(country, period = period) / get_m_per_capita(country))
@@ -329,8 +327,8 @@ function calculate_demurrage(country::Country, flat_gi::Bool = true, period = MO
     end
 end
 
-function calculate_dem_tax(country::Country; period::Int = MONTH)
-    return get_sumsy_expenses_per_capita(country, period = period) / get_m_per_capita(country)
+function calculate_dem_tax(country::Country; period::Int = MONTH, expenses_per_capita::Real)
+    return expenses_per_capita / get_m_per_capita(country)
 end
 
 function get_sumsy_interval(country::Country)

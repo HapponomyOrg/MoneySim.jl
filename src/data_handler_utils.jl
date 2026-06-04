@@ -180,7 +180,7 @@ function non_broke_actors(model::ABM)
     non_broke = 0
 
     for actor in allagents(model)
-        if !is_broke(actor)
+        if !is_broke(model, actor)
             non_broke += 1
         end
     end
