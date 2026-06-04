@@ -336,7 +336,7 @@ function run_sumsy_simulation(sumsy::SuMSy;
                                                 wealth_transfer_range = wealth_transfer:wealth_transfer:wealth_transfer,
                                                 minimal_wealth_transfer = min_wealth_transfer,
                                                 wealth_accumulation_advantage = waa,
-                                                average_wealth = initial_wealth)
+                                                average_wealth = x -> initial_wealth)
     model_adaptations = isnothing(model_adaptation) ? Vector{Function}() : Vector{Function}([model_adaptation])
 
     run_sumsy_simulation(sumsy_params,
