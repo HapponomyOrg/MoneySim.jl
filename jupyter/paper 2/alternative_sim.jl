@@ -22,7 +22,7 @@ function simulation_a1()
                                     sim_length = L,
                                     distributed = true)[1] # distribute money
 
-    m_data = analyse_money_stock(raw_data)
+    m_data = analyse_aggregate(raw_data)
 
     CSV.write("data/raw_data_a1.csv", raw_data)
     CSV.write("data/m_data_a1.csv", m_data)
@@ -49,7 +49,7 @@ function simulation_a2()GI = 2000
                                     sim_length = L,
                                     distributed = false)[1] # concentrate money
 
-    m_data = analyse_money_stock(raw_data)
+    m_data = analyse_aggregate(raw_data)
 
     CSV.write("data/raw_data_a2.csv", raw_data)
     CSV.write("data/m_data_a2.csv", m_data)
@@ -77,7 +77,7 @@ function simulation_b1()GI = 2000
                                     sim_length = L,
                                     distributed = true)[1] # distribute money
 
-    m_data = analyse_money_stock(raw_data)
+    m_data = analyse_aggregate(raw_data)
 
     CSV.write("data/raw_data_b1.csv", raw_data)
     CSV.write("data/m_data_b1.csv", m_data)
@@ -105,7 +105,7 @@ function simulation_b2()GI = 2000
                                     sim_length = L,
                                     distributed = false)[1] # concentrate money
 
-    m_data = analyse_money_stock(raw_data)
+    m_data = analyse_aggregate(raw_data)
 
     CSV.write("data/raw_data_b2.csv", raw_data)
     CSV.write("data/m_data_b2.csv", m_data)
@@ -133,7 +133,7 @@ function simulation_s1()GI = 2000
                                     distributed = true,
                                     model_adaptation = one_time_money_injection!)[1]
 
-    m_data = analyse_money_stock(raw_data)
+    m_data = analyse_aggregate(raw_data)
 
     CSV.write("data/raw_data_s1.csv", raw_data)
     CSV.write("data/m_data_s1.csv", m_data)
@@ -162,7 +162,7 @@ function simulation_s2()
                                     distributed = true,
                                     model_adaptation = constant_money_injection!)[1]
 
-    m_data = analyse_money_stock(raw_data)
+    m_data = analyse_aggregate(raw_data)
 
     CSV.write("data/raw_data_s2.csv", raw_data)
     CSV.write("data/m_data_s2.csv", m_data)
@@ -192,7 +192,7 @@ function simulation_s3()
                                     distributed = true,
                                     model_adaptation = one_time_money_destruction!)[1]
 
-    m_data = analyse_money_stock(raw_data)
+    m_data = analyse_aggregate(raw_data)
 
     CSV.write("data/raw_data_s3.csv", raw_data)
     CSV.write("data/m_data_s3.csv", m_data)
@@ -221,7 +221,7 @@ function simulation_s4()
                                     distributed = true,
                                     model_adaptation = constant_money_destruction!)[1]
 
-    m_data = analyse_money_stock(raw_data)
+    m_data = analyse_aggregate(raw_data)
 
     CSV.write("data/raw_data_s4.csv", raw_data)
     CSV.write("data/m_data_s4.csv", m_data)
@@ -251,7 +251,7 @@ function simulation_e1()
                                     sim_length = L,
                                     distributed = true)[1]
 
-    m_data = analyse_money_stock(raw_data)
+    m_data = analyse_aggregate(raw_data)
 
     CSV.write("data/raw_data_e1.csv", raw_data)
     CSV.write("data/m_data_e1.csv", m_data)
@@ -280,7 +280,7 @@ function simulation_e2()
                                     sim_length = L,
                                     distributed = true)[1]
 
-    m_data = analyse_money_stock(raw_data)
+    m_data = analyse_aggregate(raw_data)
 
     CSV.write("data/raw_data_e2.csv", raw_data)
     CSV.write("data/m_data_e2.csv", m_data)
@@ -311,7 +311,7 @@ function simulation_e3()
                                     model_adaptation = equal_money_distribution!,
                                     distributed = true)[1]
 
-    m_data = analyse_money_stock(raw_data)
+    m_data = analyse_aggregate(raw_data)
 
     CSV.write("data/raw_data_e3.csv", raw_data)
     CSV.write("data/m_data_e3.csv", m_data)
@@ -345,7 +345,7 @@ function simulation_e4()
                                     model_adaptation = equal_money_distribution!,
                                     distributed = true)[1]
 
-    m_data = analyse_money_stock(raw_data)
+    m_data = analyse_aggregate(raw_data)
 
     CSV.write("data/raw_data_e4.csv", raw_data)
     CSV.write("data/m_data_e4.csv", m_data)
@@ -378,7 +378,7 @@ function simulation_e5()
                                     sim_length = L,
                                     distributed = true)[1]
 
-    m_data = analyse_money_stock(raw_data)
+    m_data = analyse_aggregate(raw_data)
 
     CSV.write("data/raw_data_e5.csv", raw_data)
     CSV.write("data/m_data_e5.csv", m_data)
@@ -572,7 +572,7 @@ function simulation_d1()
                                     sim_length = L,
                                     distributed = true)[1]
 
-    m_data = analyse_money_stock(raw_data)
+    m_data = analyse_aggregate(raw_data)
 
     CSV.write("data/raw_data_d1.csv", raw_data)
     CSV.write("data/m_data_d1.csv", m_data)
