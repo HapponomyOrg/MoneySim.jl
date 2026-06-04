@@ -344,7 +344,7 @@ function simulate_country(country::Country;
                                                                         adjust_tax_up,
                                                                         adjust_tax_down,
                                                                         deficit_spending,
-                                                                        )
+                                                                        0)
             end
 
             gdp_per_capita = get_gdp_per_capita(country, period = taxes == T_INCOME_TAX ? YEAR : MONTH)
