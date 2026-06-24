@@ -275,11 +275,11 @@ function get_income_tax_brackets(country::Country)
 end
 
 function calculate_avg_vat(country::Country)
-    return get_vat_income_per_capita(country, period = YEAR) / get_income_per_capita(country, period = YEAR)
+    return get_vat_income_per_capita(country, period = YEAR) / get_gdp_per_capita(country, period = YEAR)
 end
 
-function calculate_flat_gdp_income_tax(country::Country)
-    return get_income_per_capita(country) / get_gdp_per_capita(country)
+function calculate_flat_gdp_income_tax(country::Country; period = YEAR)
+    return get_income_per_capita(country, period = period) / get_gdp_per_capita(country, period = period)
 end
 
 function calculate_flat_gdp_expense_tax(country::Country; period = YEAR, expenses_per_capita::Real)

@@ -1,6 +1,6 @@
 using DataFrames
 
-@enum WealthType W_PERCENTAGE W_AVERAGE W_NOMINAL W_SCALED WEALTH_GINI I_PERCENTAGE I_AVERAGE I_NOMINAL I_SCALED INCOME_GINI
+@enum SimDataType W_PERCENTAGE W_AVERAGE W_NOMINAL W_SCALED WEALTH_GINI I_PERCENTAGE I_AVERAGE I_NOMINAL I_SCALED INCOME_GINI
 
 """
     analyse_aggregate(dataframe,
@@ -65,7 +65,9 @@ end
            It indicates how much wealth a member of a percentile has for everey 100 a member of the top percentile has.
         4. data frame with the Gini coeficcient.
 """
-function analyse_data(data, wealth::Symbol = :deposit, income::Symbol = :income)    
+function analyse_data(data;
+                        wealth::Symbol = :deposit,
+                        income::Symbol = :net_income)    
     wealth_groups = groupby(data[1], :time)
 
     # Create data frames
@@ -132,7 +134,7 @@ function analyse_data(data, wealth::Symbol = :deposit, income::Symbol = :income)
 
             income_percentages[index] = total_income != 0 ? 100 * income_values[index] / total_income : 0
             average_income_values[index] = income_values[index] / length(percentile_ranges[index])
-            scaled_income_values[index] = 100 * income_values[index] / income_values[9]
+            scaled_income_values[index] = income_values[9] == 0 ? 0 : 100 * income_values[index] / income_values[9]
         end
 
         push!(wealth_analysis, [[wealth_rows[1][:time]] wealth_values])
@@ -152,7 +154,7 @@ function analyse_data(data, wealth::Symbol = :deposit, income::Symbol = :income)
         counter += 1
     end
 
-    wealth_dict = Dict{WealthType, DataFrame}([W_NOMINAL => wealth_analysis,
+    data_dict = Dict{SimDataType, DataFrame}([W_NOMINAL => wealth_analysis,
                                                 W_PERCENTAGE => wealth_percentage_analysis,
                                                 W_AVERAGE => wealth_average_analysis,
                                                 W_SCALED => scaled_wealth_analysis,
@@ -163,7 +165,7 @@ function analyse_data(data, wealth::Symbol = :deposit, income::Symbol = :income)
                                                 I_SCALED => scaled_income_analysis,
                                                 INCOME_GINI => income_gini_analysis])
 
-    return wealth_dict
+    return data_dict
 end
 
 """
@@ -218,4 +220,55 @@ function analyse_type_data(data, data_processing::Function = median)
 end
 
 function analyse_income(data)
+end
+
+function analyse_tax_brackets(data)
+    bracket_data = DataFrame(bracket = String[],
+                                percentage = [])
+
+    if data[!, :tax_brackets][1] === missing
+        data = copy(data)
+        deleteat!(data, 1)
+    end
+
+    for bracket_str in data[!, :tax_brackets]
+        if !isempty(bracket_str)
+            brackets = split(bracket_str, "] [")
+
+            for bracket in brackets
+                b = split(bracket, " - ")
+                range = replace(
+                            replace(
+                                replace(
+                                    replace(b[1], "[" => ""), "(" => ""), ")" => ""), "]" => "")
+
+                percentage = parse(Float64,
+                                    replace(replace(b[2], "]" => ""), "%" => ""))
+                push!(bracket_data, [range percentage])
+            end
+        end
+    end
+
+    bracket_groups = groupby(bracket_data, :bracket)
+    bracket_plot_data = DataFrame()
+
+    for g in bracket_groups
+        bracket_plot_data[!, g[!, 1][1]] = []
+    end
+
+    rows = eachrow(bracket_data)
+    row = 1
+
+    while row < size(bracket_data)[1]
+        p_vector = Vector{Float64}()
+
+        for _ in 1:length(bracket_groups)
+            append!(p_vector, round(rows[row][2], digits = 2))
+            row += 1
+        end
+
+        push!(bracket_plot_data, transpose(p_vector))
+    end
+
+    return bracket_plot_data
 end

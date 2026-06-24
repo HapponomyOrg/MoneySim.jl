@@ -49,6 +49,13 @@ function taxed_amount_collector!(actor)
     return taxed_amount
 end
 
+function net_income_collector!(actor)
+    net_income = actor.data_net_income
+    actor.data_net_income = CUR_0
+
+    return net_income
+end
+
 function paid_tax_collector!(actor)
     paid_tax = actor.data_paid_tax
     actor.data_paid_tax = CUR_0
@@ -100,8 +107,8 @@ function gdp_collector!(model::ABM)
     return gdp
 end
 
-function accumulated_debt_collector(model::ABM)
-    return model.accumulated_debt
+function debt_collector(model::ABM)
+    return model.debt
 end
 
 function transactions_collector!(model::ABM)
@@ -153,6 +160,34 @@ function tax_collector!(model::ABM)
     model.data_collected_taxes = CUR_0
 
     return collected_taxes
+end
+
+function projected_expenses_collector!(model::ABM)
+    projected_expenses = model.projected_expenses
+    model.projected_expenses = CUR_0
+
+    return projected_expenses
+end
+
+function projected_revenue_collector!(model::ABM)
+    projected_revenue = model.projected_revenue
+    model.projected_revenue = CUR_0
+
+    return projected_revenue
+end
+
+function tax_scale_collector!(model::ABM)
+    tax_scale = model.tax_scale
+    model.tax_scale = ""
+
+    return tax_scale
+end
+
+function tax_brackets_collector!(model::ABM)
+    tax_brackets = model.tax_brackets
+    model.tax_brackets = ""
+
+    return tax_brackets
 end
 
 function failed_tax_collector!(model::ABM)

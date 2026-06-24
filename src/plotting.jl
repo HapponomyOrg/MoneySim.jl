@@ -1,33 +1,45 @@
 using DataFrames
+using Plots
 
 function plot_data(dataframe::DataFrame,
                     data_symbols::Vector{Symbol},
                     data_labels::Vector{String},
-                    xlabel::String,
-                    ylabel::String)
+                    reference_symbols::Vector{Symbol} = Vector{Symbol}(),
+                    reference_values::Vector{<:Real} = Vector{Real}(),
+                    reference_labels::Vector{String} = Vector{String}(),
+                    xlabel::String = "Years",
+                    ylabel::String = "")
+    data_size = size(dataframe)[1]
     the_plot = plot(dataframe[!, data_symbols[1]], label=data_labels[1], xlabel=xlabel, ylabel=ylabel)
 
     for i in 2:length(data_symbols)
         plot!(dataframe[!, data_symbols[i]], label=data_labels[i])
     end
 
+    for i in 1:length(reference_symbols)
+        plot!(fill(reference_values[i], data_size), label = reference_labels[i])
+    end
+
     return the_plot
 end
 
-function plot_money_stock(dataframes::Union{DataFrame,Vector{DataFrame}},
-    title::String="";
-    money_stock_labels::Union{Vector{String},String}="money stock",
-    min_label::String = "min",
-    max_label::String = "max",
-    theoretical_min=nothing,
-    theoretical_max=nothing)
+function plot_stocks(dataframes::Union{DataFrame,Vector{DataFrame}},
+                    title::String="";
+                    stock_symbol = :money_stock,
+                    stock_label = "Money Stock",
+                    time_label::String = "Periods",
+                    money_stock_labels::Union{Vector{String},String, Nothing} = nothing,
+                    min_label::String = "min",
+                    max_label::String = "max",
+                    theoretical_min=nothing,
+                    theoretical_max=nothing)
     data_size = 0
     
     if typeof(dataframes) == DataFrame
-        data_size = size(dataframes[!, :money_stock])[1]
+        data_size = size(dataframes[!, stock_symbol])[1]
         dataframes = [dataframes]
     else
-        data_size = size(dataframes[1][!, :money_stock])[1]
+        data_size = size(dataframes[1][!, stock_symbol])[1]
     end
 
     if typeof(money_stock_labels) == String
@@ -37,48 +49,52 @@ function plot_money_stock(dataframes::Union{DataFrame,Vector{DataFrame}},
     min_y = typemax(Currency)
     max_y = typemin(Currency)
 
-    for i in 1:length(dataframes)
-        min_money_stock = isnothing(theoretical_min) ? minimum(dataframes[i].money_stock) : min(theoretical_min, minimum(dataframes[i].money_stock))
-        max_money_stock = isnothing(theoretical_max) ? maximum(dataframes[i].money_stock) : max(theoretical_max, maximum(dataframes[i].money_stock))
+    for i in eachindex(dataframes)
+        min_stock = isnothing(theoretical_min) ? minimum(dataframes[i][!, stock_symbol]) : min(theoretical_min, minimum(dataframes[i][!, stock_symbol]))
+        max_stock = isnothing(theoretical_max) ? maximum(dataframes[i][!, stock_symbol]) : max(theoretical_max, maximum(dataframes[i][!, stock_symbol]))
 
-        if max_money_stock - min_money_stock < 1
+        if max_stock - min_stock < 1
             if isnothing(theoretical_min) && isnothing(theoretical_max)
-                min_y = round(min_money_stock) - 0.5
-                max_y = round(max_money_stock) + 0.5
+                min_y = round(min_stock) - 0.5
+                max_y = round(max_stock) + 0.5
             elseif isnothing(theoretical_min)
-                min_y = min(min_money_stock, theoretical_max - 0.5)
-                max_y = max(max_money_stock, theoretical_max + 0.5)
+                min_y = min(min_stock, theoretical_max - 0.5)
+                max_y = max(max_stock, theoretical_max + 0.5)
             elseif isnothing(theoretical_max)
-                min_y = min(min_money_stock, theoretical_min - 0.5)
-                max_y = max(max_money_stock, theoretical_min + 0.5)
+                min_y = min(min_stock, theoretical_min - 0.5)
+                max_y = max(max_stock, theoretical_min + 0.5)
             else
-                min_y = min(min_money_stock, theoretical_min - 0.5)
-                max_y = max(max_money_stock, theoretical_max + 0.5)
+                min_y = min(min_stock, theoretical_min - 0.5)
+                max_y = max(max_stock, theoretical_max + 0.5)
             end
         else
             if isnothing(theoretical_min) && isnothing(theoretical_max)
-                min_y = min_money_stock - (max_money_stock - min_money_stock) / 10
-                max_y = max_money_stock + (max_money_stock - min_money_stock) / 10
+                min_y = min_stock - (max_stock - min_stock) / 10
+                max_y = max_stock + (max_stock - min_stock) / 10
             elseif isnothing(theoretical_min)
-                min_y = min_money_stock - (max(theoretical_max, max_money_stock) - min_money_stock) / 10
-                max_y = max(theoretical_max, max_money_stock) + (max(theoretical_max, max_money_stock) - min_money_stock) / 10
+                min_y = min_stock - (max(theoretical_max, max_stock) - min_stock) / 10
+                max_y = max(theoretical_max, max_stock) + (max(theoretical_max, max_stock) - min_stock) / 10
             elseif isnothing(theoretical_max)
-                min_y = min(theoretical_min, min_money_stock) - (max_money_stock - min(theoretical_min, min_money_stock)) / 10
-                max_y = max_money_stock + (max_money_stock - min(theoretical_min, min_money_stock)) / 10
+                min_y = min(theoretical_min, min_stock) - (max_stock - min(theoretical_min, min_stock)) / 10
+                max_y = max_stock + (max_stock - min(theoretical_min, min_stock)) / 10
             else
-                min_y = min(theoretical_min, min_money_stock) - (max(theoretical_max, max_money_stock) - min(theoretical_min, min_money_stock)) / 10
-                max_y = max(theoretical_max, max_money_stock) + (max(theoretical_max, max_money_stock) - min(theoretical_min, min_money_stock)) / 10
+                min_y = min(theoretical_min, min_stock) - (max(theoretical_max, max_stock) - min(theoretical_min, min_stock)) / 10
+                max_y = max(theoretical_max, max_stock) + (max(theoretical_max, max_stock) - min(theoretical_min, min_stock)) / 10
             end
         end
     end
 
-    for i in 1:length(dataframes)
-        label = money_stock_labels[i]
+    for i in eachindex(dataframes)
+        if !isnothing(money_stock_labels)
+            label = money_stock_labels[i]
+        else
+            label = nothing
+        end
 
         if i == 1
-            p = @df dataframes[i] plot(:money_stock, title=title, label=label, yrange=(min_y, max_y), xlabel="Periods", ylabel="Money stock")
+            p = plot(dataframes[i][!, stock_symbol], title=title, label=label, yrange=(min_y, max_y), xlabel=time_label, ylabel=stock_label)
         else
-            p = @df dataframes[i] plot!(:money_stock, label=label, yrange=(min_y, max_y), xlabel="Periods", ylabel="Money stock")
+            p = plot(dataframes[i][!, stock_symbol], label=label, yrange=(min_y, max_y), xlabel=time_label, ylabel=stock_label)
         end
     end
 
@@ -93,33 +109,39 @@ function plot_money_stock(dataframes::Union{DataFrame,Vector{DataFrame}},
     return p
 end
 
-function plot_comparative_money_stock(dataframe,
-    title::String="";
-    original_min=nothing,
-    original_max=nothing,
-    new_min=nothing,
-    new_max=nothing)
-    @df dataframe plot(:money_stock, title=title, label="money stock", color="blue", xlabel="Periods", ylabel="Money stock")
+function plot_comparative_stocks(dataframe,
+                                title::String="";
+                                stock_symbol = :money_stock,
+                                stock_label = "Money Stock",
+                                original_min=nothing,
+                                original_max=nothing,
+                                new_min=nothing,
+                                new_max=nothing)
+    p = plot(dataframe[!, stock_symbol], title=title, label=stock_label, color="blue", xlabel="Periods", ylabel=stock_label)
 
     if original_min !== nothing
-        plot!(fill(original_min, size(dataframe[!, :money_stock])[1]), label="original min", color="orange")
+        plot!(fill(original_min, size(dataframe[!, stock_symbol])[1]), label="original min", color="orange")
     end
 
     if original_max !== nothing
-        plot!(fill(original_max, size(dataframe[!, :money_stock])[1]), label="original max", color="red")
+        plot!(fill(original_max, size(dataframe[!, stock_symbol])[1]), label="original max", color="red")
     end
 
     if new_min !== nothing
-        plot!(fill(new_min, size(dataframe[!, :money_stock])[1]), label="new min", color="green")
+        plot!(fill(new_min, size(dataframe[!, stock_symbol])[1]), label="new min", color="green")
     end
 
     if new_max !== nothing
-        plot!(fill(new_max, size(dataframe[!, :money_stock])[1]), label="new max", color="purple")
+        plot!(fill(new_max, size(dataframe[!, stock_symbol])[1]), label="new max", color="purple")
     end
 end
 
-function plot_money_stock_per_person(dataframe, num_actors=NUM_ACTORS, title::String="")
-    plot(./(dataframe[!, :money_stock], num_actors), title=title, label="Money stock", xlabel="Periods", ylabel="Money stock")
+function plot_stocks_per_person(dataframe,
+                                num_actors=NUM_ACTORS,
+                                title::String="";
+                                stock_symbol = :money_stock,
+                                stock_label = "Money Stock")
+    plot(./(dataframe[!, stock_symbol], num_actors), title=title, label=stock_label, xlabel="Periods", ylabel=stock_label)
 end
 
 function plot_net_incomes(sumsy::SuMSy)
@@ -134,24 +156,89 @@ function plot_net_incomes(sumsy::SuMSy)
     # plot(incomes, label = "net income", xlabel="Acount balance", xticks = 10)
 end
 
-function plot_wealth(data::Dict{WealthType, DataFrame},
+function plot_gini_coefficients(data_dict::Dict{SimDataType, DataFrame};
+                                gini_symbols::Vector{Symbol} = [:wealth_gini, :income_gini],
+                                title::String = "Gini Coefficients",
+                                xlabel::String = "Time",
+                                ylabel::String = "Gini Coefficient",
+                                labels::Vector{String} = ["Wealth Gini", "Income Gini"])    
+    wealth_data = data_dict[WEALTH_GINI][!, gini_symbols[1]]
+    wealth_data = [wealth_data[i] for i in findall(x -> x !== NaN, wealth_data)]
+
+    income_data = data_dict[INCOME_GINI][!, gini_symbols[2]]
+    income_data = [income_data[i] for i in findall(x -> x !== NaN, income_data)]
+
+    the_plot = plot(wealth_data,
+                    label = labels[1],
+                    title = title,
+                    xlabel = xlabel,
+                    ylabel = ylabel,
+                    yrange = (0, max(maximum(wealth_data),
+                                    maximum(income_data),
+                                    1.1)),
+                    legend = :inside)
+
+    plot!(income_data, label = labels[2])
+
+    return the_plot
+end
+
+function plot_gini_rate(data_dict::Dict{SimDataType, DataFrame};
+                        gini_symbols::Vector{Symbol} = [:wealth_gini, :income_gini],
+                        title::String = "Gini Rate - Wealth / Income",
+                        xlabel::String = "Time",
+                        ylabel::String = "Gini Rate",
+                        label::Union{String, Nothing} = nothing)
+    wealth_data = data_dict[WEALTH_GINI]
+    income_data = data_dict[INCOME_GINI]
+
+    gini_rates = Vector{Currency}()
+    wealth_rows = eachrow(wealth_data)
+    income_rows = eachrow(income_data)
+
+    for i in 1:length(wealth_rows)
+        try
+            append!(gini_rates, Currency(wealth_rows[i][gini_symbols[1]]
+                                        / income_rows[i][gini_symbols[2]]))
+        catch
+        end
+    end
+
+    return plot(gini_rates,
+                label = label,
+                title = title,
+                xlabel = xlabel,
+                ylabel = ylabel,
+                yrange = (0, maximum(gini_rates) + 0.1),
+                legend = :inside)
+end
+
+function plot_data(data::Dict{SimDataType, DataFrame},
                     percentiles::Vector{Percentiles} = collect(instances(Percentiles));
                     title::String="",
                     xlabel::String = "Time",
                     labels = nothing,
-                    type::WealthType = W_PERCENTAGE)
-    dataframe = data[type]
+                    type::SimDataType = W_PERCENTAGE)
+    dataframe = deleteat!(copy(data[type]), 1)
     labels = isnothing(labels) ? percentiles_to_labels(percentiles) : labels
     ylabel = ""
 
     if type == W_PERCENTAGE
         ylabel *= "% Wealth"
     elseif type == W_AVERAGE
-        ylabel = "Average wealth"
+        ylabel = "Average Wealth"
     elseif type == W_NOMINAL
         ylabel *= "Wealth"
     elseif type == W_SCALED
-        ylabel *= "Scaled wealth"
+        ylabel *= "Scaled Wealth"
+    elseif type == I_PERCENTAGE
+        ylabel *= "% Income"
+    elseif type == W_AVERAGE
+        ylabel = "Average Income"
+    elseif type == W_NOMINAL
+        ylabel *= "Income"
+    elseif type == W_SCALED
+        ylabel *= "Scaled Income"
     end
 
     the_plot = plot(
@@ -281,6 +368,33 @@ function plot_collected_tax(full_tax_target::Real,
 
     for i in 1:length(dataframe)
         plot!(dataframes[i][!, :collected_tax] + dataframes[i][!, :collected_vat], label=labels[i] * " + VAT")
+    end
+
+    return the_plot
+end
+
+function plot_expenses(data, title::String = "Expenses vs Revenue")
+    data = copy(data)
+    deleteat!(data, 1)
+
+    total_revenue = Vector{Currency}()
+
+    for row in eachrow(data)
+        append!(total_revenue, row[:collected_tax] + row[:collected_vat])
+    end
+
+    the_plot = plot(total_revenue, title=title, label="Total Revenue", xlabel="Time", ylabel="Amount")  
+    plot!(data[!, :projected_expenses], label="Target expenses") 
+    
+    return the_plot
+end
+
+function plot_tax_brackets(data, title::String = "Tax Brackets")
+    labels = names(data)
+    the_plot = plot(data[!, labels[1]], title=title, label=labels[1], xlabel="Time", ylabel="Percentage", legend=:inside)
+
+    for i in 2:length(labels)
+        plot!(data[!, labels[i]], label=labels[i])
     end
 
     return the_plot

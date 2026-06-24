@@ -23,8 +23,8 @@ function initialize_simulation!(model::ABM;
                                 sim_params::SimParams,
                                 population_params::PopulationParams = FixedPopulationParams(population = 1000),
                                 monetary_params::MonetaryModelParams,
-                                transaction_params::Union{TransactionParams, Nothing} = nothing,
                                 tax_scheme::Union{Nothing, TaxScheme} = nothing,
+                                transaction_params::Union{TransactionParams, Nothing} = nothing,
                                 data_handler::Union{DataHandler, Nothing} = nothing,
                                 termination_handler::Union{TerminationHandler, Nothing} = nothing,
                                 model_initialisations::Vector{<: Function} = Vector{Function}(),
@@ -40,12 +40,12 @@ function initialize_simulation!(model::ABM;
     
     initialize_monetary_model!(model, monetary_params)
 
-    if !isnothing(transaction_params)
-        initialize_transaction_model!(model, transaction_params)
-    end
-
     if !isnothing(tax_scheme)
         initialize_tax_scheme!(model, tax_scheme)
+    end
+
+    if !isnothing(transaction_params)
+        initialize_transaction_model!(model, transaction_params)
     end
 
     if !isnothing(data_handler)
@@ -120,8 +120,8 @@ function run_simulation(model::ABM;
                         sim_params::SimParams,
                         population_params::PopulationParams = FixedPopulationParams(population = 1000),
                         monetary_params::MonetaryModelParams,
-                        transaction_params::Union{TransactionParams, Nothing} = nothing,
                         tax_scheme::Union{Nothing, TaxScheme} = nothing,
+                        transaction_params::Union{TransactionParams, Nothing} = nothing,
                         data_handler::Union{DataHandler, Nothing} = nothing,
                         termination_handler::Union{TerminationHandler, Nothing} = nothing,
                         model_initialisations::Vector{<: Function} = Vector{Function}(),
@@ -132,8 +132,8 @@ function run_simulation(model::ABM;
                                                                 sim_params = sim_params,
                                                                 population_params = population_params,
                                                                 monetary_params = monetary_params,
-                                                                transaction_params = transaction_params,
                                                                 tax_scheme = tax_scheme,
+                                                                transaction_params = transaction_params,
                                                                 data_handler = data_handler,
                                                                 termination_handler = termination_handler,
                                                                 model_initialisations = model_initialisations,
@@ -154,8 +154,8 @@ end
 function run_fixed_wealth_simulation(fixed_wealth_params::FixedWealthParams;
                                     sim_params::SimParams,
                                     population_params::PopulationParams = FixedPopulationParams(population = 1000),
-                                    transaction_params::Union{TransactionParams, Nothing} = nothing,
                                     tax_scheme::Union{Nothing, TaxScheme} = nothing,
+                                    transaction_params::Union{TransactionParams, Nothing} = nothing,
                                     data_handler::Union{DataHandler, Nothing} = nothing,
                                     termination_handler::Union{TerminationHandler, Nothing} = nothing,
                                     model_initialisations::Vector{<: Function} = Vector{Function}(),
@@ -168,8 +168,8 @@ function run_fixed_wealth_simulation(fixed_wealth_params::FixedWealthParams;
                     sim_params = sim_params,
                     population_params = population_params,
                     monetary_params = fixed_wealth_params,
-                    transaction_params = transaction_params,
                     tax_scheme = tax_scheme,
+                    transaction_params = transaction_params,
                     data_handler = data_handler,
                     termination_handler = termination_handler,
                     model_initialisations = model_initialisations,
@@ -206,8 +206,8 @@ function run_fixed_wealth_simulation(;
     run_fixed_wealth_simulation(fixed_wealth_params,
                                 sim_params = sim_params,
                                 population_params = population_params,
-                                transaction_params = yard_sale_params,
                                 tax_scheme = tax_scheme,
+                                transaction_params = transaction_params,
                                 data_handler = data_handler,
                                 termination_handler = termination_handler,
                                 model_initialisations = model_initialisations,
@@ -244,8 +244,8 @@ function run_fixed_wealth_gdp_simulation(;
     run_fixed_wealth_simulation(fixed_wealth_params,
                                 population_params = population_params,
                                 sim_params = sim_params,
-                                transaction_params = yard_sale_params,
                                 tax_scheme = tax_scheme,
+                                transaction_params = transaction_params,
                                 data_handler = data_handler,
                                 termination_handler = termination_handler,
                                 model_initialisations = model_initialisations,
@@ -262,8 +262,8 @@ function run_sumsy_simulation(sumsy_params::SuMSyParams;
                                                                                                                                     sumsy = sumsy,
                                                                                                                                     sumsy_interval = sumsy_interval,
                                                                                                                                     transactional = sumsy_params.transactional)),
-                                transaction_params::Union{TransactionParams, Nothing} = nothing,
                                 tax_scheme::Union{Nothing, TaxScheme} = nothing,
+                                transaction_params::Union{TransactionParams, Nothing} = nothing,
                                 data_handler::Union{DataHandler, Nothing} = nothing,
                                 termination_handler::Union{TerminationHandler, Nothing} = nothing,
                                 model_initialisations::Vector{<: Function} = Vector{Function}(),
@@ -279,8 +279,8 @@ function run_sumsy_simulation(sumsy_params::SuMSyParams;
                     sim_params = sim_params,
                     population_params = population_params,
                     monetary_params = sumsy_params,
-                    transaction_params = transaction_params,
                     tax_scheme = tax_scheme,
+                    transaction_params = transaction_params,
                     data_handler = data_handler,
                     termination_handler = termination_handler,
                     model_initialisations = model_initialisations,
@@ -342,8 +342,8 @@ function run_sumsy_simulation(sumsy::SuMSy;
     run_sumsy_simulation(sumsy_params,
                             sim_params = sim_params,
                             population_params = population_params,
-                            transaction_params = transaction_params,
                             tax_scheme = tax_scheme,
+                            transaction_params = transaction_params,
                             data_handler = data_handler,
                             termination_handler = termination_handler,
                             model_initialisations = model_initialisations,
@@ -399,8 +399,8 @@ function run_sumsy_gdp_simulation(sumsy::SuMSy;
     run_sumsy_simulation(sumsy_params,
                             sim_params = sim_params,
                             population_params = population_params,
-                            transaction_params = yard_sale_params,
                             tax_scheme = tax_scheme,
+                            transaction_params = yard_sale_params,
                             data_handler = data_handler,
                             termination_handler = termination_handler,
                             model_initialisations = model_initialisations,
@@ -470,8 +470,8 @@ function run_consumer_supplier_simulation(sumsy::SuMSy;
     return run_sumsy_simulation(sumsy_params,
                                 sim_params = sim_params,
                                 population_params = population_params,
-                                transaction_params = consumer_supply_params,
                                 tax_scheme = tax_scheme,
+                                transaction_params = consumer_supply_params,
                                 data_handler = data_handler,
                                 termination_handler = termination_handler,
                                 model_initialisations = model_initialisations,
@@ -481,8 +481,8 @@ end
 
 function run_debt_based_simulation(debt_based_params::DebtBasedParams;
                                     sim_params::SimParams,
-                                    transaction_params::Union{TransactionParams, Nothing} = nothing,
                                     tax_scheme::Union{Nothing, TaxScheme} = nothing,
+                                    transaction_params::Union{TransactionParams, Nothing} = nothing,
                                     population_params::PopulationParams = FixedPopulationParams(population = 1000),
                                     data_handler::Union{DataHandler, Nothing} = nothing,
                                     termination_handler::Union{TerminationHandler, Nothing} = nothing,
@@ -494,9 +494,9 @@ function run_debt_based_simulation(debt_based_params::DebtBasedParams;
     run_simulation(model,
                     sim_params = sim_params,
                     population_params = population_params,
-                    transaction_params = transaction_params, 
                     monetary_params = debt_based_params,
                     tax_scheme = tax_scheme,
+                    transaction_params = transaction_params, 
                     data_handler = data_handler,
                     termination_handler = termination_handler,
                     model_initialisations = model_initialisations,

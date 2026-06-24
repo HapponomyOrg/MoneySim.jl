@@ -37,9 +37,10 @@ include("data_handler_utils.jl")
 export equity_collector, wealth_collector, deposit_collector
 export sumsy_equity_collector, sumsy_wealth_collector, sumsy_deposit_collector
 export sumsy_data_collector!
-export income_collector!, taxed_amount_collector!, expenses_collector!, paid_tax_collector!, paid_vat_collector!
+export income_collector!, taxed_amount_collector!, expenses_collector!, paid_tax_collector!, paid_vat_collector!, after_tax_collector!
 export gdp_collector!, transactions_collector!, min_transaction_collector!, max_transaction_collector!
-export tax_collector!, failed_tax_collector!, vat_collector!, failed_vat_collector!
+export projected_expenses_collector!, projected_revenue_collector!, tax_scale_collector!, tax_brackets_collector!, tax_collector!, failed_tax_collector!, vat_collector!, failed_vat_collector!
+export debt_collector
 export full_post_processing!, full_sumsy_post_processing!, money_stock_post_processing!, gdp_post_processing!
 export NO_DATA_HANDLER
 export full_data_handler, full_sumsy_data_handler, money_stock_data_handler, gdp_data_handler
@@ -53,7 +54,7 @@ export add_income!, add_expenses!
 export gdp_yard_sale!, gdp_baseline_yard_sale!
 
 include("tax_scheme.jl")
-export TaxScheme, FixedTaxScheme
+export TaxScheme, StateTaxScheme
 export CollectionType, D_TAX, D_VAT
 export distribute_taxes!
 export initialize_tax_scheme
@@ -76,8 +77,9 @@ export distribute_equal!, concentrate_wealth!, distribute_inequal!
 export percentage_gi_actors!, mixed_actors!, typed_gi_actors!, type_based_sumsy_actors!
 
 include("data_analysis.jl")
-export WealthType, W_PERCENTAGE, W_AVERAGE, W_NOMINAL, W_SCALED, WEALTH_GINI, I_PERCENTAGE, I_AVERAGE, I_NOMINAL, INCOME_GINI
+export SimDataType, W_PERCENTAGE, W_AVERAGE, W_NOMINAL, W_SCALED, WEALTH_GINI, I_PERCENTAGE, I_AVERAGE, I_NOMINAL, INCOME_GINI
 export analyse_aggregate, analyse_data, analyse_type_data
+export analyse_tax_brackets
 
 include("termination_handler.jl")
 export TerminationHandler, NoTerminationHandler, FlaggedTerminationHandler
@@ -89,12 +91,13 @@ export terminate_at_end_interval
 
 include("plotting.jl")
 export plot_data
-export plot_money_stock, plot_comparative_money_stock
+export plot_stocks, plot_comparative_stocks
 export plot_net_incomes
+export plot_gini_coefficients, plot_gini_rate
 export plot_wealth, plot_outlier_wealth, plot_type_wealth
 export plot_gdp, plot_transactions, plot_min_max_transactions
 export plot_non_broke_actors
-export plot_collected_tax
+export plot_collected_tax, plot_tax_brackets, plot_expenses
 
 include("simulations.jl")
 export SimParams

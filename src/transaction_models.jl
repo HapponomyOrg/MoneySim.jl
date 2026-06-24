@@ -57,13 +57,6 @@ struct BareBonesParams{F} <: TransactionParams
 end
 
 function initialize_transaction_model!(model::ABM, params::BareBonesParams)
-    for actor in allagents(model)
-        actor.income = CUR_0
-        actor.expenses = CUR_0
-        actor.data_income = CUR_0
-        actor.data_expenses = CUR_0
-    end
-
     if !isnothing(params.execute_transaction!)
         add_model_behavior!(model, params.execute_transaction!)
     end
@@ -226,8 +219,8 @@ function add_gdp_properties!(model::ABM, params::YardSaleParams)
     initialize_yard_sale!(model, params)
     properties = abmproperties(model)
 
-    properties[:gdp] = params.gdp_per_capita * nagents(model)
-    properties[:data_gdp] = params.gdp_per_capita * nagents(model)
+    properties[:gdp] = CUR_0
+    properties[:data_gdp] = params.gdp_per_capita * nagents(model) # Initial data capture
     properties[:gdp_period] = params.gdp_period
     properties[:current_gdp_cycle] = 1
     properties[:min_gdp_per_cycle] = model.data_gdp / model.gdp_period
@@ -273,13 +266,6 @@ function initialize_yard_sale!(model::ABM, params::YardSaleParams)
     end
 
     properties[BROKE_THRESHOLD] = broke_threshold + increment # Playing it safe
-
-    for actor in allagents(model)
-        actor.income = CUR_0
-        actor.expenses = CUR_0
-        actor.data_income = CUR_0
-        actor.data_expenses = CUR_0
-    end
 end
 
 function get_non_broke_actor_ids(model::ABM)
@@ -361,7 +347,7 @@ function gdp_yard_sale!(model::ABM,
     max_gdp = model.max_gdp
     non_broke_actor_ids = get_non_broke_actor_ids(model)
 
-    while gdp <= max_gdp && length(non_broke_actor_ids) > 1
+    while gdp < max_gdp && length(non_broke_actor_ids) > 1
         _, _, amount = atomic_yard_sale!(model, determine_direction, non_broke_actor_ids, avg_wealth)
 
         if amount != 0

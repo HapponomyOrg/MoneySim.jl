@@ -490,3 +490,23 @@ end
         @test id_groups[1][!, :income][i] == id_groups[2][!, :expenses][i]
     end
 end
+
+@testset "Scale taxes - Income > Expenses" begin
+    tax_base = Vector{Currency}([100032953.0587, 47835517.5256, 105421842.0211, 152142535.1119, 422081130.4976])
+    tax_brackets = MoneySim.get_income_tax_brackets(BE)
+    projected_revenue = MoneySim.calculate_revenue(tax_base, tax_brackets)
+    projected_expenses = projected_revenue / 2
+
+    tax_brackets, tax_scale = MoneySim.scale_brackets(tax_base,
+                                                        tax_brackets,
+                                                        projected_revenue,
+                                                        projected_expenses)
+
+    @test tax_scale == 0.5
+    @test MoneySim.calculate_revenue(tax_base, tax_brackets) == projected_expenses
+end
+
+@testset "Create tax base" begin
+    taxable = a -> 10000
+    MoneySim.create_tax_base([1], make_tiers([(0, 0), (500, 0.25), (2000, 0.5)]), taxable)
+end

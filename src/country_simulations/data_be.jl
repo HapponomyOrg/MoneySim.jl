@@ -1,5 +1,5 @@
 function set_country_data_be()
-    income_tax_brackets = [(0.1, 0.25), (15200, 0.4), (26830, 0.45), (46440, 0.5)]
+    income_tax_brackets = [(0, 0), (10190, 0.25), (15200, 0.4), (26830, 0.45), (46440, 0.5)]
     # Source https://financien.belgium.be/nl/particulieren/belastingaangifte/belastingtarieven-inkomen/belastingtarieven#q1
 
     pop_min_18 = 1314555 + 274738 + 747040 # Flanders + Brussels + Wallonia
