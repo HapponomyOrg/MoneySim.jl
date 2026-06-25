@@ -139,24 +139,36 @@ The fiscal layer examined in this paper relies on demtax alone, a levy on the st
 The runs in this section share one calibration — the Belgian money stock, the agent population, and the annual expenditure obligation fixed earlier — and differ only in controlled ways, so that each difference in outcome can be traced to the single feature that was changed. The obligation to be funded is held constant across every run that carries a fiscal layer, at full coverage, so that the systems are compared while funding the same expenditure rather than while applying the same tax rate; what varies, in turn, is the presence of the monetary substrate, the instrument used to raise the revenue, and the level of activity in the economy. The design is meant to keep apart two questions that are easily run together. Whether the wealth distribution compresses under the alternative system because of its monetary substrate — the bounded stock produced by the guaranteed income and demurrage — or because of the particular tax levied alongside it is answered by holding one fixed and varying the other. And whether the case for taxing the monetary stock is distributional or structural is settled not by the steady-state distributions, which establish only the weaker claim, but by what becomes of revenue as activity falls away. For each run we report the wealth and income distributions, as percentile shares and as Gini coefficients, the ratio between the two — in which the paper's central distinction between governing a flow and governing a stock becomes visible — and the trajectories of the money stock and the public debt.
 
 ```{julia}
+#! label: c1
+#! fig-cap: "Calibration"
+#| echo: false
 include("belgian_inequality_sim.jl"); plot_c1_calibration(run = false)
 ```
 
 The calibration run, in which the model is fitted to the Belgian data is set out above and the conventional system is run as it ordinarily operates. Public expenditure is set to the residual obligation of 261 million a year and funded by a flat tax on output, with the rate placed below full coverage, at roughly 49 per cent, so that the system raises 250 million and meets the remaining shortfall of some 11 million a year by deficit. This is not a degenerate case but the common one: a conventional economy that does not raise the whole of its spending in tax and borrows the difference. The behaviour of the money stock is the result to carry forward. Beginning, as every run does, from the calibrated Belgian M3 of 576.9 million, it does not stay there. Each year's deficit is money-financed, so the stock and the public debt climb together with the running total of the shortfall: over the horizon the stock roughly triples, to 1,687 million, while debt accumulates by some 1,100 million. Neither quantity has a resting level. The conventional money stock is path-dependent — it is wherever the cumulative fiscal balance has carried it — and this is precisely the property that separates it from the alternative system introduced below, whose stock instead settles at a fixed bound and holds there irrespective of fiscal history. The point to take from the calibration run is not a figure but a property: under the conventional arrangement the stock has no attractor. The distribution this run produces should not be read as a finding. The wealth Gini of 0.51 reflects the interaction of a steadily expanding money stock with a fixed volume of real activity: the equal, per-capita character of deficit-financed injection compresses the stock, while the accompanying fall in velocity raises measured concentration in the income flow, and together they pull the coefficient toward a value that is an artefact of the monetary expansion rather than a property of the fiscal instrument. The clean distributional comparison between the conventional and alternative arrangements is made later on the balanced run, where the stock is stable and no such artefact arises. Here the run earns its place by fixing the calibration and by exhibiting the unbounded, history-dependent stock against which the bounded alternative is measured.
 
 ```{julia}
+#! label: b1
+#! fig-cap: ""
+#| echo: false
 include("belgian_inequality_sim.jl"); plot_b1_baseline(run = false)
 ```
 
 The baseline run removes every corrective and lets the exchange model run alone. There is no monetary substrate and no fiscal layer: agents transact under the same multiplicative rule as in every other run, but nothing is set against the concentration that rule produces. Calibrated to the same starting distribution, with a wealth Gini of 0.61, the system does not hold there. Wealth pools steadily into fewer hands — the Gini passes 0.9 within five years and reaches essentially one, a single holder of the whole stock, by year ten. As it does, the economy stops: with almost nothing left in most hands to trade with, the volume of exchange drains away and output with it, falling to zero by year fourteen. The run is carried to year thirty, but nothing moves after the collapse: the concentrated state is absorbing. This is the yard-sale dynamic, whose drift to complete oligarchy is established analytically in the literature \[Boghosian et al.\]; the run reproduces it on the Belgian calibration and adds two points that bear on what follows. The money stock is constant throughout — none is created or destroyed here — so the concentration is a pooling of a fixed stock, not an inflation. And the terminal state is not merely unequal but inoperative: an economy in which one agent holds everything has no transactions left to conduct, so the unconstrained dynamic does not come to rest at a working if lopsided distribution but at the point where exchange itself stops. Its only attractor is the one at which the economy ceases to function. Every distribution in the runs that follow is therefore the product of some force placed against this attractor, and the baseline fixes the reference at one end of the scale — complete concentration — against which those forces are read.
 
 ```{julia}
+#! label: a1
+#! fig-cap: ""
+#| echo: false
 include("belgian_inequality_sim.jl"); plot_a1_ams_baseline(run = false)
 ```
 
 The first scenario strips out the fiscal layer entirely: agents receive the guaranteed income and pay demurrage, but no tax is levied and no public expenditure is funded. It is not offered as a policy — a monetary system carrying no public finance is not a complete one — but as the baseline against which every later run is read, isolating what the monetary substrate does on its own before any tax revenue is redistributed on top of it. Two results follow. The money stock settles at a level fixed by the monetary parameters alone. Since the guaranteed income injects N·GI each period while demurrage withdraws a fraction d of all holdings, the stock comes to rest where injection and withdrawal balance, at M = N·GI/d, here 576.9 million; calibrated to that value, it holds there. The level is set by GI and d, not by the volume of transactions — the property the demurrage-tax runs will later turn on, since the base that tax draws upon is fixed here, by construction, and the bound is in place before a single unit of tax is collected. The wealth distribution also compresses, with no revenue redistributed at all. The wealth Gini falls from 0.61 at calibration to 0.43, and the income Gini settles at 0.36. The mechanism is structural rather than fiscal: demurrage falls on balances in proportion to their size, so in absolute terms it draws most from the largest holdings, while the guaranteed income enters equally per head. The two together act as a continuous, mildly levelling force on the stock — enough to halt and partly reverse the concentration the underlying exchange dynamic generates by itself, the unconstrained form of which runs all the way to oligarchy in the baseline run, but not enough to equalise it. This is redistribution of wealth, but redistribution worked through the design of the money rather than through taxation. That distinction is what the scenario is here to establish. The movement from 0.61 to 0.43 is the substrate's own contribution; whatever further compression appears once a fiscal layer is added — whether the revenue is raised by a demurrage tax, a tax on output, or income brackets — is the contribution of redistributing that revenue per capita, and it is measured against the 0.43 reached here. The paper's central distinction is already visible in this single run: a structural redistribution of the wealth stock is in place through the monetary design alone, prior to, and separable from, any redistribution of an income flow through the fiscal system.
 
 ```{julia}
+#! label: a2
+#! fig-cap: ""
+#| echo: false
 include("belgian_inequality_sim.jl"); plot_a2_ams_demtax(run = false)
 ```
 
@@ -169,6 +181,9 @@ The monthly rate overstates what holders bear, and the gap is the first feature 
 The second feature is the base. The charge falls on the stock and not the flow — the same 261 million an output tax raises by claiming roughly half of every year's income is drawn here from holdings, with the income flow left untaxed — and that stock is fixed, by the construction of the previous run, at N·GI/d. Its yield is therefore calculable from the bound and, as the runs under falling activity will show, does not move with the level of output. Neither feature shows up in the Gini, which is why the argument for the instrument is not made there; both become decisive once the economy is no longer held at full activity.
 
 ```{julia}
+#! label: a3
+#! fig-cap: ""
+#| echo: false
 include("belgian_inequality_sim.jl"); plot_a3_ams_income_tax(run = false)
 ```
 
@@ -177,6 +192,9 @@ The third scenario keeps the alternative system intact but funds the residual wi
 This is the run on which the distributional reading of the system turns. The compression from the 0.43 the substrate reaches on its own to the 0.26 reached once a fiscal layer is added is the work of returning the revenue to agents equally, per capita, and it is the same whether that revenue is drawn from the monetary stock or from output — what compresses the distribution is the equal redistribution of the take, not the source it is drawn from. The case for the demurrage tax is therefore not, in the first instance, a distributional one: against a bounded stock it levels the distribution no further than a conventional output tax does. Whatever advantage the instrument holds must lie elsewhere — in what it falls on, the wealth stock rather than the income flow, and in how its yield behaves as activity changes — which is where the runs that follow turn.
 
 ```{julia}
+#! label: c2
+#! fig-cap: ""
+#| echo: false
 include("belgian_inequality_sim.jl"); plot_c2_income_tax(run = false)
 ```
 
@@ -187,20 +205,32 @@ Under it the two distributions part company. The income distribution is held tig
 This is the central result of the conventional runs. The equal redistribution governs the flow it is levied on and leaves the stock beneath it untouched: an income transfer, however large — and at basic-income scale it is large — redistributes income and does not redistribute wealth. What it buys is time, not a different outcome. The wealth distribution here is travelling to the same place the unconstrained baseline reached; the income floor only slows the journey, by keeping the poorest replenished, while the destination is unchanged. It is the monetary substrate, not the fiscal instrument, that alters that destination, as the bounded-stock runs show. And because this run is balanced and its money stable, the concentration cannot be laid to deficits or to monetary expansion — it is simply what redistributing a flow does, and fails to do, to a stock. The gap it leaves, a wealth Gini of 0.84 above an income Gini of 0.24, runs in the same direction as the gap between wealth and income inequality in the economies the model is drawn from.
 
 ```{julia}
+#! label: c3
+#! fig-cap: ""
+#| echo: false
 include("belgian_inequality_sim.jl"); plot_c3_declining_gdp_income_tax(run = false)
 ```
 
 The conventional system is now put under stress of a different kind. The income-tax configuration of the earlier run is held to the same full obligation, but the economy is no longer steady: output falls by one per cent a year, so that over the horizon it declines from its calibrated level to 37 per cent of it. The brackets are scaled each year to cover the fixed 261 million, and no deficit is run — the shortfall, when one appears, is left unfunded rather than borrowed, so that the gap between what is owed and what can be raised is shown directly rather than buried in accumulating debt. For a time the tax keeps pace. While output stays above roughly 83 per cent of its starting level — the first two decades of the decline — the brackets need only be scaled modestly, from 1.4 to 1.9 times their base, and the obligation is met in full. Past that point the schedule begins to run into its ceiling: the top rate reaches the 95 per cent cap, then the next, and scaling the brackets further yields less and less. Coverage slips below full and then falls away — to nine-tenths of the obligation by the time output reaches seventy per cent of its starting level, to three-fifths at half, and to 39 per cent at the close, where the tax raises 101 million against the 261 million owed. The controller goes on driving the scale upward all the while, to more than six times the base by the end; but against a fully capped schedule the increase buys nothing, the rates being already as high as they are permitted to be while the revenue falls regardless. The reason is that the tax is tethered to the wrong quantity. Its base is the income flow, which contracts with the economy, while the obligation it must fund does not; as output falls the base shrinks beneath a fixed target, and once the rate cap binds there is no scaling that closes the gap. A conventional income tax is, in this sense, pro-cyclically fragile: its capacity to fund the state erodes precisely as the economy weakens, which is when that capacity is most needed. The demurrage tax, set against the same decline, behaves in the opposite way, because the stock it draws on does not move with output — and that is the run the next section turns to, the contrast it draws being the central result of the exercise.
 
 ```{julia}
+#! label: a4
+#! fig-cap: ""
+#| echo: false
 include("belgian_inequality_sim.jl"); plot_a4_declining_gdp_demtax(run = false)
 ```
 
 ```{julia}
+#! label: a5
+#! fig-cap: ""
+#| echo: false
 include("belgian_inequality_sim.jl"); plot_a5_growing_gdp_demtax(run = false)
 ```
 
 ```{julia}
+#! label: c4
+#! fig-cap: ""
+#| echo: false
 include("belgian_inequality_sim.jl"); plot_c4_growing_gdp_income_tax(run = false)
 ```
 
@@ -541,29 +571,50 @@ Data used in the simulations is calculated from these sources. The currency is E
 # Appendix B
 
 ```{julia}
+#! label: a6
+#! fig-cap: ""
+#| echo: false
 include("belgian_inequality_sim.jl"); plot_a6_growing_gdp_demtax_vat(run = false)
 ```
 
 ```{julia}
+#! label: a7
+#! fig-cap: ""
+#| echo: false
 include("belgian_inequality_sim.jl"); plot_a7_growing_gdp_demtax_vat_no_deduction(run = false)
 ```
 
 ```{julia}
+#! label: a8
+#! fig-cap: ""
+#| echo: false
 include("belgian_inequality_sim.jl"); plot_a8_growing_gdp_income_tax(run = false)
 ```
 
 ```{julia}
+#! label: u1
+#! fig-cap: ""
+#| echo: false
 include("belgian_inequality_sim.jl"); plot_u1_flat_tax_funded_ubi(run = false)
 ```
 
 ```{julia}
+#! label: a9
+#! fig-cap: ""
+#| echo: false
 include("belgian_inequality_sim.jl"); plot_a9_ams_income_tax_high_zeta(run = false)
 ```
 
 ```{julia}
+#! label: c5
+#! fig-cap: ""
+#| echo: false
 include("belgian_inequality_sim.jl"); plot_c5_income_tax_high_zeta(run = false)
 ```
 
 ```{julia}
+#! label: a10
+#! fig-cap: ""
+#| echo: false
 include("belgian_inequality_sim.jl"); plot_a10_ams_demtax_high_zeta(run = false)
 ```
