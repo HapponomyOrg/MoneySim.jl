@@ -1,0 +1,22 @@
+---
+title: "Why Redistributing Income Does Not Redistribute Wealth: A Monetary-Design Alternative, Calibrated to Belgium."
+author: "Stef Kuypers"
+date: today
+date-format: "MMM DD, YYYY"
+fig-format: png
+format:
+    html:
+        code-fold: true
+engine: julia
+---
+
+### Test plot
+
+```{julia}
+#| label: b1
+#| fig-cap: "Core Yard-sale"
+#| echo: false
+
+include("belgian_inequality_sim.jl")
+plot_b1_baseline(run = false)
+```

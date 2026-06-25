@@ -3,6 +3,7 @@ title: 'Why Redistributing Income Does Not Redistribute Wealth: A Monetary-Desig
 author: "Stef Kuypers"
 date: today
 date-format: "MMM DD, YYYY"
+fig-format: png
 format:
     html:
         code-fold: true
@@ -512,7 +513,7 @@ Zucman, G., 2019. Global Wealth Inequality. Annual Review of Economics 11, 109â€
 Data used in the simulations is calculated from these sources. The currency is Euro.
 
 | Name | Data | Source | Note |
-|-----------------|-----------------|---------------------|-----------------|
+|------------------|------------------|-------------------|------------------|
 | M3 | 674 billion | https://tradingeconomics.com/belgium/money-supply-m3 | Average over 2023 |
 | Population -18 | 2336333 | https://bestat.statbel.fgov.be/bestat/crosstable.xhtml?view=161080d2-d411-4e40-9a0f-a27db5e2b6e1 | 2023 |
 | Population 18 - 64 | 7050414 | https://bestat.statbel.fgov.be/bestat/crosstable.xhtml?view=161080d2-d411-4e40-9a0f-a27db5e2b6e1 | 2023 |
