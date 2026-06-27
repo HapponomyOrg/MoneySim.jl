@@ -4,6 +4,21 @@ using CSV
 
 set_currency_precision!(4)
 
+function write_data(dir_name::String;
+                    raw_data,
+                    raw_data_name::String = "raw_data",
+                    processed_data,
+                    processed_data_name::String = "m_data")
+    cur_dir = pwd()
+    mkpath("data/" * dir_name)
+    cd("data/" * dir_name)
+
+    CSV.write(raw_data_name * ".csv", raw_data)
+    CSV.write(processed_data_name * ".csv", processed_data)
+
+    cd(cur_dir)
+end
+
 function simulation_a1()
     GI = 2000
     d = 0.01
@@ -24,12 +39,13 @@ function simulation_a1()
 
     m_data = analyse_aggregate(raw_data)
 
-    CSV.write("data/raw_data_a1.csv", raw_data)
-    CSV.write("data/m_data_a1.csv", m_data)
+    write_data("a1",
+                raw_data = raw_data,
+                processed_data = m_data)
 
-    plot_money_stock(m_data,
-                    "Money Stock - Equal Initial Distribution",
-                    theoretical_max = telo(GI, d) * N_GI)
+    plot_stocks(m_data,
+                "Money Stock - Equal Initial Distribution",
+                theoretical_max = telo(GI, d) * N_GI)
 end
 
 function simulation_a2()
@@ -52,12 +68,13 @@ function simulation_a2()
 
     m_data = analyse_aggregate(raw_data)
 
-    CSV.write("data/raw_data_a2.csv", raw_data)
-    CSV.write("data/m_data_a2.csv", m_data)
+    write_data("a2",
+                raw_data = raw_data,
+                processed_data = m_data)
     
-    plot_money_stock(m_data,
-                    "Money Stock - Initially Concentrated",
-                    theoretical_max = telo(GI, d) * N_GI)
+    plot_stocks(m_data,
+                "Money Stock - Initially Concentrated",
+                theoretical_max = telo(GI, d) * N_GI)
 end
 
 function simulation_b1()
@@ -81,12 +98,13 @@ function simulation_b1()
 
     m_data = analyse_aggregate(raw_data)
 
-    CSV.write("data/raw_data_b1.csv", raw_data)
-    CSV.write("data/m_data_b1.csv", m_data)
+    write_data("b1",
+                raw_data = raw_data,
+                processed_data = m_data)
     
-    plot_money_stock(m_data,
-                    "Money Stock - Equal Initial Distribution",
-                    theoretical_max = telo(GI, d) * N_GI)
+    plot_stocks(m_data,
+                "Money Stock - Equal Initial Distribution",
+                theoretical_max = telo(GI, d) * N_GI)
 end
 
 function simulation_b2()
@@ -110,12 +128,13 @@ function simulation_b2()
 
     m_data = analyse_aggregate(raw_data)
 
-    CSV.write("data/raw_data_b2.csv", raw_data)
-    CSV.write("data/m_data_b2.csv", m_data)
+    write_data("b2",
+                raw_data = raw_data,
+                processed_data = m_data)
     
-    plot_money_stock(m_data,
-                    "Money Stock - Initially Concentrated",
-                    theoretical_max = telo(GI, d) * N_GI)
+    plot_stocks(m_data,
+                "Money Stock - Initially Concentrated",
+                theoretical_max = telo(GI, d) * N_GI)
 end
 
 function simulation_s1()
@@ -139,12 +158,13 @@ function simulation_s1()
 
     m_data = analyse_aggregate(raw_data)
 
-    CSV.write("data/raw_data_s1.csv", raw_data)
-    CSV.write("data/m_data_s1.csv", m_data)
+    write_data("s1",
+                raw_data = raw_data,
+                processed_data = m_data)
     
-    plot_money_stock(m_data,
-                    "One-off Money Injection Event",
-                    theoretical_max = telo(GI, d) * N_GI)
+    plot_stocks(m_data,
+                "One-off Money Injection Event",
+                theoretical_max = telo(GI, d) * N_GI)
 end
 
 function simulation_s2()
@@ -168,13 +188,14 @@ function simulation_s2()
 
     m_data = analyse_aggregate(raw_data)
 
-    CSV.write("data/raw_data_s2.csv", raw_data)
-    CSV.write("data/m_data_s2.csv", m_data)
+    write_data("s2",
+                raw_data = raw_data,
+                processed_data = m_data)
 
-    plot_comparative_money_stock(m_data,
-                                "Continuous Money Injection",
-                                original_max = telo(basic_sumsy) * N_GI,
-                                new_max = telo(GI, d) * N_GI + N_GI * GI / 2 / d)
+    plot_comparative_stocks(m_data,
+                            "Continuous Money Injection",
+                            original_max = telo(basic_sumsy) * N_GI,
+                            new_max = telo(GI, d) * N_GI + N_GI * GI / 2 / d)
 end
 
 function simulation_s3()
@@ -198,12 +219,13 @@ function simulation_s3()
 
     m_data = analyse_aggregate(raw_data)
 
-    CSV.write("data/raw_data_s3.csv", raw_data)
-    CSV.write("data/m_data_s3.csv", m_data)
+    write_data("s3",
+                raw_data = raw_data,
+                processed_data = m_data)
 
-    plot_money_stock(m_data,
-                    "One-off Money Destruction Event",
-                    theoretical_max = telo(GI, d) * N_GI)
+    plot_stocks(m_data,
+                "One-off Money Destruction Event",
+                theoretical_max = telo(GI, d) * N_GI)
 end
 
 function simulation_s4()
@@ -227,13 +249,14 @@ function simulation_s4()
 
     m_data = analyse_aggregate(raw_data)
 
-    CSV.write("data/raw_data_s4.csv", raw_data)
-    CSV.write("data/m_data_s4.csv", m_data)
+    write_data("s4",
+                raw_data = raw_data,
+                processed_data = m_data)
 
-    plot_comparative_money_stock(m_data,
-                                "Continuous Money Destruction",
-                                original_max = telo(GI, d) * N_GI,
-                                new_max = telo(GI, d) * N_GI - GI * N_GI / 2 / d)
+    plot_comparative_stocks(m_data,
+                            "Continuous Money Destruction",
+                            original_max = telo(GI, d) * N_GI,
+                            new_max = telo(GI, d) * N_GI - GI * N_GI / 2 / d)
 end
 
 function simulation_e1()
@@ -257,13 +280,14 @@ function simulation_e1()
 
     m_data = analyse_aggregate(raw_data)
 
-    CSV.write("data/raw_data_e1.csv", raw_data)
-    CSV.write("data/m_data_e1.csv", m_data)
+    write_data("e1",
+                raw_data = raw_data,
+                processed_data = m_data)
 
-    plot_money_stock(m_data,
-                    "Demurrage-free Buffers",
-                    theoretical_min = telo(GI, d) * N_GI + DF,
-                    theoretical_max = telo(GI, d, DF) * N_GI)
+    plot_stocks(m_data,
+                "Demurrage-free Buffers",
+                theoretical_min = telo(GI, d) * N_GI + DF,
+                theoretical_max = telo(GI, d, DF) * N_GI)
 end
 
 function simulation_e2()
@@ -286,13 +310,14 @@ function simulation_e2()
 
     m_data = analyse_aggregate(raw_data)
 
-    CSV.write("data/raw_data_e2.csv", raw_data)
-    CSV.write("data/m_data_e2.csv", m_data)
+    write_data("e2",
+                raw_data = raw_data,
+                processed_data = m_data)
 
-    plot_money_stock(m_data,
-                    "Tiered Demurrage",
-                    theoretical_min = telo(GI * N_GI, d),
-                    theoretical_max = telo(GI, d) * N_GI)
+    plot_stocks(m_data,
+                "Tiered Demurrage",
+                theoretical_min = telo(GI * N_GI, d),
+                theoretical_max = telo(GI, d) * N_GI)
 end
 
 function simulation_e3()
@@ -317,13 +342,14 @@ function simulation_e3()
 
     m_data = analyse_aggregate(raw_data)
 
-    CSV.write("data/raw_data_e3.csv", raw_data)
-    CSV.write("data/m_data_e3.csv", m_data)
+    write_data("e3",
+                raw_data = raw_data,
+                processed_data = m_data)
 
-    plot_money_stock(m_data,
-                    "Tiered Demurrage",
-                    theoretical_min = telo(GI * N_GI, d),
-                    theoretical_max = telo(GI, d) * N_GI)
+    plot_stocks(m_data,
+                "Tiered Demurrage",
+                theoretical_min = telo(GI * N_GI, d),
+                theoretical_max = telo(GI, d) * N_GI)
 end
 
 function simulation_e4()
@@ -351,13 +377,14 @@ function simulation_e4()
 
     m_data = analyse_aggregate(raw_data)
 
-    CSV.write("data/raw_data_e4.csv", raw_data)
-    CSV.write("data/m_data_e4.csv", m_data)
+    write_data("e4",
+                raw_data = raw_data,
+                processed_data = m_data)
 
-    plot_money_stock(m_data,
-                    "Tiered Demurrage",
-                    theoretical_min = telo(GI * N_GI, d),
-                    theoretical_max = telo(GI_eq, d) * (N_GI + 25))
+    plot_stocks(m_data,
+                "Tiered Demurrage",
+                theoretical_min = telo(GI * N_GI, d),
+                theoretical_max = telo(GI_eq, d) * (N_GI + 25))
 end
 
 function simulation_e5()
@@ -384,13 +411,14 @@ function simulation_e5()
 
     m_data = analyse_aggregate(raw_data)
 
-    CSV.write("data/raw_data_e5.csv", raw_data)
-    CSV.write("data/m_data_e5.csv", m_data)
+    write_data("e5",
+                raw_data = raw_data,
+                processed_data = m_data)
 
-    plot_money_stock(m_data,
-                    "Tiered Demurrage",
-                    theoretical_min = telo(GI * N_GI, d),
-                    theoretical_max = telo(GI_eq, d) * (N_GI + 25))
+    plot_stocks(m_data,
+                "Tiered Demurrage",
+                theoretical_min = telo(GI * N_GI, d),
+                theoretical_max = telo(GI_eq, d) * (N_GI + 25))
 end
 
 function simulation_r1()
@@ -410,10 +438,12 @@ function simulation_r1()
                                                     fulfilled_demand = 5,
                                                     net_profit = 1,
                                                     suppliers_gi_eligible = false)[1]
-    b_data_1 = analyse_type_wealth(raw_b_data_1)
+    b_data_1 = analyse_type_data(raw_b_data_1)
 
-    CSV.write("data/raw_b_data_1_r1.csv", raw_b_data_1)
-    CSV.write("data/b_data_1_r1.csv", b_data_1)
+    write_data("r1 - b1",
+                raw_data = raw_b_data_1,
+                processed_data = b_data_1,
+                processed_data_name = "balance_data")
 
     raw_b_data_2 = run_consumer_supplier_simulation(basic_sumsy,
                                                     sumsy_interval = tu,
@@ -423,10 +453,12 @@ function simulation_r1()
                                                     fulfilled_demand = 5,
                                                     net_profit = 1,
                                                     suppliers_gi_eligible = false)[1]
-    b_data_2 = analyse_type_wealth(raw_b_data_2)
+    b_data_2 = analyse_type_data(raw_b_data_2)
 
-    CSV.write("data/raw_b_data_2_r1.csv", raw_b_data_2)
-    CSV.write("data/b_data_2_r1.csv", b_data_2)
+    write_data("r1 - b2",
+                raw_data = raw_b_data_2,
+                processed_data = b_data_2,
+                processed_data_name = "balance_data")
 
     raw_b_data_3 = run_consumer_supplier_simulation(basic_sumsy,
                                                     sumsy_interval = tu,
@@ -436,10 +468,12 @@ function simulation_r1()
                                                     fulfilled_demand = 3,
                                                     net_profit = 2,
                                                     suppliers_gi_eligible = false)[1]
-    b_data_3 = analyse_type_wealth(raw_b_data_3)
+    b_data_3 = analyse_type_data(raw_b_data_3)
 
-    CSV.write("data/raw_b_data_3_r1.csv", raw_b_data_3)
-    CSV.write("data/b_data_3_r1.csv", b_data_3)
+    write_data("r1 - b3",
+                raw_data = raw_b_data_3,
+                processed_data = b_data_3,
+                processed_data_name = "balance_data")
 
     return b_data_1, b_data_2, b_data_3
 end
@@ -492,10 +526,12 @@ function simulation_r2()
                                                     fulfilled_demand = 5,
                                                     net_profit = 1,
                                                     suppliers_gi_eligible = false)[1]
-    t_data_1 = analyse_type_wealth(raw_t_data_1)
+    t_data_1 = analyse_type_data(raw_t_data_1)
 
-    CSV.write("data/raw_t_data_1_r2.csv", raw_t_data_1)
-    CSV.write("data/t_data_1_r2.csv", t_data_1)
+    write_data("r2 - t1",
+                raw_data = raw_t_data_1,
+                processed_data = t_data_1,
+                processed_data_name = "balance_data")
 
     raw_t_data_2 = run_consumer_supplier_simulation(tiered_sumsy,
                                                     sumsy_interval = tu,
@@ -505,10 +541,12 @@ function simulation_r2()
                                                     fulfilled_demand = 5,
                                                     net_profit = 1,
                                                     suppliers_gi_eligible = false)[1]
-    t_data_2 = analyse_type_wealth(raw_t_data_2)
+    t_data_2 = analyse_type_data(raw_t_data_2)
 
-    CSV.write("data/raw_t_data_2_r2.csv", raw_t_data_2)
-    CSV.write("data/t_data_2_r2.csv", t_data_2)
+    write_data("r2 - t2",
+                raw_data = raw_t_data_2,
+                processed_data = t_data_2,
+                processed_data_name = "balance_data")
 
     raw_t_data_3 = run_consumer_supplier_simulation(tiered_sumsy,
                                                     sumsy_interval = tu,
@@ -518,10 +556,12 @@ function simulation_r2()
                                                     fulfilled_demand = 3,
                                                     net_profit = 2,
                                                     suppliers_gi_eligible = false)[1]
-    t_data_3 = analyse_type_wealth(raw_t_data_3)
+    t_data_3 = analyse_type_data(raw_t_data_3)
 
-    CSV.write("data/raw_t_data_3_r2.csv", raw_t_data_3)
-    CSV.write("data/t_data_3_r2.csv", t_data_3)
+    write_data("r2 - t3",
+                raw_data = raw_t_data_3,
+                processed_data = t_data_3,
+                processed_data_name = "balance_data")
 
     return t_data_1, t_data_2, t_data_3
 end
@@ -578,11 +618,12 @@ function simulation_d1()
 
     m_data = analyse_aggregate(raw_data)
 
-    CSV.write("data/raw_data_d1.csv", raw_data)
-    CSV.write("data/m_data_d1.csv", m_data)
+    write_data("d1",
+                raw_data = raw_data,
+                processed_data = m_data)
 
-    plot_money_stock(m_data,
-                    "Transactional Demurrage",
-                    money_stock_labels = "transactional",
-                    theoretical_max = telo(transactional_sumsy) * N_GI)
+    plot_stocks(m_data,
+                "Transactional Demurrage",
+                money_stock_labels = "transactional",
+                theoretical_max = telo(transactional_sumsy) * N_GI)
 end
