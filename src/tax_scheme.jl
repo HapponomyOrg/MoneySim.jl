@@ -270,13 +270,14 @@ end
 function scale_brackets(tax_base::Vector{Currency},
                         tax_brackets::DemTiers,
                         target_revenue::Currency)
-    overall_tax_scale = target_revenue / calculate_revenue(tax_base, tax_brackets)
+    projected_revenue = calculate_revenue(tax_base, tax_brackets)
+    overall_tax_scale = round(target_revenue / projected_revenue, digits = 2)
     tax_scale = overall_tax_scale
     num_brackets = length(tax_brackets)
 
     counter = 0 # Temp
 
-    while tax_scale != 1
+    while tax_scale != 1 && projected_revenue < target_revenue
         expandable_revenue = CUR_0
         fixed_revenue = CUR_0
         edge_brackets = 0
@@ -309,11 +310,25 @@ function scale_brackets(tax_base::Vector{Currency},
 
         edge_brackets == num_brackets && break
 
-        # Temp
-        counter += 1
-        if counter > 1000
+        current_revenue = calculate_revenue(tax_base, tax_brackets)
+
+        if projected_revenue == current_revenue
+            while projected_revenue < target_revenue
+                for bracket in tax_brackets
+                    tax_bracket = bracket[2]
+
+                    if TAX_FLOOR < tax_bracket < TAX_CEILING
+                        push!(scaled_tax_brackets, (bracket[1], tax_bracket + 0.01))
+                    end
+                end
+
+                tax_brackets = make_tiers(scaled_tax_brackets)
+                projected_revenue = calculate_revenue(tax_base, tax_brackets)
+            end
+
             break
-            # throw("Tax brackets: $printable(tax_brackets)")
+        else
+            break
         end
     end
 

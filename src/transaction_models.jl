@@ -18,13 +18,23 @@ function adjusted_asset_value!(actor::AbstractBalanceActor)
 end
 
 function add_income!(actor, amount::Real)
-    actor.income += amount
-    actor.data_income += amount
+    try
+        actor.income += amount
+        actor.data_income += amount
+    catch
+        actor.income = amount
+        actor.data_income = amount
+    end
 end
 
 function add_expenses!(actor, amount::Real)
-    actor.expenses += amount
-    actor.data_expenses += amount
+    try
+        actor.expenses += amount
+        actor.data_expenses += amount
+    catch
+        actor.expenses = amount
+        actor.data_expenses = amount
+    end
 end
 
 function reset_income_expenses!(model)
@@ -586,6 +596,7 @@ function initialize_transaction_model!(model::ABM, params::FixedConsumerSupplyPa
     demand() = params.demand
 
     connect_consumers_with_suppliers!(num_consumers, price, demand, model)
+    add_model_behavior!(model, activate_actors!)
 end
 
 function connect_consumers_with_suppliers!(num_consumers, price, demand, model::ABM)
@@ -624,6 +635,7 @@ function initialize_transaction_model!(model::ABM, params::VariableConsumerSuppl
     demand() = rand(params.demand)
 
     add_suppliers!(params.num_suppliers, price, num_consumers, demand, model)
+    add_model_behavior!(model, activate_actors!)
 end
 
 function add_suppliers!(num_suppliers::Int, price, num_consumers, demand, model::ABM)
