@@ -3,95 +3,95 @@ using DataFrames
 
 # Actor data collectors
 
-function equity_collector(actor)
+function equity_collector(model, actor)
     return liability_value(get_balance(actor), EQUITY)
 end
 
-function deposit_collector(actor)
+function deposit_collector(model, actor)
     return asset_value(get_balance(actor), SUMSY_DEP)
 end
 
 """
-    sumsy_equity_collector(actor)
+    sumsy_equity_collector(model, actor)
 
 Returns the equity value of the actor at the current step.
 This only produces a result that is different from the standard equity collector when SuMSy is configured to be transactional.
 """
-function sumsy_equity_collector(actor)
-    step = get_step(actor.model)
+function sumsy_equity_collector(model, actor)
+    step = get_step(model)
     g, d = calculate_adjustments(get_balance(actor), step)
 
     return liability_value(get_balance(actor), EQUITY) + g - d
 end
 
-function sumsy_deposit_collector(actor)
-    return sumsy_assets(actor, get_step(actor.model))
+function sumsy_deposit_collector(model, actor)
+    return sumsy_assets(actor, get_step(model))
 end
 
-function gi_collector!(actor)
+function gi_collector!(model, actor)
     gi = actor.data_gi
     actor.data_gi = CUR_0
 
     return gi
 end
 
-function demurrage_collector!(actor)
+function demurrage_collector!(model, actor)
     dem = actor.data_demurrage
     actor.data_demurrage = CUR_0
 
     return dem
 end
 
-function taxed_amount_collector!(actor)
+function taxed_amount_collector!(model, actor)
     taxed_amount = actor.data_taxed_amount
     actor.data_taxed_amount = CUR_0
 
     return taxed_amount
 end
 
-function net_income_collector!(actor)
+function net_income_collector!(model, actor)
     net_income = actor.data_net_income
     actor.data_net_income = CUR_0
 
     return net_income
 end
 
-function paid_tax_collector!(actor)
+function paid_tax_collector!(model, actor)
     paid_tax = actor.data_paid_tax
     actor.data_paid_tax = CUR_0
 
     return paid_tax
 end
 
-function paid_vat_collector!(actor)
+function paid_vat_collector!(model, actor)
     paid_vat = actor.data_paid_vat
     actor.data_paid_vat = CUR_0
 
     return paid_vat
 end
 
-function tax_share_collector!(actor)
+function tax_share_collector!(model, actor)
     tax_share = actor.data_tax_share
     actor.data_tax_share = CUR_0
 
     return tax_share
 end
 
-function vat_share_collector!(actor)
+function vat_share_collector!(model, actor)
     vat_share = actor.data_vat_share
     actor.data_vat_share = CUR_0
 
     return vat_share
 end
 
-function income_collector!(actor)
+function income_collector!(model, actor)
     income = actor.data_income
     actor.data_income = CUR_0
 
     return income
 end
 
-function expenses_collector!(actor)
+function expenses_collector!(model, actor)
     expenses = actor.data_expenses
     actor.data_expenses = CUR_0
 
@@ -276,13 +276,15 @@ full_sumsy_data_handler(interval::Int) = IntervalDataHandler(interval = interval
 
 function money_stock_post_processing!(actor_data, model_data)
     rename!(actor_data, 3 => :deposit)
+    rename!(actor_data, 4 => :sumsy_deposit)
+
     rename!(model_data, 2 => :num_actors)
 
     return actor_data, model_data
 end
 
 money_stock_data_handler(interval::Int) = IntervalDataHandler(interval = interval,
-                                                                actor_data_collectors = [deposit_collector],
+                                                                actor_data_collectors = [deposit_collector, sumsy_deposit_collector],
                                                                 model_data_collectors = [nagents],
                                                                 post_processing! = money_stock_post_processing!)
 

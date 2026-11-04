@@ -50,8 +50,8 @@ function plot_stocks(dataframes::Union{DataFrame,Vector{DataFrame}},
     max_y = typemin(Currency)
 
     for i in eachindex(dataframes)
-        min_stock = isnothing(theoretical_min) ? minimum(dataframes[i][!, stock_symbol]) : min(theoretical_min, minimum(dataframes[i][!, stock_symbol]))
-        max_stock = isnothing(theoretical_max) ? maximum(dataframes[i][!, stock_symbol]) : max(theoretical_max, maximum(dataframes[i][!, stock_symbol]))
+        min_stock = min(min_y, isnothing(theoretical_min) ? minimum(dataframes[i][!, stock_symbol]) : min(theoretical_min, minimum(dataframes[i][!, stock_symbol])))
+        max_stock = max(max_y, isnothing(theoretical_max) ? maximum(dataframes[i][!, stock_symbol]) : max(theoretical_max, maximum(dataframes[i][!, stock_symbol])))
 
         if max_stock - min_stock < 1
             if isnothing(theoretical_min) && isnothing(theoretical_max)
@@ -94,7 +94,7 @@ function plot_stocks(dataframes::Union{DataFrame,Vector{DataFrame}},
         if i == 1
             p = plot(dataframes[i][!, stock_symbol], title=title, label=label, yrange=(min_y, max_y), xlabel=time_label, ylabel=stock_label)
         else
-            p = plot(dataframes[i][!, stock_symbol], label=label, yrange=(min_y, max_y), xlabel=time_label, ylabel=stock_label)
+            p = plot!(dataframes[i][!, stock_symbol], label=label, yrange=(min_y, max_y), xlabel=time_label, ylabel=stock_label)
         end
     end
 
@@ -137,7 +137,7 @@ function plot_comparative_stocks(dataframe,
 end
 
 function plot_stocks_per_person(dataframe,
-                                num_actors=NUM_ACTORS,
+                                num_actors = NUM_ACTORS,
                                 title::String="";
                                 stock_symbol = :money_stock,
                                 stock_label = "Money Stock")
@@ -196,7 +196,7 @@ function plot_gini_rate(data_dict::Dict{SimDataType, DataFrame};
     wealth_rows = eachrow(wealth_data)
     income_rows = eachrow(income_data)
 
-    for i in 1:length(wealth_rows)
+    for i in eachindex(wealth_rows)
         try
             append!(gini_rates, Currency(wealth_rows[i][gini_symbols[1]]
                                         / income_rows[i][gini_symbols[2]]))

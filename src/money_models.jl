@@ -142,6 +142,12 @@ function initialize_monetary_model!(model::ABM,
                                     sumsy_params::StandardSuMSyParams)
     sumsy_params.configure_sumsy_actors!(model)
     sumsy_params.distribute_wealth!(model)
+
+    if sumsy_params.transactional
+        for actor in allagents(model)
+            set_transactional(get_balance(actor), true)
+        end
+    end
 end
 
 # distribute_wealth functions

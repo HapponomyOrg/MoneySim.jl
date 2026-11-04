@@ -27,7 +27,7 @@ function analyse_aggregate(dataframe::DataFrame,
         rows = eachrow(group)
         stock = Array{Currency}(undef, 1, length(data))
 
-        for index in 1:length(data)
+        for index in eachindex(data)
             stock[1, index] = sum(group[!, data[index]])
         end
 
