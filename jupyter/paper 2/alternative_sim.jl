@@ -1,6 +1,7 @@
 using EconoSim # Available at https://github.com/HapponomyOrg/EconoSim.jl
 using MoneySim # Available at https://github.com/HapponomyOrg/MoneySim.jl
 using CSV
+using DataFrames
 
 set_currency_precision!(4)
 
@@ -8,13 +9,20 @@ function write_data(dir_name::String;
                     raw_data,
                     raw_data_name::String = "raw_data",
                     processed_data,
-                    processed_data_name::String = "m_data")
+                    processed_data_names = "m_data")
     cur_dir = pwd()
     mkpath("data/" * dir_name)
     cd("data/" * dir_name)
 
     CSV.write(raw_data_name * ".csv", raw_data)
-    CSV.write(processed_data_name * ".csv", processed_data)
+
+    if processed_data isa DataFrame
+        CSV.write(processed_data_names * ".csv", processed_data)
+    else
+        for i in eachindex(processed_data)
+            CSV.write(processed_data_names[i] * ".csv", processed_data[i])
+        end
+    end
 
     cd(cur_dir)
 end
@@ -443,7 +451,7 @@ function simulation_r1()
     write_data("r1 - b1",
                 raw_data = raw_b_data_1,
                 processed_data = b_data_1,
-                processed_data_name = "balance_data")
+                processed_data_names = "balance_data")
 
     raw_b_data_2 = run_consumer_supplier_simulation(basic_sumsy,
                                                     sumsy_interval = tu,
@@ -458,7 +466,7 @@ function simulation_r1()
     write_data("r1 - b2",
                 raw_data = raw_b_data_2,
                 processed_data = b_data_2,
-                processed_data_name = "balance_data")
+                processed_data_names = "balance_data")
 
     raw_b_data_3 = run_consumer_supplier_simulation(basic_sumsy,
                                                     sumsy_interval = tu,
@@ -473,7 +481,7 @@ function simulation_r1()
     write_data("r1 - b3",
                 raw_data = raw_b_data_3,
                 processed_data = b_data_3,
-                processed_data_name = "balance_data")
+                processed_data_names = "balance_data")
 
     return b_data_1, b_data_2, b_data_3
 end
@@ -531,7 +539,7 @@ function simulation_r2()
     write_data("r2 - t1",
                 raw_data = raw_t_data_1,
                 processed_data = t_data_1,
-                processed_data_name = "balance_data")
+                processed_data_names = "balance_data")
 
     raw_t_data_2 = run_consumer_supplier_simulation(tiered_sumsy,
                                                     sumsy_interval = tu,
@@ -546,7 +554,7 @@ function simulation_r2()
     write_data("r2 - t2",
                 raw_data = raw_t_data_2,
                 processed_data = t_data_2,
-                processed_data_name = "balance_data")
+                processed_data_names = "balance_data")
 
     raw_t_data_3 = run_consumer_supplier_simulation(tiered_sumsy,
                                                     sumsy_interval = tu,
@@ -561,7 +569,7 @@ function simulation_r2()
     write_data("r2 - t3",
                 raw_data = raw_t_data_3,
                 processed_data = t_data_3,
-                processed_data_name = "balance_data")
+                processed_data_names = "balance_data")
 
     return t_data_1, t_data_2, t_data_3
 end
@@ -610,20 +618,23 @@ function simulation_d1()
 
     raw_data = run_sumsy_simulation(transactional_sumsy,
                                     sumsy_interval = tu,
-                                    sumsy_transactional = true,
+                                    granularity = 1, # settle every step; replaces sumsy_transactional = true (EconoSim 0.3)
                                     eligible_actors = N_GI,
                                     num_transactions = Y,
                                     sim_length = L,
                                     distributed = true)[1]
 
-    m_data = analyse_aggregate(raw_data)
+    m_data = analyse_aggregate(raw_data, [:deposit])
+    s_data = analyse_aggregate(raw_data, [:sumsy_deposit])
 
     write_data("d1",
                 raw_data = raw_data,
-                processed_data = m_data)
+                processed_data = [m_data, s_data],
+                processed_data_names = ["real_deposits", "virtual_deposits"])
 
-    plot_stocks(m_data,
+    plot_stocks([m_data, s_data],
                 "Transactional Demurrage",
-                money_stock_labels = "transactional",
+                max_label = "aggregate telo",
+                money_stock_labels = ["actual deposits", "virtual deposits"],
                 theoretical_max = telo(transactional_sumsy) * N_GI)
 end

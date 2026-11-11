@@ -4,7 +4,7 @@ using CSV
 using DataFrames
 using Plots
 
-const ZETA = 0.035
+const ZETA = 0 # 0.035
 const NUM_ACTORS = 10000
 const DIR = pwd()
 
@@ -145,7 +145,7 @@ function plot_graphs(actor_data::DataFrame,
                 yguidefont = font(8),
                 xticksfont = font(4),
                 yticksfont = font(4),
-                size = (1200, ysize))
+                size = (1300, ysize))
     elseif money_debt
         plot(yardsale_plots.wealth,
                 yardsale_plots.income,
@@ -161,7 +161,7 @@ function plot_graphs(actor_data::DataFrame,
                 yguidefont = font(8),
                 xticksfont = font(4),
                 yticksfont = font(4),
-                size = (1200, ysize))
+                size = (1300, ysize))
     elseif taxes_expenses
         plot(yardsale_plots.wealth,
                 yardsale_plots.income,
@@ -177,7 +177,7 @@ function plot_graphs(actor_data::DataFrame,
                 yguidefont = font(8),
                 xticksfont = font(4),
                 yticksfont = font(4),
-                size = (1200, ysize))
+                size = (1300, ysize))
     else
         plot(yardsale_plots.wealth,
                 yardsale_plots.income,
@@ -191,7 +191,7 @@ function plot_graphs(actor_data::DataFrame,
                 yguidefont = font(8),
                 xticksfont = font(4),
                 yticksfont = font(4),
-                size = (1200, ysize))
+                size = (1300, ysize))
     end
 end
 
@@ -281,6 +281,7 @@ function plot_a1_ams_baseline(;country = BE, years = 100, run = false, zeta = ZE
                                 lock_random_generator = true,
                                 num_actors = NUM_ACTORS,
                                 monetary_type = M_SUMSY,
+                                granularity = 1, # settle every step; replaces transactional = true (EconoSim 0.3). The SuMSy period is 1 step here.
                                 population_type = P_FIXED,
                                 gdp_growth_per_year = 0,
                                 wealth_distribution = W_UNEQUAL,
@@ -308,9 +309,10 @@ function plot_a2_ams_demtax(;country = BE, years = 100, run = false, zeta = ZETA
         data = simulate_country(country,
                                 sim_length = years * YEAR,
                                 data_collection_interval = YEAR,
-                                lock_random_generator = true,
+                                lock_random_generator = false,
                                 num_actors = NUM_ACTORS,
                                 monetary_type = M_SUMSY,
+                                granularity = 1, # settle every step; replaces transactional = true (EconoSim 0.3). The SuMSy period is 1 step here.
                                 population_type = P_FIXED,
                                 gdp_growth_per_year = 0,
                                 wealth_distribution = W_UNEQUAL,
@@ -411,7 +413,7 @@ function plot_c3_declining_gdp_income_tax(;country = BE, years = 100, run = fals
                                 vat_interval = MONTH)
         return process_data(data, "c3")
     else
-        return plot_graphs_from_file("c3")
+        return plot_graphs_from_file("c3", money_debt = false)
     end
 end
 
@@ -465,7 +467,7 @@ function plot_a5_growing_gdp_demtax(;country = BE, years = 100, run = false, zet
                             vat_interval = MONTH)
         return process_data(data, "a5")
     else
-        return plot_graphs_from_file("a5")
+        return plot_graphs_from_file("a5", money_debt = false)
     end
 end
 
@@ -493,7 +495,7 @@ function plot_c4_growing_gdp_income_tax(;country = BE, years = 100, run = false,
                                 vat_interval = MONTH)
         return process_data(data, "c4")
     else
-        return plot_graphs_from_file("c4")
+        return plot_graphs_from_file("c4", money_debt = false)
     end
 end
 
