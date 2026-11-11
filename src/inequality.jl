@@ -128,6 +128,9 @@ end
                                 inequality_data::InequalityData)
     Distributes the wealth among the actors according to the inequality data.
 
+    Throws an ArgumentError, and books nothing, when an actor's balance can not hold its share,
+    for example a negative wealth on an actor that does not allow negative balances.
+
     When one or more of the optional tiers of inequality data are defined, the wealth of the remaining actors of the tier(s) it belongs to is recalculated.
 
     Example:
@@ -204,9 +207,20 @@ function distribute_inequal_wealth!(actors::Vector{<:AbstractActor},
         end
     end
 
-    for actor in actors
-        book_asset!(get_balance(actor), SUMSY_DEP, wealth_vector[num_actors], set_to_value = true)
+    # The actors get the wealth vector from the end: the first actor gets wealth_vector[num_actors].
+    # Check every booking first, so that a refused booking changes nothing.
+    for (index, actor) in enumerate(actors)
+        wealth = wealth_vector[num_actors - index + 1]
+        minimum = min_asset(get_balance(actor), SUMSY_DEP)
 
-        num_actors -= 1
+        wealth >= minimum || throw(ArgumentError("actor $(actor.id) can not hold a wealth of $wealth: " *
+                                                    "the minimum of its $(SUMSY_DEP.name) entry is $minimum; nothing was booked"))
+    end
+
+    for (index, actor) in enumerate(actors)
+        wealth = wealth_vector[num_actors - index + 1]
+
+        book_asset!(get_balance(actor), SUMSY_DEP, wealth, set_to_value = true) ||
+            error("booking a wealth of $wealth for actor $(actor.id) was refused")
     end
 end
