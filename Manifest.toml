@@ -2,7 +2,7 @@
 
 julia_version = "1.13.3"
 manifest_format = "2.1"
-project_hash = "16c1d7c195ed5654ede1b918b76d795af63ce0d0"
+project_hash = "d92a974ec26c2b0161b0739e3faeec1ed6954abe"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -480,11 +480,11 @@ version = "1.7.0"
 
 [[deps.EconoSim]]
 deps = ["Agents", "Compat", "DataFrames", "DataStructures", "FixedPointDecimals", "Intervals", "Lazy", "PkgAuthentication", "Random", "Revise", "Todo", "UUIDs"]
-git-tree-sha1 = "0badf7947b2bef554ff73d839726c2d0b9314f8f"
+git-tree-sha1 = "849588b676fedd74bc3b24d643ddce508932ad73"
 repo-rev = "main"
 repo-url = "https://github.com/HapponomyOrg/EconoSim.jl"
 uuid = "cc8cb6e0-4c11-4d04-b964-59e7aacda730"
-version = "0.2.1"
+version = "0.3.1"
 
 [[deps.EpollShim_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]

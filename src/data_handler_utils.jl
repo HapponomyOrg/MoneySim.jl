@@ -15,7 +15,7 @@ end
     sumsy_equity_collector(model, actor)
 
 Returns the equity value of the actor at the current step.
-This only produces a result that is different from the standard equity collector when SuMSy is configured to be transactional.
+It includes the guaranteed income and demurrage of the granules that have elapsed but are not settled yet, so it differs from the standard equity collector only when a settlement is pending at the collection step.
 """
 function sumsy_equity_collector(model, actor)
     step = get_step(model)
@@ -226,7 +226,7 @@ end
 # Full data handler
 
 function full_post_processing!(actor_data, model_data)
-    rename!(actor_data, 3 => :deposit, 4 => :equity)
+    rename!(actor_data, 3 => :equity, 4 => :deposit)
     rename!(model_data, 2 => :num_actors, 3 => :non_broke_actors)
 
     return actor_data, model_data
@@ -242,7 +242,7 @@ full_data_handler(interval::Int) = IntervalDataHandler(interval = interval,
 # Full SuMSy data handler
 
 function full_sumsy_post_processing!(actor_data, model_data)
-    rename!(actor_data, 3 => :deposit, 4 => :equity)
+    rename!(actor_data, 3 => :equity, 4 => :deposit)
     rename!(model_data, 2 => :num_actors)
     
     sumsy_data = model_data[!, :sumsy_data_collector!]

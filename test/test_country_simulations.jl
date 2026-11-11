@@ -30,7 +30,11 @@ using DataFrames
                 # @test row[:deposit] - row[:income] + row[:expenses] + row[:paid_tax] + row[:tax_share] == deposit
 
                 if income != 0
-                    @test Currency(row[:paid_tax] / income) == Currency(MoneySim.calculate_flat_gdp_tax(BE))
+                    # The income of one month is taxed in the next. calculate_flat_gdp_tax was renamed to
+                    # calculate_flat_gdp_income_tax; the rate does not depend on the period.
+                    @test isapprox(row[:paid_tax] / income,
+                                    MoneySim.calculate_flat_gdp_income_tax(BE, period = MONTH),
+                                    atol = 1e-4)
                 end
             end
 
@@ -40,21 +44,12 @@ using DataFrames
         end
     end
 
+    # The government collects exactly what the actors pay.
     model_data = data[2]
-    row_counter = 0
-    gdp = 0
 
-    for row in eachrow(model_data)
-        if row_counter > 0
-            # @test Currency(row[:collected_tax]) / Currency(row[:gdp]) == MoneySim.calculate_flat_gdp_tax(BE)
-            println("GDP: ",
-                    Currency(row[:gdp]),
-                    " - Collected tax: ",
-                    Currency(row[:collected_tax]),
-                    " - Ratio: ",
-                    Currency(row[:gdp]) > 0 ? Currency(row[:collected_tax]) / Currency(row[:gdp]) : "NA")
-        end
-
-        row_counter += 1
+    for (row, group) in zip(eachrow(model_data), groupby(actor_data, :time))
+        @test row[:collected_tax] == sum(group[!, :paid_tax])
     end
+
+    @test nrow(model_data) == 14
 end

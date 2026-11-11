@@ -26,13 +26,15 @@ function initialize_data_handler!(model::ABM, interval_data_handler::IntervalDat
     actor_data_collectors = Vector()
 
     for collector in interval_data_handler.actor_data_collectors
-        push!(actor_data_collectors, a -> collector(model, a))
+        # A Symbol names an actor property and is passed to Agents as is; a function is called with the model and the actor.
+        push!(actor_data_collectors, collector isa Symbol ? collector : a -> collector(model, a))
     end
 
     return interval_complete, actor_data_collectors, interval_data_handler.model_data_collectors
 end
 
 post_process!(data_handler::IntervalDataHandler, actor_data, model_data) = data_handler.post_processing!(actor_data, model_data)
+post_process!(::Nothing, actor_data, model_data) = (actor_data, model_data)
 
 # Determine when to collect data
 

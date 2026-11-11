@@ -440,7 +440,9 @@ function collect_and_distribute_taxes!(model::ABM,
 
         for actor in allagents(model)
             balance = get_balance(actor)
-            tax_slice = Currency(actor.tax_to_pay / tax_coefficient)
+            # Without an income or demurrage tax nothing resets tax_redistribution_step, so the coefficient can reach 0
+            # (VAT only). There is no tax to spread then; take what is left.
+            tax_slice = tax_coefficient > 0 ? Currency(actor.tax_to_pay / tax_coefficient) : actor.tax_to_pay
                                                     
             if !book_asset!(balance, SUMSY_DEP, -tax_slice)
                 tax_slice = asset_value(balance, SUMSY_DEP)

@@ -166,7 +166,7 @@ function simulate_country(country::Country;
                             lock_random_generator::Bool = true,
                             num_actors::Int,
                             monetary_type::MonetaryType = M_FIXED,
-                            transactional::Bool = false,
+                            granularity::Union{Int, Nothing} = nothing,
                             allow_negative_accounts::Bool = true,
                             population_type::PopulationType = P_FIXED,
                             wealth_distribution::WealthDistribution = W_EQUAL,
@@ -262,8 +262,9 @@ function simulate_country(country::Country;
                                                                     demurrage = calculate_demurrage(country, false))
         end
 
-        monetary_params = StandardSuMSyParams(sumsy_interval = get_sumsy_interval(country),
-                                                transactional = transactional,
+        sumsy_interval = get_sumsy_interval(country)
+        monetary_params = StandardSuMSyParams(sumsy_interval = sumsy_interval,
+                                                granularity = isnothing(granularity) ? sumsy_interval : granularity,
                                                 configure_sumsy_actors! = configure_sumsy_actors!,
                                                 distribute_wealth! = distribute_wealth!)
     elseif monetary_type == M_DEBT_BASED

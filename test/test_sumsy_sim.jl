@@ -2,39 +2,76 @@ using EconoSim
 using MoneySim
 using Test
 using Agents
+using DataFrames
 
-GI = 2000
-d = 0.01
-tu = 30
+# Rewritten on 2026-11-11. The former file built SuMSy with a removed constructor (interval and transactional
+# arguments) and had no assertions. Transactional SuMSy is now settlement granularity: granularity 1 settles every step,
+# the default settles once per SuMSy period.
 
-N_GI = 1000
-Y = 200
-L = 150
+function gi_post_processing!(actor_data, model_data)
+    rename!(actor_data, 3 => :deposit)
 
-basic_sumsy = SuMSy(GI, 0, d, tu, transactional = false)
-transactional_sumsy = SuMSy(GI, 0, d, tu, transactional = true)
+    return actor_data, model_data
+end
 
-raw_data = run_sumsy_simulation(basic_sumsy,
-                            eligible_actors = N_GI,
-                            num_transactions = Y,
-                            sim_length = L,
-                            distributed = true)
+function run_gi_only(granularity::Int; sumsy_interval::Int = 10, periods::Int = 3)
+    sumsy = SuMSy(2000, 0, 0)
+    model = create_sumsy_model(sumsy_interval = sumsy_interval,
+                                granularity = granularity,
+                                model_behaviors = process_model_sumsy!)
+    population_params = FixedPopulationParams(population = 2,
+                                                create_actor! = m -> create_sumsy_actor!(m,
+                                                                                        sumsy = sumsy,
+                                                                                        sumsy_interval = sumsy_interval,
+                                                                                        initialize = false))
+    monetary_params = StandardSuMSyParams(sumsy_interval = sumsy_interval,
+                                            granularity = granularity,
+                                            configure_sumsy_actors! = mixed_actors!,
+                                            distribute_wealth! = m -> distribute_equal!(m, 0))
+    data_handler = IntervalDataHandler(interval = sumsy_interval,
+                                        actor_data_collectors = [deposit_collector],
+                                        post_processing! = gi_post_processing!)
 
-# raw_data = run_sumsy_simulation(transactional_sumsy,
-#                                 eligible_actors = N_GI,
-#                                 num_transactions = Y,
-#                                 sim_length = L,
-#                                 distributed = true)
-data = analyse_money_stock(raw_data)
-low = minimum(data.money_stock)
-mid = telo(basic_sumsy) * N_GI
-high = maximum(data.money_stock)
+    return run_simulation(model,
+                            sim_params = SimParams(periods * sumsy_interval),
+                            population_params = population_params,
+                            monetary_params = monetary_params,
+                            transaction_params = BareBonesParams(nothing),
+                            data_handler = data_handler)
+end
 
-off_high = high / mid * 100 - 100
-off_low = low / mid * 100 - 100
+@testset "SuMSy granularity - same guaranteed income per period" begin
+    for granularity in [1, 2, 5, 10]
+        actor_data, _ = run_gi_only(granularity)
 
-(off_high, off_low)
+        for group in groupby(actor_data, :id)
+            @test group[!, :deposit] == Currency[0, 2000, 4000, 6000]
+        end
+    end
+end
 
-# plot_money_stock(data,
-#                     "Transactional demurrage",
-#                     theoretical_max = telo(basic_sumsy) * N_GI)
+@testset "SuMSy granularity - settlement every granule" begin
+    actor_data, _ = run_gi_only(1, sumsy_interval = 10, periods = 1)
+
+    # Collected once per period, so only the start and the end are seen.
+    @test actor_data[!, :deposit] == Currency[0, 0, 2000, 2000]
+
+    model = create_sumsy_model(sumsy_interval = 10, granularity = 1, model_behaviors = process_model_sumsy!)
+    actor = add_sumsy_actor!(model, sumsy = SuMSy(2000, 0, 0), initialize = false)
+    run_econo_model!(model, 3)
+    @test asset_value(get_balance(actor), SUMSY_DEP) == 600
+end
+
+@testset "SuMSy params - granularity checks" begin
+    @test StandardSuMSyParams(sumsy_interval = 10,
+                                configure_sumsy_actors! = mixed_actors!,
+                                distribute_wealth! = m -> nothing).granularity == 10
+    @test_throws ArgumentError StandardSuMSyParams(sumsy_interval = 10,
+                                                    granularity = 11,
+                                                    configure_sumsy_actors! = mixed_actors!,
+                                                    distribute_wealth! = m -> nothing)
+    @test_throws ArgumentError StandardSuMSyParams(sumsy_interval = 10,
+                                                    granularity = 0,
+                                                    configure_sumsy_actors! = mixed_actors!,
+                                                    distribute_wealth! = m -> nothing)
+end
