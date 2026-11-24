@@ -12,31 +12,39 @@ using MoneySim
     push!(df, [0.001 1])
 
     @test MoneySim.calculate_gini(1, eachrow(df), :equal) == 0
-    @test MoneySim.calculate_gini(1, eachrow(df), :unequal) == round(1 - 0.001, digits = 2)
+    # One actor holds everything: the Gini coefficient of n actors is 1 - 1/n.
+    # (The former expectation, round(1 - 0.001, digits = 2) == 1.0, did not match the formula's 4-digit rounding.)
+    @test MoneySim.calculate_gini(1, eachrow(df), :unequal) == 1 - 1 / 1000
 end
 
-@testset "Money stock analysis" begin    
-    sim_params = SimParams(10)
-    fixed_wealth_params = FixedWealthParams(distribute_equal!)
-    transaction_params = StandardYardSaleParams(transaction_range = 1:1,
-                                                wealth_transfer_range = 0.2:0.2,
-                                                minimal_wealth_transfer = 0,
-                                                remove_broke_actors = false,
-                                                average_wealth = 1000)
+# The money stock and wealth analysis testsets were rewritten on 2026-11-11: analyse_money_stock and
+# analyse_wealth are no longer defined; analyse_aggregate and analyse_data do the same job.
 
-    data = run_fixed_wealth_simulation(sim_params, fixed_wealth_params, transaction_params)
-    analyse_money_stock(data)
+@testset "Money stock analysis" begin
+    num_actors = 100
+    actor_data, _ = run_fixed_wealth_simulation(num_actors = num_actors,
+                                                num_transactions = 10,
+                                                initial_wealth = 1000,
+                                                sim_length = 10,
+                                                period = 1)
+    analysis = analyse_aggregate(actor_data)
+
+    @test analysis[!, :cycle] == 0:10
+    @test all(analysis[!, :money_stock] .== num_actors * 1000)
 end
 
-@testset "Wealth analysis" begin    
-    sim_params = SimParams(10)
-    fixed_wealth_params = FixedWealthParams(distribute_equal!)
-    transaction_params = StandardYardSaleParams(transaction_range = 1:1,
-                                                wealth_transfer_range = 0.2:0.2,
-                                                minimal_wealth_transfer = 0,
-                                                remove_broke_actors = false,
-                                                average_wealth = 1000)
+@testset "Wealth analysis" begin
+    num_actors = 100
+    data = run_fixed_wealth_simulation(num_actors = num_actors,
+                                        num_transactions = 10,
+                                        initial_wealth = 1000,
+                                        sim_length = 10,
+                                        period = 1)
+    analysis = analyse_data(data, wealth = :deposit, income = :equity)
 
-    data = run_fixed_wealth_simulation(sim_params, fixed_wealth_params, transaction_params)
-    analyse_wealth(data, fixed_wealth_params.num_actors)
+    # At the start everybody has the same wealth.
+    @test analysis[WEALTH_GINI][1, :wealth_gini] == 0
+    @test analysis[W_NOMINAL][1, :TOP_10] == 10 * 1000
+    @test analysis[W_PERCENTAGE][1, :BOTTOM_50] == 50
+    @test nrow(analysis[W_NOMINAL]) == 11
 end

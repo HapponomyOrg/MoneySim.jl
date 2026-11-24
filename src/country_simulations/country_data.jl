@@ -140,6 +140,7 @@ end
 
 function get_country_data(country::Country)
     country == BE && return BELGIUM
+    country == NL && return NETHERLANDS
     country == TEST && return TEST_DATA
     throw(KeyError(country))
 end

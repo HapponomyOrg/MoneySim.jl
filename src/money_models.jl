@@ -97,30 +97,39 @@ end
 
 abstract type SuMSyParams <: MonetaryModelParams end
 
+function checked_granularity(granularity::Int, sumsy_interval::Int)
+    1 <= granularity <= sumsy_interval || throw(ArgumentError("granularity must be between 1 and the SuMSy period ($sumsy_interval), got $granularity"))
+
+    return granularity
+end
+
 """
 SuMSyParams constructor
 
 SuMSyParams can only be used in conjunction with a SuMSy model.
 Must be called after initialize_population_model!
+
+* sumsy_interval::Int : the SuMSy period.
+* granularity::Int : the number of steps between SuMSy settlements, from 1 (every step) to the period (the default).
 """
 struct StandardSuMSyParams{FC, FD} <: SuMSyParams
     sumsy_interval::Int
-    transactional::Bool
+    granularity::Int
     configure_sumsy_actors!::FC
     distribute_wealth!::FD
     StandardSuMSyParams(;sumsy_interval::Int,
-                            transactional::Bool,
+                            granularity::Int = sumsy_interval,
                             configure_sumsy_actors!::Function,
                             distribute_wealth!::Function) = 
                                 new{typeof(configure_sumsy_actors!),
                                     typeof(distribute_wealth!)}(sumsy_interval,
-                                                                transactional,
+                                                                checked_granularity(granularity, sumsy_interval),
                                                                 configure_sumsy_actors!,
                                                                 distribute_wealth!)
 end
 
 function create_StandardSuMSyParams(;sumsy_interval::Int,
-                                    transactional::Bool,
+                                    granularity::Int = sumsy_interval,
                                     configure_sumsy_actors!::Function = mixed_actors!,
                                     initial_gi_wealth::Real = 0,
                                     initial_non_gi_wealth::Real = 0,
@@ -132,7 +141,7 @@ function create_StandardSuMSyParams(;sumsy_interval::Int,
     end
 
     return StandardSuMSyParams(sumsy_interval = sumsy_interval,
-                                transactional = transactional,
+                                granularity = granularity,
                                 configure_sumsy_actors! = configure_sumsy_actors!,
                                 distribute_wealth! = distribute_wealth!)
 end
@@ -141,6 +150,14 @@ function initialize_monetary_model!(model::ABM,
                                     sumsy_params::StandardSuMSyParams)
     sumsy_params.configure_sumsy_actors!(model)
     sumsy_params.distribute_wealth!(model)
+
+    for actor in allagents(model)
+        balance = get_balance(actor)
+
+        if balance isa SuMSyBalance
+            set_granularity!(balance, sumsy_params.granularity)
+        end
+    end
 end
 
 # distribute_wealth functions

@@ -13,7 +13,8 @@ agents_by_id(model::ABM) = sort!(collect(allagents(model)); by = a -> a.id)
 function adjusted_asset_value!(actor::AbstractBalanceActor)
     balance = get_balance(actor)
 
-    if balance isa SuMSyBalance && is_transactional(balance)
+    # Settle the granules that have elapsed, so the trade sees the current balance.
+    if balance isa SuMSyBalance
         adjust_sumsy_balance!(balance, get_step(actor.model))
     end
 
@@ -150,7 +151,7 @@ struct GDPYardSaleParams{C <: FixedDecimal, GF, DF, AF, AW} <: YardSaleParams
     average_wealth::AW # A Function or C
     GDPYardSaleParams(;gdp_period::Int,
                         gdp_per_capita::Real,
-                        gdp_growth::Function = 0,
+                        gdp_growth::Function = (_, _) -> 0,
                         wealth_transfer_range::Union{StepRange, StepRangeLen},
                         minimal_wealth_transfer::Real,
                         determine_direction::Function = coinflip,
@@ -260,7 +261,9 @@ function initialize_yard_sale!(model::ABM, params::YardSaleParams)
     properties[:wealth_transfer_range] = params.wealth_transfer_range
     properties[:minimal_wealth_transfer] = params.minimal_wealth_transfer
     properties[:waa] = params.wealth_accumulation_advantage
-    properties[:avg_wealth] = params.average_wealth
+    # average_wealth may be a number or a function of the model; the yard sale always calls it with the model.
+    average_wealth = params.average_wealth
+    properties[:avg_wealth] = average_wealth isa Function ? average_wealth : (_ -> average_wealth)
 
     # Calculate broke threshold
     min_transfer_rate = first(params.wealth_transfer_range)

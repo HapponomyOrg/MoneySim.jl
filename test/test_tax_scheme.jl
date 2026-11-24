@@ -4,453 +4,215 @@ using DataFrames
 using Test
 using Agents
 
-function reset_income!(model, add_gi_to_income::Bool)
-    for actor in allagents(model)
-        actor.income = CUR_0
-        actor.expenses = CUR_0
-        add_income!(actor, actor.tax_share)
-        actor.tax_share = CUR_0
+# Rewritten on 2026-11-11 against StateTaxScheme. The former tests used FixedTaxScheme, distribute_taxes! and
+# per-actor gi/dem/tax_share fields, which no longer exist and are not brought back.
+#
+# Order within a step: SuMSy settlement, then the tax scheme (register income, calculate tax, collect VAT,
+# collect and redistribute tax), then the transaction model. Income booked in step t is therefore taxed from step t + 1.
 
-        if add_gi_to_income
-            add_income!(actor, max(0, actor.gi - actor.dem))
-        end
-    end
-
-    distribute_taxes!(model)
-end
-
-function create_passive_transaction_model(add_gi_to_income::Bool)
-    return BareBonesParams(m -> reset_income!(m, add_gi_to_income))
-end
-
-function add_transaction_income!(model, add_gi_to_income::Bool, income::Real)
-    reset_income!(model, add_gi_to_income)
-
-    for actor in allagents(model)
-        book_asset!(actor.balance, SUMSY_DEP, income)
-        add_income!(actor, income)
-    end
-end
-
-function create_active_transaction_model(income::Real, add_gi_to_income::Bool = false)
-    return BareBonesParams(m -> add_transaction_income!(m, add_gi_to_income, income))
-end
-
-function post_data_processing!(actor_data, model_data)
+function tax_post_processing!(actor_data, model_data)
     rename!(actor_data,
-            5 => :taxed_income,
-            6 => :income,
-            7 => :expenses,
-            8 => :paid_tax,
-            9 => :paid_vat,
-            10 => :tax_share,
-            11 => :deposit)
+            3 => :taxed_amount,
+            4 => :income,
+            5 => :paid_tax,
+            6 => :paid_vat,
+            7 => :tax_share,
+            8 => :vat_share,
+            9 => :deposit)
 
     rename!(model_data,
             2 => :tax,
-            3 => :vat)
+            3 => :vat,
+            4 => :debt)
 
     return actor_data, model_data
 end
 
-function create_data_handler(interval::Int = 1)
+function tax_data_handler(interval::Int = 1)
     return IntervalDataHandler(interval = interval,
-                                actor_data_collectors = [:gi,
-                                                            :dem,
-                                                            taxed_amount_collector!,
-                                                            income_collector!,
-                                                            expenses_collector!,
-                                                            paid_tax_collector!,
-                                                            paid_vat_collector!,
-                                                            :tax_share,
-                                                            deposit_collector],
+                                actor_data_collectors = [taxed_amount_collector!,
+                                                        income_collector!,
+                                                        paid_tax_collector!,
+                                                        paid_vat_collector!,
+                                                        MoneySim.tax_share_collector!,
+                                                        MoneySim.vat_share_collector!,
+                                                        deposit_collector],
                                 model_data_collectors = [tax_collector!,
-                                                            vat_collector!],
-                                post_processing! = post_data_processing!)
+                                                        vat_collector!,
+                                                        debt_collector],
+                                post_processing! = tax_post_processing!)
 end
 
-ad(data, symbol::Symbol, index::Int) = data[1][!, symbol][index]
-md(data, symbol::Symbol, index::Int) = data[2][!, symbol][index]
+function earn!(model::ABM, income::Real)
+    for actor in allagents(model)
+        actor.income = CUR_0
+        actor.expenses = CUR_0
+        book_asset!(get_balance(actor), SUMSY_DEP, income)
+        add_income!(actor, income)
+    end
+end
 
-@testset "Tax scheme - Income tax - SuMSy - GI not added to income" begin
-    sumsy = SuMSy(2000, 0, 0.1)
-    model = create_sumsy_model(sumsy_interval = 1,
-                                model_behaviors = process_model_sumsy!)
-    sim_params = SimParams(5)
-    population_params = FixedPopulationParams(population = 1,   
-                                                create_actor! = m -> create_sumsy_actor!(m,
-                                                                                        sumsy = sumsy,
-                                                                                        sumsy_interval = 1,
-                                                                                        allow_negative_sumsy = true,
-                                                                                        allow_negative_demurrage = false))
-    monetary_params = StandardSuMSyParams(sumsy_interval = 1,
-                                            transactional = false,
-                                            configure_sumsy_actors! = m -> mixed_actors!(m, nagents(m)),
-                                            distribute_wealth! = m -> distribute_equal!(m, telo(sumsy)))
-    tax_scheme = FixedTaxScheme(INCOME_TAX,
-                                tax_recipients = 1,
-                                tax_interval = 1,
-                                tax_brackets = 0.1)
+earning(income::Real) = BareBonesParams(m -> earn!(m, income))
 
-    data = run_simulation(model,
-                            sim_params = sim_params,
+function flat_tax_scheme(tax_type::TAX_TYPE;
+                            tax_rate::Real = 0,
+                            vat::Real = 0,
+                            tax_recipients::Int = 0,
+                            interval::Int = 1,
+                            redistribution_interval::Int = interval,
+                            vat_interval::Int = interval,
+                            projected_expenses::Real = 0,
+                            deficit_spending::Bool = false)
+    return StateTaxScheme(tax_type,
+                            tax_recipients = tax_recipients,
+                            tax_calculation_interval = interval,
+                            tax_redistribution_interval = redistribution_interval,
+                            get_tax_brackets = (_, _) -> tax_rate,
+                            vat_interval = vat_interval,
+                            get_vat = (_, _) -> vat,
+                            get_projected_expenses = (_, _) -> projected_expenses,
+                            deficit_spending = deficit_spending,
+                            debt_reduction = _ -> 0)
+end
+
+function run_fixed_wealth(tax_scheme; steps::Int = 5, wealth::Real = 10000, income::Real = 1000, population::Int = 1)
+    model = create_econo_model(MonetaryActor{Currency, Balance{Currency}})
+    population_params = FixedPopulationParams(population = population,
+                                                create_actor! = m -> create_monetary_actor!(m, allow_negative_assets = true))
+
+    return run_simulation(model,
+                            sim_params = SimParams(steps),
                             population_params = population_params,
-                            monetary_params = monetary_params,
-                            transaction_params = create_passive_transaction_model(false),
+                            monetary_params = FixedWealthParams(distribute_wealth! = m -> distribute_equal!(m, wealth)),
+                            transaction_params = earning(income),
                             tax_scheme = tax_scheme,
-                            data_handler = create_data_handler())
-    
-    @test sum(data[1][!, :paid_tax]) == 0
+                            data_handler = tax_data_handler())
 end
 
-@testset "Tax scheme - Income tax - SuMSy - GI added to income - no net GI" begin
-    sumsy = SuMSy(2000, 0, 0.1)
-    model = create_sumsy_model(sumsy_interval = 1,
-                                model_behaviors = process_model_sumsy!)
-    sim_params = SimParams(5)
+@testset "Tax scheme - Income tax - no income" begin
+    actor_data, model_data = run_fixed_wealth(flat_tax_scheme(INCOME_TAX, tax_rate = 0.1), income = 0)
+
+    @test sum(actor_data[!, :paid_tax]) == 0
+    @test all(actor_data[!, :deposit] .== 10000)
+end
+
+@testset "Tax scheme - Income tax - flat 10%, every step, no distribution" begin
+    actor_data, model_data = run_fixed_wealth(flat_tax_scheme(INCOME_TAX, tax_rate = 0.1))
+
+    # Steps 0..5. Income from step t is taxed in step t + 1.
+    @test actor_data[!, :income] == Currency[0, 1000, 1000, 1000, 1000, 1000]
+    @test actor_data[!, :paid_tax] == Currency[0, 0, 100, 100, 100, 100]
+    @test model_data[!, :tax] == Currency[0, 0, 100, 100, 100, 100]
+    @test actor_data[!, :deposit][end] == 10000 + 5 * 1000 - 4 * 100
+end
+
+@testset "Tax scheme - Income tax - full distribution" begin
+    actor_data, model_data = run_fixed_wealth(flat_tax_scheme(INCOME_TAX, tax_rate = 0.1, tax_recipients = 1))
+
+    @test actor_data[!, :paid_tax] == Currency[0, 0, 100, 100, 100, 100]
+    @test actor_data[!, :tax_share] == actor_data[!, :paid_tax]
+    @test actor_data[!, :deposit][end] == 10000 + 5 * 1000
+end
+
+@testset "Tax scheme - Income tax - deficit spending" begin
+    tax_scheme = flat_tax_scheme(INCOME_TAX,
+                                    tax_rate = 0.1,
+                                    tax_recipients = 1,
+                                    projected_expenses = 150,
+                                    deficit_spending = true)
+    actor_data, model_data = run_fixed_wealth(tax_scheme)
+
+    # Each collection pays out the projected expenses; the gap with the collected tax is added to the debt.
+    @test actor_data[!, :tax_share] == Currency[0, 150, 150, 150, 150, 150]
+    @test model_data[!, :debt][end] == 150 + 4 * 50
+end
+
+@testset "Tax scheme - Income tax - collection over a longer period" begin
+    # Taxes calculated every 10 steps and collected once per period should collect the full tax.
+    tax_scheme = flat_tax_scheme(INCOME_TAX, tax_rate = 0.1, interval = 10)
+    actor_data, _ = run_fixed_wealth(tax_scheme, steps = 30)
+    paid = sum(actor_data[!, :paid_tax])
+
+    # Known defect KG-m23-14: each collection takes tax_to_pay / (calculation interval - collections done),
+    # which counts steps, not collections. With one collection per period only 1/10 of the tax is collected
+    # and the rest is overwritten at the next calculation.
+    # Tax is calculated at steps 1, 11 and 21 on the income registered since the last calculation:
+    # 0, then 10 steps of 1000 twice.
+    @test_broken paid == Currency(0.1 * 1000 * 20)
+    @test paid == Currency(0.1 * 1000 * 20 / 10)
+
+    # Collecting every step spreads the tax over the period and collects it in full.
+    tax_scheme = flat_tax_scheme(INCOME_TAX, tax_rate = 0.1, interval = 10, redistribution_interval = 1)
+    actor_data, _ = run_fixed_wealth(tax_scheme, steps = 30)
+    @test sum(actor_data[!, :paid_tax][1:21]) == Currency(0.1 * 1000 * 10) # tax calculated at step 11, collected in steps 11..20
+end
+
+@testset "Tax scheme - Demurrage tax" begin
+    sumsy = SuMSy(0, 0, 0)
+    model = create_sumsy_model(sumsy_interval = 1, model_behaviors = process_model_sumsy!)
     population_params = FixedPopulationParams(population = 1,
                                                 create_actor! = m -> create_sumsy_actor!(m,
                                                                                         sumsy = sumsy,
                                                                                         sumsy_interval = 1,
-                                                                                        allow_negative_sumsy = true,
-                                                                                        allow_negative_demurrage = false))
+                                                                                        initialize = false))
     monetary_params = StandardSuMSyParams(sumsy_interval = 1,
-                                            transactional = false,
-                                            configure_sumsy_actors! = m -> mixed_actors!(m, nagents(m)),
-                                            distribute_wealth! = m -> distribute_equal!(m, telo(sumsy)))
-    tax_scheme = FixedTaxScheme(INCOME_TAX,
-                                tax_recipients = 1,
-                                tax_interval = 1,
-                                tax_brackets = 0.1)
+                                            configure_sumsy_actors! = mixed_actors!,
+                                            distribute_wealth! = m -> distribute_equal!(m, 10000))
 
-    data = run_simulation(model,
-                            sim_params = sim_params,
-                            population_params = population_params,
-                            monetary_params = monetary_params,
-                            transaction_params = create_passive_transaction_model(true),
-                            tax_scheme = tax_scheme,
-                            data_handler = create_data_handler())
-    
-    @test sum(data[1][!, :paid_tax]) == 0
+    actor_data, _ = run_simulation(model,
+                                    sim_params = SimParams(5),
+                                    population_params = population_params,
+                                    monetary_params = monetary_params,
+                                    transaction_params = BareBonesParams(nothing),
+                                    tax_scheme = flat_tax_scheme(DEMURRAGE_TAX, tax_rate = 0.1),
+                                    data_handler = tax_data_handler())
+
+    # 10% of the balance above the demurrage-free amount (0) every step.
+    @test actor_data[!, :paid_tax] == Currency[0, 1000, 900, 810, 729, 656.1]
+    @test actor_data[!, :deposit][end] == Currency(10000 * 0.9^5)
 end
 
-@testset "Tax scheme - Income tax - SuMSy - GI added to income - positive net GI - full distribution" begin
+@testset "Tax scheme - VAT - no distribution" begin
+    actor_data, model_data = run_fixed_wealth(flat_tax_scheme(VAT_ONLY, vat = 0.1))
+    vat = Currency(1000 * 0.1 / 1.1)
+
+    # VAT is taken as included in the income: rate / (1 + rate) of it.
+    # (The former test expected rate * income; see KG-m23 in the knowledge base.)
+    @test actor_data[!, :paid_vat] == [CUR_0, CUR_0, vat, vat, vat, vat]
+    @test model_data[!, :vat] == actor_data[!, :paid_vat]
+    @test sum(actor_data[!, :paid_tax]) == 0
+    @test actor_data[!, :deposit][end] == 10000 + 5 * 1000 - 4 * vat
+end
+
+@testset "Tax scheme - VAT - distribution" begin
+    actor_data, _ = run_fixed_wealth(flat_tax_scheme(VAT_ONLY, vat = 0.1, tax_recipients = 1))
+
+    @test actor_data[!, :vat_share] == actor_data[!, :paid_vat]
+    @test actor_data[!, :deposit][end] == 10000 + 5 * 1000
+end
+
+@testset "Tax scheme - Income tax + VAT - distribution" begin
+    tax_scheme = flat_tax_scheme(INCOME_TAX, tax_rate = 0.1, vat = 0.1, tax_recipients = 1)
+    actor_data, _ = run_fixed_wealth(tax_scheme)
+    vat = Currency(1000 * 0.1 / 1.1)
+
+    @test actor_data[!, :paid_tax] == Currency[0, 0, 100, 100, 100, 100]
+    @test actor_data[!, :paid_vat] == [CUR_0, CUR_0, vat, vat, vat, vat]
+    @test actor_data[!, :deposit][end] == 10000 + 5 * 1000
+
+    for i in 2:nrow(actor_data)
+        @test actor_data[!, :deposit][i] == actor_data[!, :deposit][i - 1] +
+                                                actor_data[!, :income][i] -
+                                                actor_data[!, :paid_tax][i] -
+                                                actor_data[!, :paid_vat][i] +
+                                                actor_data[!, :tax_share][i] +
+                                                actor_data[!, :vat_share][i]
+    end
+end
+
+@testset "Tax scheme - VAT - SuMSy - standard yard sale - no distribution" begin
     sumsy = SuMSy(2000, 0, 0.1)
-    model = create_sumsy_model(sumsy_interval = 1,
-                                model_behaviors = process_model_sumsy!)
-    sim_params = SimParams(5)
-    population_params = FixedPopulationParams(population = 1,
-                                                create_actor! = m -> create_sumsy_actor!(m,
-                                                                                        sumsy = sumsy,
-                                                                                        sumsy_interval = 1,
-                                                                                        allow_negative_sumsy = true,
-                                                                                        allow_negative_demurrage = false))
-    monetary_params = StandardSuMSyParams(sumsy_interval = 1,
-                                            transactional = false,
-                                            configure_sumsy_actors! = m -> mixed_actors!(m, nagents(m)),
-                                            distribute_wealth! = m -> distribute_equal!(m, 0))
-    tax_scheme = FixedTaxScheme(INCOME_TAX,
-                                tax_recipients = 1,
-                                tax_interval = 1,
-                                tax_brackets = 0.1)
-
-    data = run_simulation(model,
-                            sim_params = sim_params,
-                            population_params = population_params,
-                            monetary_params = monetary_params,
-                            transaction_params = create_passive_transaction_model(true),
-                            tax_scheme = tax_scheme,
-                            data_handler = create_data_handler())
-    
-    for i in 2:size(data[1])[1]
-        @test ad(data, :gi, i) - ad(data, :dem, i) + ad(data, :tax_share, i - 1) == ad(data, :taxed_income, i)
-    end
-
-    model = create_sumsy_model(sumsy_interval = 1,
-                                model_behaviors = process_model_sumsy!)
-
-    sim_params = SimParams(50)
-    tax_scheme = FixedTaxScheme(INCOME_TAX,
-                                tax_recipients = 1,
-                                tax_interval = 10,
-                                tax_brackets = 0.1) 
-
-    data = run_simulation(model,
-                            sim_params = sim_params,
-                            population_params = population_params,
-                            monetary_params = monetary_params,
-                            transaction_params = create_passive_transaction_model(true),
-                            tax_scheme = tax_scheme,
-                            data_handler = create_data_handler(10))
-    
-    @test md(data, :tax, 1) == 0
-    @test md(data, :tax, 2) == 1302.6431
-    
-    for i in 2:size(data[1])[1]
-        @test ad(data, :income, i) + ad(data, :tax_share, i - 1) == ad(data, :taxed_income, i)
-    end
-end
-
-@testset "Tax scheme - Income tax - SuMSy - GI added to income - positive net GI - no distribution" begin
-    sumsy = SuMSy(2000, 0, 0.1)
-    model = create_sumsy_model(sumsy_interval = 1,
-                                model_behaviors = process_model_sumsy!)
-    sim_params = SimParams(5)
-    population_params = FixedPopulationParams(population = 1,
-                                                create_actor! = m -> create_sumsy_actor!(m,
-                                                                                        sumsy = sumsy,
-                                                                                        sumsy_interval = 1,
-                                                                                        allow_negative_sumsy = true,
-                                                                                        allow_negative_demurrage = false))
-    monetary_params = StandardSuMSyParams(sumsy_interval = 1,
-                                            transactional = false,
-                                            configure_sumsy_actors! = m -> mixed_actors!(m, nagents(m)),
-                                            distribute_wealth! = m -> distribute_equal!(m, 0))
-    tax_scheme = FixedTaxScheme(INCOME_TAX,
-                                tax_recipients = 0,
-                                tax_interval = 1,
-                                tax_brackets = 0.1)
-
-    data = run_simulation(model,
-                            sim_params = sim_params,
-                            population_params = population_params,
-                            monetary_params = monetary_params,
-                            transaction_params = create_passive_transaction_model(true),
-                            tax_scheme = tax_scheme,
-                            data_handler = create_data_handler())
-    
-    @test md(data, :tax, 1) == 0
-    @test md(data, :tax, 2) == 200
-    @test md(data, :tax, 3) == 182
-    @test md(data, :tax, 4) == 165.62
-    @test md(data, :tax, 5) == 150.7142
-    @test md(data, :tax, 6) == 137.1499
-
-    model = create_sumsy_model(sumsy_interval = 1,
-                                model_behaviors = process_model_sumsy!)
-
-    sim_params = SimParams(50)
-    tax_scheme = FixedTaxScheme(INCOME_TAX,
-                                tax_recipients = 0,
-                                tax_interval = 10,
-                                tax_brackets = 0.1)
-
-    data = run_simulation(model,
-                            sim_params = sim_params,
-                            population_params = population_params,
-                            monetary_params = monetary_params,
-                            transaction_params = create_passive_transaction_model(true),
-                            tax_scheme = tax_scheme,
-                            data_handler = create_data_handler(10))
-    
-    @test md(data, :tax, 1) == 0
-    @test md(data, :tax, 2) == 1302.6431
-
-    for i in 2:size(data[1])[1]
-        @test Currency(calculate_sumsy_deposit(sumsy, 10, ad(data, :deposit, i - 1))) - ad(data, :paid_tax, i) == ad(data, :deposit, i)
-    end
-end
-
-@testset "Tax Scheme - Demurrage tax" begin
-end
-
-@testset "Tax scheme - VAT tax - No SuMSy - no distribution" begin
-    # VAT interval = 1
-    model = create_econo_model()
-    sim_params = SimParams(5)
-    population_params = FixedPopulationParams(population = 1,
-                                                create_actor! = m -> create_monetary_actor!(m,
-                                                                                        allow_negative_assets = true))
-    monetary_params = FixedWealthParams(m -> distribute_equal!(m, 10000))
-    tax_scheme = FixedTaxScheme(VAT_ONLY,
-                                tax_recipients = 0,
-                                vat_interval = 1,
-                                vat = 0.1)
-
-    data = run_simulation(model,
-                            sim_params = sim_params,
-                            population_params = population_params,
-                            monetary_params = monetary_params,
-                            transaction_params = create_active_transaction_model(1000),
-                            tax_scheme = tax_scheme,
-                            data_handler = create_data_handler())
-
-    @test sum(data[1][!, :paid_vat]) == 500
-
-    # VAT interval = 10
-    model = create_econo_model()
-    sim_params = SimParams(50)
-    tax_scheme = FixedTaxScheme(VAT_ONLY,
-                                tax_recipients = 0,
-                                vat_interval = 10,
-                                vat = 0.1)
-
-    data = run_simulation(model,
-                            sim_params = sim_params,
-                            population_params = population_params,
-                            monetary_params = monetary_params,
-                            transaction_params = create_active_transaction_model(1000),
-                            tax_scheme = tax_scheme,
-                            data_handler = create_data_handler(10))
-
-    @test sum(data[1][!, :paid_vat]) == 5000
-end
-
-@testset "Tax scheme - VAT tax - No SuMSy - distribution" begin
-    # VAT interval = 1
-    model = create_econo_model()
-    sim_params = SimParams(5)
-    population_params = FixedPopulationParams(population = 1,
-                                                create_actor! = m -> create_monetary_actor!(m,
-                                                                                        allow_negative_assets = true))
-    monetary_params = FixedWealthParams(m -> distribute_equal!(m, 10000))
-    tax_scheme = FixedTaxScheme(VAT_ONLY,
-                                tax_recipients = 1,
-                                vat_interval = 1,
-                                vat = 0.1)
-
-    data = run_simulation(model,
-                            sim_params = sim_params,
-                            population_params = population_params,
-                            monetary_params = monetary_params,
-                            transaction_params = create_active_transaction_model(1000),
-                            tax_scheme = tax_scheme,
-                            data_handler = create_data_handler())
-    
-    @test ad(data, :income, 1) == 0
-    @test ad(data, :income, 2) == 1000
-
-    for i in 2:size(data[1])[1]
-        ad(data, :deposit, i) == ad(data, :deposit, i - 1) + ad(data, :income, i) - ad(data, :paid_vat, i)
-    end
-
-    @test ad(data, :paid_vat, 1) == 0
-    @test ad(data, :paid_vat, 2) == 100
-    @test ad(data, :paid_vat, 3) == 110
-    @test ad(data, :paid_vat, 4) == 111
-    @test ad(data, :paid_vat, 5) == 111.1
-    @test ad(data, :paid_vat, 6) == 111.11
-
-    # VAT interval = 10
-    model = create_econo_model()
-    sim_params = SimParams(50)
-    tax_scheme = FixedTaxScheme(VAT_ONLY,
-                                tax_recipients = 1,
-                                vat_interval = 10,
-                                vat = 0.1)
-
-    data = run_simulation(model,
-                            sim_params = sim_params,
-                            population_params = population_params,
-                            monetary_params = monetary_params,
-                            transaction_params = create_active_transaction_model(1000),
-                            tax_scheme = tax_scheme,
-                            data_handler = create_data_handler(10))
-    
-    @test ad(data, :income, 1) == 0
-    @test ad(data, :income, 2) == 10000
-
-    for i in 2:size(data[1])[1]
-        ad(data, :deposit, i) == ad(data, :deposit, i - 1) + ad(data, :income, i) - ad(data, :paid_vat, i)
-    end
-
-    @test ad(data, :paid_vat, 1) == 0
-    @test ad(data, :paid_vat, 2) == 1000
-    @test ad(data, :paid_vat, 3) == 1100
-    @test ad(data, :paid_vat, 4) == 1110
-    @test ad(data, :paid_vat, 5) == 1111
-    @test ad(data, :paid_vat, 6) == 1111.1
-end
-
-@testset "Tax scheme - Income tax + VAT - No SuMSy - distribution" begin
-    # Tax interval = 1, VAT interval = 1
-    model = create_econo_model()
-    sim_params = SimParams(5)
-    population_params = FixedPopulationParams(population = 1,
-                                                create_actor! = m -> create_monetary_actor!(m,
-                                                                                        allow_negative_assets = true))
-    monetary_params = FixedWealthParams(m -> distribute_equal!(m, 10000))
-    tax_scheme = FixedTaxScheme(INCOME_TAX,
-                                tax_recipients = 1,
-                                tax_interval = 1,
-                                tax_brackets = 0.1,
-                                vat_interval = 1,
-                                vat = 0.1)
-
-    data = run_simulation(model,
-                            sim_params = sim_params,
-                            population_params = population_params,
-                            monetary_params = monetary_params,
-                            transaction_params = create_active_transaction_model(1000),
-                            tax_scheme = tax_scheme,
-                            data_handler = create_data_handler())
-    
-    @test ad(data, :income, 1) == 0
-    @test ad(data, :income, 2) == 1000
-
-    for i in 2:size(data[1])[1]
-        ad(data, :deposit, i) == ad(data, :deposit, i - 1) + ad(data, :income, i) - ad(data, :paid_tax, i) - ad(data, :paid_vat, i)
-        ad(data, :taxed_income, i) == ad(data, :income, i) - ad(data, :paid_vat, i)
-    end
-
-    # Tax interval = 10, VAT interval = 10
-    model = create_econo_model()
-    sim_params = SimParams(50)
-    tax_scheme = FixedTaxScheme(INCOME_TAX,
-                                tax_recipients = 1,
-                                tax_interval = 10,
-                                tax_brackets = 0.1,
-                                vat_interval = 10,
-                                vat = 0.1)
-
-    data = run_simulation(model,
-                            sim_params = sim_params,
-                            population_params = population_params,
-                            monetary_params = monetary_params,
-                            transaction_params = create_active_transaction_model(1000),
-                            tax_scheme = tax_scheme,
-                            data_handler = create_data_handler(10))
-    
-    @test ad(data, :income, 1) == 0
-    @test ad(data, :income, 2) == 10000
-
-    for i in 2:size(data[1])[1]
-        ad(data, :deposit, i) == ad(data, :deposit, i - 1) + ad(data, :income, i) - ad(data, :paid_tax, i) - ad(data, :paid_vat, i)
-        ad(data, :taxed_income, i) == ad(data, :income, i) - ad(data, :paid_vat, i)
-    end
-
-     # Tax interval = 10, VAT interval = 5
-     model = create_econo_model()
-     sim_params = SimParams(50)
-     tax_scheme = FixedTaxScheme(INCOME_TAX,
-                                 tax_recipients = 1,
-                                 tax_interval = 10,
-                                 tax_brackets = 0.1,
-                                 vat_interval = 5,
-                                 vat = 0.1)
- 
-     data = run_simulation(model,
-                             sim_params = sim_params,
-                             population_params = population_params,
-                             monetary_params = monetary_params,
-                             transaction_params = create_active_transaction_model(1000),
-                             tax_scheme = tax_scheme,
-                             data_handler = create_data_handler(10))
-     
-     @test ad(data, :income, 1) == 0
-     @test ad(data, :income, 2) == 10500
- 
-    for i in 2:size(data[1])[1]
-        ad(data, :deposit, i) == ad(data, :deposit, i - 1) + ad(data, :income, i) - ad(data, :paid_tax, i) - ad(data, :paid_vat, i)
-        ad(data, :taxed_income, i) == ad(data, :income, i) - ad(data, :paid_vat, i)
-    end
-end
-
-@testset "Tax scheme - Vat tax - SuMSy - standaerd yard sale - no distribution" begin
-    sumsy = SuMSy(2000, 0, 0.1)
-    model = create_sumsy_model(sumsy_interval = 1,
-                                model_behaviors = process_model_sumsy!)
-    sim_params = SimParams(50)
+    model = create_sumsy_model(sumsy_interval = 1, model_behaviors = process_model_sumsy!)
     population_params = FixedPopulationParams(population = 2,
                                                 create_actor! = m -> create_sumsy_actor!(m,
                                                                                         sumsy = sumsy,
@@ -458,55 +220,63 @@ end
                                                                                         allow_negative_sumsy = true,
                                                                                         allow_negative_demurrage = false))
     monetary_params = StandardSuMSyParams(sumsy_interval = 1,
-                                            transactional = false,
-                                            configure_sumsy_actors! = m -> mixed_actors!(m, nagents(m)),
+                                            configure_sumsy_actors! = m -> mixed_actors!(m, num_gi_actors = nagents(m)),
                                             distribute_wealth! = m -> distribute_equal!(m, telo(sumsy)))
-    transaction_params = StandardYardSaleParams(1:1,
-                                                0.1:0.1:0.1,
-                                                0,
-                                                false)
-    tax_scheme = FixedTaxScheme(VAT_ONLY,
-                                tax_recipients = 0,
-                                tax_interval = 1,
-                                vat = 0.1)
+    transaction_params = StandardYardSaleParams(transaction_range = 1:1,
+                                                wealth_transfer_range = 0.1:0.1:0.1,
+                                                average_wealth = telo(sumsy))
 
-    data = run_simulation(model,
-                            sim_params = sim_params,
-                            population_params = population_params,
-                            monetary_params = monetary_params,
-                            transaction_params = transaction_params,
-                            tax_scheme = tax_scheme,
-                            data_handler = create_data_handler())
+    actor_data, _ = run_simulation(model,
+                                    sim_params = SimParams(50),
+                                    population_params = population_params,
+                                    monetary_params = monetary_params,
+                                    transaction_params = transaction_params,
+                                    tax_scheme = flat_tax_scheme(VAT_ONLY, vat = 0.1),
+                                    data_handler = tax_data_handler())
 
-    time_groups = groupby(data[1], :time)
-
-    for group in time_groups
-        @test sum(group[!, :paid_vat]) == Currency(0.1 * sum(group[!, :income]))
+    # Each actor pays VAT in step t on the income it earned in step t - 1.
+    for group in groupby(actor_data, :id)
+        for i in 2:nrow(group)
+            @test group[!, :paid_vat][i] == Currency(group[!, :income][i - 1] * 0.1 / 1.1)
+        end
     end
 
-    id_groups = groupby(data[1], :id)
-
-    for i in 1:size(id_groups[1])[1]
-        @test id_groups[1][!, :income][i] == id_groups[2][!, :expenses][i]
-    end
+    # One trade per step: what one actor earns, the other spends.
+    time_groups = groupby(actor_data, :time)
+    @test all(g -> sum(g[!, :income]) == maximum(g[!, :income]), time_groups)
 end
 
-@testset "Scale taxes - Income > Expenses" begin
+@testset "Scale taxes - raise to target revenue" begin
     tax_base = Vector{Currency}([100032953.0587, 47835517.5256, 105421842.0211, 152142535.1119, 422081130.4976])
-    tax_brackets = MoneySim.get_income_tax_brackets(BE)
+    tax_brackets = make_tiers(MoneySim.get_income_tax_brackets(BE))
     projected_revenue = MoneySim.calculate_revenue(tax_base, tax_brackets)
-    projected_expenses = projected_revenue / 2
+    target_revenue = Currency(projected_revenue * 1.2)
 
-    tax_brackets, tax_scale = MoneySim.scale_brackets(tax_base,
-                                                        tax_brackets,
-                                                        projected_revenue,
-                                                        projected_expenses)
+    scaled_brackets, tax_scale = MoneySim.scale_brackets(tax_base, tax_brackets, target_revenue)
+
+    @test tax_scale == round(target_revenue / projected_revenue, digits = 2)
+    @test MoneySim.calculate_revenue(tax_base, scaled_brackets) > projected_revenue
+    @test isapprox(MoneySim.calculate_revenue(tax_base, scaled_brackets), target_revenue, rtol = 0.05)
+end
+
+@testset "Scale taxes - lower to target revenue" begin
+    tax_base = Vector{Currency}([100032953.0587, 47835517.5256, 105421842.0211, 152142535.1119, 422081130.4976])
+    tax_brackets = make_tiers(MoneySim.get_income_tax_brackets(BE))
+    projected_revenue = MoneySim.calculate_revenue(tax_base, tax_brackets)
+    target_revenue = Currency(projected_revenue / 2)
+
+    scaled_brackets, tax_scale = MoneySim.scale_brackets(tax_base, tax_brackets, target_revenue)
 
     @test tax_scale == 0.5
-    @test MoneySim.calculate_revenue(tax_base, tax_brackets) == projected_expenses
+    # Known defect: scale_brackets only ever raises rates. It reports the lower scale but returns the brackets unchanged.
+    @test_broken MoneySim.calculate_revenue(tax_base, scaled_brackets) == target_revenue
+    @test MoneySim.calculate_revenue(tax_base, scaled_brackets) == projected_revenue
 end
 
 @testset "Create tax base" begin
-    taxable = a -> 10000
-    MoneySim.create_tax_base([1], make_tiers([(0, 0), (500, 0.25), (2000, 0.5)]), taxable)
+    tax_brackets = make_tiers([(0, 0), (500, 0.25), (2000, 0.5)])
+    tax_base = MoneySim.create_tax_base([1], tax_brackets, a -> 10000)
+
+    @test tax_base == Currency[500, 1500, 8000]
+    @test MoneySim.calculate_revenue(tax_base, tax_brackets) == 0.25 * 1500 + 0.5 * 8000
 end

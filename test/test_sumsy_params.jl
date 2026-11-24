@@ -5,14 +5,14 @@ using DataFrames
 using Agents
 
 function post_data_processing!(actor_data, model_data)
-    rename!(actor_data, 3 => :deposit)
+    rename!(actor_data, 3 => :deposit, 4 => :gi, 5 => :dem)
 
     return actor_data, model_data
 end
 
 function create_data_handler(interval::Int = 1)
     return IntervalDataHandler(interval = interval,
-                                actor_data_collectors = [deposit_collector, :gi, :dem],
+                                actor_data_collectors = [deposit_collector, MoneySim.gi_collector!, MoneySim.demurrage_collector!],
                                 model_data_collectors = [],
                                 post_processing! = post_data_processing!)
 end
@@ -29,15 +29,14 @@ end
                                                                                         allow_negative_sumsy = true,
                                                                                         allow_negative_demurrage = false))
     monetary_params = StandardSuMSyParams(sumsy_interval = 1,
-                                            transactional = false,
-                                            configure_sumsy_actors! = m -> mixed_actors!(m, nagents(m)),
+                                            configure_sumsy_actors! = m -> mixed_actors!(m, num_gi_actors = nagents(m)),
                                             distribute_wealth! = m -> distribute_equal!(m, telo(sumsy)))
 
     data = run_simulation(model,
                             sim_params = sim_params,
                             population_params = population_params,
                             monetary_params = monetary_params,
-                            transaction_params = BareBonesParams(),
+                            transaction_params = BareBonesParams(nothing),
                             data_handler = create_data_handler())
     
     for i in 1:size(data[1])[1]
@@ -61,15 +60,14 @@ end
                                                                                         allow_negative_sumsy = true,
                                                                                         allow_negative_demurrage = false))
     monetary_params = StandardSuMSyParams(sumsy_interval = 1,
-                                            transactional = false,
-                                            configure_sumsy_actors! = m -> type_based_sumsy_actors!(m, sumsy_groups, 0.1),
+                                            configure_sumsy_actors! = m -> type_based_sumsy_actors!(m, sumsy_groups = sumsy_groups, demurrage = 0.1),
                                             distribute_wealth! = m -> distribute_equal!(m, telo(sumsy)))
 
     data = run_simulation(model,
                             sim_params = sim_params,
                             population_params = population_params,
                             monetary_params = monetary_params,
-                            transaction_params = BareBonesParams(),
+                            transaction_params = BareBonesParams(nothing),
                             data_handler = create_data_handler())
     
     for i in 1:size(data[1])[1]

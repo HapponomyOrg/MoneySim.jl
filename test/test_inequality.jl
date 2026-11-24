@@ -1,6 +1,7 @@
 using EconoSim
 using MoneySim
 using Test
+using Agents
 
 @testset "InequalityData" begin
     inequality_data = InequalityData(1000000,   # Top 0.1%
@@ -138,4 +139,33 @@ bottom_0_1, bottom_1, bottom_10 = MoneySim.adjust_for_overlap(inequality_data.bo
         + bottom_10 * 90
         + bottom_1 * 9
         + bottom_0_1) / 1000) == round(M2_PER_CAPITA)
+end
+# Added 2026-11-11: distribute_inequal_wealth! ignored refused bookings, so negative wealth was silently not booked.
+function inequality_model(allow_negative_assets::Bool, num_actors::Int = 10)
+    model = create_econo_model(MonetaryActor{Currency, Balance{Currency}})
+
+    for _ in 1:num_actors
+        add_actor!(model, create_monetary_actor!(model, allow_negative_assets = allow_negative_assets))
+    end
+
+    return model
+end
+
+negative_bottom = InequalityData(nothing, nothing, 1000, 500, 100, -50, nothing, nothing)
+
+@testset "Inequal distribution - negative wealth" begin
+    model = inequality_model(true)
+    distribute_inequal!(model, negative_bottom)
+    wealth = sort([asset_value(get_balance(actor), SUMSY_DEP) for actor in allagents(model)])
+
+    @test wealth[1] == -50
+    @test wealth[end] == 1000
+end
+
+@testset "Inequal distribution - refused booking" begin
+    model = inequality_model(false)
+
+    # The bottom 10% can not hold -50 on a balance without negative assets: an error, and nothing is booked.
+    @test_throws ArgumentError distribute_inequal!(model, negative_bottom)
+    @test all(actor -> asset_value(get_balance(actor), SUMSY_DEP) == 0, allagents(model))
 end
