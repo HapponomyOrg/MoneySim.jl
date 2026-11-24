@@ -84,8 +84,16 @@ so it would split the native and wasm backends.
 
 ## Parity status
 
-At the committed comparison scale (1,000 actors × 10 years), with legacy and
-core both run at seed 42, the largest deltas are:
+Paper 2 is now exact: under a shared random stream every SUMSy scenario matches
+the legacy backend to the last decimal, including the tiered-demurrage `e2` and
+`e5` equilibria (`test/parity/common_rng_paper2.jl`). Getting there meant
+mirroring legacy's Float64 tier arithmetic, its nearest-even division for
+guaranteed income and adaptation amounts, and its per-interval compounding in
+`SuMSyAccount.adjust!`.
+
+Paper 3 remains distribution-level because the fixed-money `c` series is
+chaotic across random streams. At the committed comparison scale (1,000 actors ×
+10 years), with legacy and core both run at seed 42, the largest deltas are:
 
 | Metric | Max delta |
 |---|---|

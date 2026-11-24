@@ -8,6 +8,7 @@ julia --project=. test/parity/scripted_yardsale.jl
 julia --project=. test/parity/scripted_gdp.jl
 julia --project=. test/parity/common_rng_gdp.jl
 julia --project=. test/parity/common_rng_yardsale.jl
+julia --project=. test/parity/common_rng_paper2.jl
 julia --project=. test/parity/common_rng_paper3.jl
 ```
 
@@ -45,6 +46,29 @@ checks Gini within 5e-4, money within 1e-6, debt within 1e-6, and shares within
 Gini within 0.03, money/debt within 1%, and tax within 1.5% (66/66). Across all
 scenarios the largest common-RNG deltas are Gini 0.0235 (`c5`), money 0.506%
 (`c1`), and tax 1.345% (`a9`).
+
+`common_rng_paper2.jl` covers every SUMSy paper-2 scenario under the shared
+stream and requires exact equality of the final stock and of the recorded
+max/min. All scenarios match exactly. Closing this needed three core changes
+and two harness fixes:
+
+- tier demurrage products are now evaluated in `Float64` and rounded once, like
+  main EconoSim's `Currency * Percentage`; exact integer rounding differed by
+  one unit at half-unit ties;
+- guaranteed income prorating rounds to nearest even instead of truncating;
+- `SuMSyAccount.adjust!` compounds full intervals one at a time and then applies
+  a partial interval, like legacy, instead of scaling the whole timerange at
+  once (this is what transactional `d1` exercises);
+- legacy `mixed_actors!` picks the non-eligible subset in ABM `Dict` order, so
+  the harness pins eligibility to the first `eligible` ids;
+- legacy `concentrate_wealth!` books the whole stock to a random actor, so the
+  harness moves it to id 1.
+
+Halving balances for one-time destruction and the equal-distribution mean also
+round to nearest even now, matching legacy's `Currency / Integer`.
+
+The suite runs the short scenarios plus `e2`/`e5` by default (about two
+minutes); `PAPER_TESTS=full` runs all fourteen.
 
 ## Remaining for full paper 3
 

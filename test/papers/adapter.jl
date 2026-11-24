@@ -211,7 +211,19 @@ function _paper2_adaptation(name)
     error("unknown adaptation: $name")
 end
 
-function _paper2_legacy_sumsy(params)
+function _paper2_legacy_sumsy(params; rng = nothing)
+    # Two legacy initialisers depend on the ABM's `Dict` iteration order:
+    # `mixed_actors!` picks the non-eligible subset, and `concentrate_wealth!`
+    # books the whole stock to a random actor. Pin both to ID order so the
+    # comparison with the core, which is ID-deterministic, is well defined.
+    initialisations = Function[]
+    if params.noneligible > 0
+        push!(initialisations, m -> _pin_gi_eligibility_by_id!(m, params.eligible))
+    end
+    if !params.distributed
+        push!(initialisations, _pin_concentrated_wealth!)
+    end
+
     data = run_sumsy_simulation(
         EconoSim.SuMSy(params.gi, params.demurrage_free,
                        _paper2_tiers(params));
@@ -224,10 +236,43 @@ function _paper2_legacy_sumsy(params)
         distributed = params.distributed,
         data_handler = money_stock_data_handler(params.interval),
         model_adaptation = _paper2_adaptation(get(params, :adaptation, :none)),
+        model_initialisations = initialisations,
+        rng = rng,
     )[1]
     aggregate = analyse_aggregate(data)
     values = Float64.(aggregate.money_stock)
-    return Paper2Result(values[end], maximum(values), minimum(values))
+    # Legacy collects the initial state as well; the core records only period
+    # ends. Drop the initial sample so max/min describe the same window.
+    recorded = length(values) > 1 ? values[2:end] : values
+    return Paper2Result(values[end], maximum(recorded), minimum(recorded))
+end
+
+function _pin_gi_eligibility_by_id!(model, eligible::Int)
+    ids = sort!([actor.id for actor in MoneySim.allagents(model)])
+    for (index, id) in enumerate(ids)
+        MoneySim.set_gi_eligible!(model[id], index <= eligible)
+    end
+    return nothing
+end
+
+function _pin_concentrated_wealth!(model)
+    ids = sort!([actor.id for actor in MoneySim.allagents(model)])
+    isempty(ids) && return nothing
+
+    holder = 0
+    held = CUR_0
+    for id in ids
+        value = MoneySim.asset_value(MoneySim.get_balance(model[id]), SUMSY_DEP)
+        if value > 0
+            holder = id
+            held = value
+        end
+    end
+    holder == 0 && return nothing
+
+    MoneySim.book_asset!(MoneySim.get_balance(model[holder]), SUMSY_DEP, -held)
+    MoneySim.book_asset!(MoneySim.get_balance(model[ids[1]]), SUMSY_DEP, held)
+    return nothing
 end
 
 function _paper2_core_adaptation(params, tiers, base_wealth)

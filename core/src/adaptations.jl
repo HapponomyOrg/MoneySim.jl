@@ -62,7 +62,7 @@ end
 function _half_balance_destroy!(state::SimState)
     for i in eachindex(state.wealth)
         is_alive(state, i) || continue
-        state.wealth[i] -= div(max(state.wealth[i], MONEY_ZERO), 2)
+        state.wealth[i] -= Money(div_round_nearest(max(state.wealth[i], MONEY_ZERO).value, 2))
     end
     return nothing
 end
@@ -83,7 +83,7 @@ function equal_money_distribution!(state::SimState, money::MoneyConfig,
         is_alive(state, i) || continue
         total += pending_sumsy_assets(state, i, period, money)
     end
-    share = div(total, targets)
+    share = Money(div_round_nearest(total.value, targets))
 
     for i in eachindex(state.wealth)
         is_alive(state, i) || continue

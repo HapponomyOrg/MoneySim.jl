@@ -322,8 +322,9 @@ function run_sumsy_simulation(sumsy::SuMSy;
                                 termination_handler::Union{TerminationHandler, Nothing} = nothing,
                                 model_initialisations::Vector{<: Function} = Vector{Function}(),
                                 actor_initialisations::Vector{<: Function} = Vector{Function}(),
-                                model_adaptation::Union{Function, Nothing} = nothing)
-    sim_params = SimParams(sim_length * period_length)
+                                model_adaptation::Union{Function, Nothing} = nothing,
+                                rng = nothing)
+    sim_params = SimParams(sim_length * period_length; rng = rng)
 
     initial_wealth = telo(sumsy)
 
