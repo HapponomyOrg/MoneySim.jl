@@ -30,6 +30,7 @@ mutable struct SimState
     government_debt::Money
     vat_collected::Money
     gdp_factor::Float64
+    gdp_target::Money
     loan_pool::Money
     loan_initialized::Bool
     loan_collapsed::Bool
@@ -88,6 +89,7 @@ function SimState(n::Integer = 0)
                     MONEY_ZERO,
                     MONEY_ZERO,
                     1.0,
+                    MONEY_ZERO,
                     MONEY_ZERO,
                     false,
                     false,
@@ -242,6 +244,7 @@ function reset_state!(state::SimState, cfg::SimConfig)
     state.government_debt = cfg.government.initial_debt
     state.vat_collected = MONEY_ZERO
     state.gdp_factor = 1.0
+    state.gdp_target = cfg.gdp.per_capita * n
     state.loan_pool = MONEY_ZERO
     state.loan_initialized = false
     state.loan_collapsed = false

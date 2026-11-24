@@ -151,11 +151,7 @@ function gdp_transactions_step!(state::SimState, cfg::TransactionConfig,
     n = alive_count(state)
     n > 0 || return nothing
 
-    if gdp.growth_ppm != 0
-        state.gdp_factor *= 1.0 + Float64(gdp.growth_ppm) / (12.0 * Float64(RATE_SCALE))
-    end
-
-    target = Int64(round(Float64(gdp.per_capita.value) * Float64(n) * state.gdp_factor))
+    target = state.gdp_target.value
     target <= 0 && return nothing
 
     average = mean_wealth(state)
@@ -192,6 +188,12 @@ function gdp_transactions_step!(state::SimState, cfg::TransactionConfig,
             filter!(x -> x != j, candidates)
         end
         guard -= 1
+    end
+
+    if gdp.growth_ppm != 0
+        growth = Float64(gdp.growth_ppm) / (12.0 * Float64(RATE_SCALE))
+        state.gdp_target = Money(round(Int64, Float64(state.gdp_target.value) * (1.0 + growth)))
+        state.gdp_factor *= 1.0 + growth
     end
     return nothing
 end
