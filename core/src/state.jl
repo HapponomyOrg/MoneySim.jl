@@ -24,6 +24,8 @@ mutable struct SimState
     actor_role::Vector{UInt8}
     supplier_of::Vector{Int}
     last_adjustment::Vector{Int}
+    sumsy_gi_steps::Vector{Int}
+    sumsy_gi_booked::Vector{Money}
     tax_slices::Int
     tax_scale::Float64
     tax_accum::Money
@@ -83,6 +85,8 @@ function SimState(n::Integer = 0)
                     actor_role,
                     supplier_of,
                     last_adjustment,
+                    fill(0, count),
+                    fill(MONEY_ZERO, count),
                     0,
                     1.0,
                     MONEY_ZERO,
@@ -204,6 +208,8 @@ function reset_state!(state::SimState, cfg::SimConfig)
         resize!(state.actor_role, n)
         resize!(state.supplier_of, n)
         resize!(state.last_adjustment, n)
+        resize!(state.sumsy_gi_steps, n)
+        resize!(state.sumsy_gi_booked, n)
         resize!(state.scratch, n)
         resize!(state.income_scratch, n)
         state.n = n
@@ -219,6 +225,8 @@ function reset_state!(state::SimState, cfg::SimConfig)
     fill!(state.debt, MONEY_ZERO)
     fill!(state.tax_owed, MONEY_ZERO)
     fill!(state.last_adjustment, 0)
+    fill!(state.sumsy_gi_steps, 0)
+    fill!(state.sumsy_gi_booked, MONEY_ZERO)
     if isempty(cfg.tax.notional)
         fill!(state.notional, MONEY_ZERO)
         state.notional_active = false

@@ -16,7 +16,7 @@ This is Phase 4a of the wasm-ready core plan. The canonical plan lives in
 | `src/metrics.jl` | Gini, mean/total/min/max, cumulative percentile shares, income Gini, tax scale, public debt, VAT, loan-circuit series |
 | `src/transactions.jl` | Yard-sale transactions, the GDP volume target, and the paper-2 consumer–supplier model |
 | `src/taxes.jl` | Wealth levy, progressive income tax and demurrage tax with legacy target scaling, VAT, all four recipient modes |
-| `src/money_models.jl` | Fixed money, SUMSY (GI + demurrage, transactional accounts, typed GI), homogeneous debt-based interest, post-Keynesian bank, paper-1 loan circuit (fixed and random growth/loan-rate modes) |
+| `src/money_models.jl` | Fixed money, SUMSY (GI + demurrage, settlement granularity, typed GI), homogeneous debt-based interest, post-Keynesian bank, paper-1 loan circuit (fixed and random growth/loan-rate modes) |
 | `src/population.jl` | Fixed population, births/deaths/aging, typed GI eligibility, initial age shares |
 | `src/adaptations.jl` | Money injection and destruction (total, per-actor, one-time, half-balance) and equal distribution |
 | `src/countries.jl` | Typed country datasets, Belgium 2023, unequal-wealth and unequal-income distribution, `country_config` derivation |
@@ -33,7 +33,7 @@ julia --project=core -e 'using Pkg; Pkg.test()'
 - 135 native tests pass, including paper-1 closed-form checks, paper-2
 equilibria/bounds/consumer–supplier balances, and paper-3 direction checks.
 - Full feature parity with the papers: demurrage tax, VAT, tiered demurrage,
-  transactional SUMSY, consumer–supplier transactions, equal distribution,
+  granular SUMSY settlement, consumer–supplier transactions, equal distribution,
   one-time/constant injection and destruction, typed SuMSy by age, fixed money,
   and fixed/random loan-circuit modes.
 - Phase 5a: the Belgium dataset and `country_config` derivation live here; the

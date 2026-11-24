@@ -78,10 +78,9 @@ function _yardsale_at!(state::SimState, cfg::TransactionConfig,
                        money::MoneyConfig, rng::Rng,
                        average_wealth::Float64, period::Int,
                        i::Int, j::Int)
-    if money.transactional
-        adjust_transactional!(state, i, period, money)
-        adjust_transactional!(state, j, period, money)
-    end
+    # Settle SuMSy granules first, so the trade sees the current balances.
+    settle_sumsy!(state, i, period, money)
+    settle_sumsy!(state, j, period, money)
 
     av1 = max(Int64(0), state.wealth[i].value)
     av2 = max(Int64(0), state.wealth[j].value)
@@ -242,7 +241,7 @@ function consumer_supplier_step!(state::SimState, cfg::TransactionConfig,
         supplier = state.supplier_of[i]
         (1 <= supplier <= state.n && is_alive(state, supplier)) || continue
 
-        money.transactional && adjust_transactional!(state, i, period, money)
+        settle_sumsy!(state, i, period, money)
         available = state.wealth[i]
 
         units = cfg.demand

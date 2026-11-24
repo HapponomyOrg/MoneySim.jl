@@ -58,9 +58,11 @@ end
 """
     MoneyConfig
 
-The money model and its parameters. `interval` is the number of simulation
-steps between adjustments; guaranteed income and demurrage are applied once per
-interval.
+The money model and its parameters. `interval` is the SuMSy period: guaranteed
+income and demurrage rates are expressed per interval. `granularity` is the
+number of steps between SuMSy settlements, from 1 (every step) to `interval`
+(the default); each settlement applies `granularity / interval` of the period's
+rates.
 """
 struct MoneyConfig
     model::MoneyModel.Kind
@@ -68,8 +70,8 @@ struct MoneyConfig
     demurrage::DemTiers
     demurrage_free::Money
     interval::Int
+    granularity::Int
     interest_rate::Int64
-    transactional::Bool
     typed_guaranteed_income::Vector{Money}
     typed_demurrage_free::Vector{Money}
 end
@@ -79,12 +81,13 @@ function MoneyConfig(; model::MoneyModel.Kind = MoneyModel.SUMSY,
                      demurrage::DemTiers = NO_DEM_TIERS,
                      demurrage_free::Money = MONEY_ZERO,
                      interval::Integer = 1,
+                     granularity::Union{Nothing, Integer} = nothing,
                      interest_rate::Integer = 0,
-                     transactional::Bool = false,
                      typed_guaranteed_income::Vector{Money} = Money[],
                      typed_demurrage_free::Vector{Money} = Money[])
+    step = granularity === nothing ? Int(interval) : Int(granularity)
     return MoneyConfig(model, guaranteed_income, demurrage, demurrage_free,
-                       Int(interval), Int64(interest_rate), transactional,
+                       Int(interval), step, Int64(interest_rate),
                        typed_guaranteed_income, typed_demurrage_free)
 end
 
@@ -442,6 +445,7 @@ const CONFIG_BAD_TAX_INTERVAL = Int32(5)
 const CONFIG_BAD_WEALTH = Int32(6)
 const CONFIG_BAD_TRANSFERS = Int32(7)
 const CONFIG_BAD_TAX_BRACKETS = Int32(8)
+const CONFIG_BAD_GRANULARITY = Int32(9)
 
 """
     validate_config(cfg) -> Int32
@@ -454,6 +458,10 @@ function validate_config(cfg::SimConfig)::Int32
     mod(cfg.periods, cfg.record_interval) == 0 || return CONFIG_BAD_RECORD_INTERVAL
     cfg.population.count > 0 || return CONFIG_BAD_POPULATION
     cfg.money.interval > 0 || return CONFIG_BAD_MONEY_INTERVAL
+    if cfg.money.model === MoneyModel.SUMSY &&
+       (cfg.money.granularity < 1 || cfg.money.granularity > cfg.money.interval)
+        return CONFIG_BAD_GRANULARITY
+    end
     cfg.tax.interval >= 0 || return CONFIG_BAD_TAX_INTERVAL
     if cfg.wealth.distribution === WealthDistribution.CUSTOM &&
        length(cfg.wealth.custom) < cfg.population.count
@@ -484,4 +492,5 @@ export PopulationConfig
 export GovernmentConfig, GdpConfig, AdaptationConfig, BankConfig, LoanCircuitConfig, SimConfig
 export CONFIG_OK, CONFIG_BAD_PERIODS, CONFIG_BAD_RECORD_INTERVAL
 export CONFIG_BAD_POPULATION, CONFIG_BAD_MONEY_INTERVAL, CONFIG_BAD_TAX_INTERVAL
-export CONFIG_BAD_WEALTH, CONFIG_BAD_TRANSFERS, CONFIG_BAD_TAX_BRACKETS, validate_config
+export CONFIG_BAD_WEALTH, CONFIG_BAD_TRANSFERS, CONFIG_BAD_TAX_BRACKETS
+export CONFIG_BAD_GRANULARITY, validate_config

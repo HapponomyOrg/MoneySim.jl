@@ -88,7 +88,6 @@ function equal_money_distribution!(state::SimState, money::MoneyConfig,
     for i in eachindex(state.wealth)
         is_alive(state, i) || continue
         state.wealth[i] = share
-        money.transactional && (state.last_adjustment[i] = period)
     end
     return nothing
 end

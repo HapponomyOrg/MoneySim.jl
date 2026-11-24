@@ -58,7 +58,8 @@ and two harness fixes:
 - guaranteed income prorating rounds to nearest even instead of truncating;
 - `SuMSyAccount.adjust!` compounds full intervals one at a time and then applies
   a partial interval, like legacy, instead of scaling the whole timerange at
-  once (this is what transactional `d1` exercises);
+  instead of scaling the whole timerange at once (this is what `d1`
+  exercises, which now sets `granularity = 1`);
 - legacy `mixed_actors!` picks the non-eligible subset in ABM `Dict` order, so
   the harness pins eligibility to the first `eligible` ids;
 - legacy `concentrate_wealth!` books the whole stock to a random actor, so the

@@ -24,6 +24,8 @@ function _grow_state!(state::SimState, new_n::Int)
     resize!(state.actor_role, new_n)
     resize!(state.supplier_of, new_n)
     resize!(state.last_adjustment, new_n)
+    resize!(state.sumsy_gi_steps, new_n)
+    resize!(state.sumsy_gi_booked, new_n)
     resize!(state.scratch, new_n)
     resize!(state.income_scratch, new_n)
 
@@ -44,6 +46,8 @@ function _grow_state!(state::SimState, new_n::Int)
         state.actor_role[i] = UInt8(0)
         state.supplier_of[i] = 0
         state.last_adjustment[i] = 0
+        state.sumsy_gi_steps[i] = 0
+        state.sumsy_gi_booked[i] = MONEY_ZERO
     end
     state.n = new_n
     return state

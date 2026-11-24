@@ -228,7 +228,7 @@ function _paper2_legacy_sumsy(params; rng = nothing)
         EconoSim.SuMSy(params.gi, params.demurrage_free,
                        _paper2_tiers(params));
         sumsy_interval = params.interval,
-        sumsy_transactional = get(params, :transactional, false),
+        granularity = get(params, :transactional, false) ? 1 : params.interval,
         eligible_actors = params.eligible,
         non_eligible_actors = params.noneligible,
         num_transactions = params.transactions,
@@ -337,7 +337,8 @@ function _paper2_core_sumsy(params)
             guaranteed_income = EC.money(params.gi),
             demurrage = demurrage,
             demurrage_free = demurrage_free,
-            transactional = get(params, :transactional, false),
+            granularity = get(params, :transactional, false) ? 1 :
+                        Int(params.interval),
         ),
         transactions = MC.TransactionConfig(
             enabled = params.transactions > 0,

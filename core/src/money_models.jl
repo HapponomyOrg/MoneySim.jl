@@ -14,79 +14,72 @@ end
 @inline _age_slot(state::SimState, i::Int) = Int(state.age_type[i]) + 1
 
 """
-    adjust_transactional!(state, i, period, cfg)
+    settle_sumsy!(state, i, period, cfg)
 
-Apply the guaranteed income and demurrage accrued since actor `i`'s previous
-adjustment. Transactional accounts are adjusted on every touch, not on the
-periodic interval.
+Settle the granules that have elapsed for actor `i`. SuMSy balances settle
+before every touch, so a trade sees the current balance regardless of the
+settlement granularity.
 """
-function adjust_transactional!(state::SimState, i::Int, period::Int,
-                               cfg::MoneyConfig)
-    cfg.transactional || return nothing
+function settle_sumsy!(state::SimState, i::Int, period::Int, cfg::MoneyConfig)
+    cfg.model === MoneyModel.SUMSY || return nothing
     (1 <= i <= state.n) || return nothing
     is_alive(state, i) || return nothing
-
-    elapsed = period - state.last_adjustment[i]
-    elapsed <= 0 && return nothing
 
     guaranteed_income = _typed_value(cfg.typed_guaranteed_income,
                                      _age_slot(state, i), cfg.guaranteed_income)
     demurrage_free = _typed_value(cfg.typed_demurrage_free,
                                   _age_slot(state, i), cfg.demurrage_free)
-    sumsy = SuMSy(guaranteed_income, cfg.demurrage, demurrage_free)
-    gi, demurrage = calculate_adjustments(
-        state.wealth[i], sumsy, state.gi_eligible[i] == UInt8(1),
-        demurrage_free, cfg.interval, elapsed, false)
+
+    gi, demurrage, accrual, last_adjustment = accrue_sumsy(
+        state.wealth[i], SuMSyAccrual(state.sumsy_gi_steps[i],
+                                      state.sumsy_gi_booked[i]),
+        state.last_adjustment[i], period, cfg.granularity, cfg.interval,
+        guaranteed_income, state.gi_eligible[i] == UInt8(1), cfg.demurrage,
+        demurrage_free, false)
+
     state.wealth[i] += gi - demurrage
-    state.last_adjustment[i] = period
+    state.sumsy_gi_steps[i] = accrual.gi_steps
+    state.sumsy_gi_booked[i] = accrual.gi_booked
+    state.last_adjustment[i] = last_adjustment
     return nothing
 end
 
 """
     pending_sumsy_assets(state, i, period, cfg) -> Money
 
-The balance an actor would have after applying accrued SuMSy adjustments,
-without mutating the state.
+The balance an actor would have after settling the accrued granules, without
+mutating the state.
 """
 function pending_sumsy_assets(state::SimState, i::Int, period::Int,
                               cfg::MoneyConfig)::Money
-    cfg.transactional || return state.wealth[i]
-    elapsed = period - state.last_adjustment[i]
-    elapsed <= 0 && return state.wealth[i]
+    cfg.model === MoneyModel.SUMSY || return state.wealth[i]
 
     guaranteed_income = _typed_value(cfg.typed_guaranteed_income,
                                      _age_slot(state, i), cfg.guaranteed_income)
     demurrage_free = _typed_value(cfg.typed_demurrage_free,
                                   _age_slot(state, i), cfg.demurrage_free)
-    sumsy = SuMSy(guaranteed_income, cfg.demurrage, demurrage_free)
-    gi, demurrage = calculate_adjustments(
-        state.wealth[i], sumsy, state.gi_eligible[i] == UInt8(1),
-        demurrage_free, cfg.interval, elapsed, false)
+
+    gi, demurrage, _, _ = accrue_sumsy(
+        state.wealth[i], SuMSyAccrual(state.sumsy_gi_steps[i],
+                                      state.sumsy_gi_booked[i]),
+        state.last_adjustment[i], period, cfg.granularity, cfg.interval,
+        guaranteed_income, state.gi_eligible[i] == UInt8(1), cfg.demurrage,
+        demurrage_free, false)
     return state.wealth[i] + gi - demurrage
 end
 
 """
     sumsy_step!(state, cfg, period)
 
-Apply demurrage and guaranteed income every `cfg.interval` steps. Transactional
-accounts are adjusted on transactions instead, so the periodic step is skipped.
+Settle guaranteed income and demurrage for every actor. Runs every step; the
+configured `granularity` decides how many steps each settlement covers.
 """
 function sumsy_step!(state::SimState, cfg::MoneyConfig, period::Int)
-    cfg.transactional && return nothing
-    (cfg.interval > 0 && mod(period, cfg.interval) == 0) || return nothing
+    (cfg.interval > 0 && cfg.granularity > 0) || return nothing
 
     for i in eachindex(state.wealth)
         is_alive(state, i) || continue
-        guaranteed_income = _typed_value(cfg.typed_guaranteed_income,
-                                         _age_slot(state, i),
-                                         cfg.guaranteed_income)
-        demurrage_free = _typed_value(cfg.typed_demurrage_free,
-                                      _age_slot(state, i), cfg.demurrage_free)
-        sumsy = SuMSy(guaranteed_income, cfg.demurrage, demurrage_free)
-        gi, demurrage = calculate_adjustments(
-            state.wealth[i], sumsy, state.gi_eligible[i] == UInt8(1),
-            demurrage_free, cfg.interval, cfg.interval, false)
-        state.wealth[i] += gi - demurrage
+        settle_sumsy!(state, i, period, cfg)
     end
     return nothing
 end
@@ -424,4 +417,4 @@ function step_money!(state::SimState, cfg::MoneyConfig, bank::BankConfig,
 end
 
 export sumsy_step!, debt_step!, bank_step!, loan_circuit_step!, step_money!
-export adjust_transactional!, pending_sumsy_assets, register_income!
+export settle_sumsy!, pending_sumsy_assets, register_income!

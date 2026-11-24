@@ -44,7 +44,8 @@ end
 function _run_sumsy(params)
     data = run_sumsy_simulation(_sumsy(params);
         sumsy_interval = params.interval,
-        sumsy_transactional = :transactional in keys(params) ? params.transactional : false,
+        granularity = :transactional in keys(params) && params.transactional ?
+            1 : params.interval,
         eligible_actors = params.eligible,
         non_eligible_actors = params.noneligible,
         num_transactions = params.transactions,

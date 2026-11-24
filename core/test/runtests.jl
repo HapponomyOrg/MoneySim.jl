@@ -673,7 +673,7 @@ using EconoSimCore
         @test lower * 0.99 <= e5 <= upper * 1.01
     end
 
-    @testset "paper 2 — transactional demurrage" begin
+    @testset "paper 2 — granular demurrage" begin
         n = 100
         cfg = SimConfig(
             periods = 4_500,
@@ -685,7 +685,7 @@ using EconoSimCore
             money = MoneyConfig(model = MoneyModel.SUMSY, interval = 30,
                                 guaranteed_income = money(2_000),
                                 demurrage = make_tiers(0.01),
-                                transactional = true),
+                                granularity = 1),
             transactions = TransactionConfig(enabled = true,
                                              transactions_per_step = 200,
                                              transfer_rate = 0.2),
