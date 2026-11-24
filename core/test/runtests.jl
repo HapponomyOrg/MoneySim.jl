@@ -172,6 +172,25 @@ using EconoSimCore
         @test isapprox(result.total[end], 50_000.0; rtol = 1e-9)
         @test result.gini[end] > 0.0
         @test result.income_gini[1] >= 0.0
+
+        # Exact stochastic trace from a scripted RNG: actor 1 vs actor 2,
+        # then a 0.5 coin flip that actor 1 wins.
+        state = SimState(2)
+        state.wealth[1] = money(100)
+        state.wealth[2] = money(200)
+        scripted = Rng([0, 1, 0])
+        moved = yardsale_transfer!(state,
+                                   TransactionConfig(enabled = true,
+                                                     transactions_per_step = 1,
+                                                     transfer_rate = 0.2,
+                                                     wealth_advantage = 0.0),
+                                   MoneyConfig(model = MoneyModel.FIXED, interval = 1),
+                                   scripted, 150.0, 1)
+        @test moved == money(20)
+        @test state.wealth[1] == money(120)
+        @test state.wealth[2] == money(180)
+        @test state.step_income[1] == money(20)
+        @test state.step_expenses[2] == money(20)
     end
 
     @testset "demographics" begin
