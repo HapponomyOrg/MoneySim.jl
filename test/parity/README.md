@@ -5,6 +5,7 @@ Runs one stochastic yard-sale transaction through legacy `MoneySim` and
 
 ```bash
 julia --project=. test/parity/scripted_yardsale.jl
+julia --project=. test/parity/scripted_gdp.jl
 ```
 
 The legacy model now accepts an explicit `rng` for `atomic_yard_sale!`,
@@ -18,10 +19,15 @@ unchanged. The test uses:
 - two actors with balances 100 and 200.
 
 Both implementations must select actor 1 then 2, transfer 20 units to actor 1,
-and end at 120 / 180. The test currently passes 10/10 checks.
+and end at 120 / 180. The test passes 10/10 checks.
 
-## Not covered yet
+`scripted_gdp.jl` runs a complete GDP yard-sale loop: legacy and core must reach
+the same 100 target with the same final balances (3/3 checks). The script follows
+legacy's actual candidate-list order, because the legacy ABM is a `Dict`.
 
-The full GDP/paper-3 loop still has different draw order: legacy samples from a
-prebuilt non-broke list, core uses rejection sampling. A full model trace
-comparison needs those loops aligned.
+## Remaining for full paper 3
+
+The transaction and GDP loops are now aligned under a scripted RNG. Full
+paper-3 bit parity still needs the remaining stochastic paths aligned: random
+tax-redistribution remainders and any model adaptations that draw from the
+global RNG.

@@ -28,11 +28,31 @@ function register_income!(state::SimState)
     return nothing
 end
 
-function _rand_non_broke(state::SimState, rng::Rng)
+function _broke_threshold(rate::Int64)
+    rate <= 0 && return BROKE_THRESHOLD
+    increment = Money(100) # 0.01, the legacy increment
+    threshold = MONEY_ZERO
+    for _ in 1:100
+        threshold += increment
+        apply_rate(threshold, rate) != MONEY_ZERO && return threshold + increment
+    end
+    return BROKE_THRESHOLD
+end
+
+function _non_broke_candidates(state::SimState, threshold::Money)
+    candidates = Int[]
+    for i in 1:state.n
+        is_alive(state, i) || continue
+        state.wealth[i] >= threshold && push!(candidates, i)
+    end
+    return candidates
+end
+
+function _rand_non_broke(state::SimState, rng::Rng, threshold::Money)
     state.n > 0 || return 0
     for _ in 1:64
         idx = rand_index(rng, state.n)
-        if is_alive(state, idx) && state.wealth[idx] >= BROKE_THRESHOLD
+        if is_alive(state, idx) && state.wealth[idx] >= threshold
             return idx
         end
     end
@@ -54,13 +74,10 @@ end
 Execute one yard-sale transfer. Returns the amount moved (zero if the draw was
 invalid or the transfer was blocked by the minimum balance).
 """
-function yardsale_transfer!(state::SimState, cfg::TransactionConfig,
-                            money::MoneyConfig, rng::Rng,
-                            average_wealth::Float64, period::Int)
-    i = _rand_non_broke(state, rng)
-    j = _rand_non_broke(state, rng)
-    (i == j || i == 0 || j == 0) && return MONEY_ZERO
-
+function _yardsale_at!(state::SimState, cfg::TransactionConfig,
+                       money::MoneyConfig, rng::Rng,
+                       average_wealth::Float64, period::Int,
+                       i::Int, j::Int)
     if money.transactional
         adjust_transactional!(state, i, period, money)
         adjust_transactional!(state, j, period, money)
@@ -98,6 +115,16 @@ function yardsale_transfer!(state::SimState, cfg::TransactionConfig,
     return moved
 end
 
+function yardsale_transfer!(state::SimState, cfg::TransactionConfig,
+                            money::MoneyConfig, rng::Rng,
+                            average_wealth::Float64, period::Int)
+    threshold = _broke_threshold(cfg.transfer_rate)
+    i = _rand_non_broke(state, rng, threshold)
+    j = _rand_non_broke(state, rng, threshold)
+    (i == j || i == 0 || j == 0) && return MONEY_ZERO
+    return _yardsale_at!(state, cfg, money, rng, average_wealth, period, i, j)
+end
+
 """
     transactions_step!(state, cfg, rng)
 
@@ -132,11 +159,38 @@ function gdp_transactions_step!(state::SimState, cfg::TransactionConfig,
     target <= 0 && return nothing
 
     average = mean_wealth(state)
+    threshold = _broke_threshold(cfg.transfer_rate)
+    candidates = _non_broke_candidates(state, threshold)
     volume = Int64(0)
     guard = n * 50
-    while volume < target && guard > 0
-        amount = yardsale_transfer!(state, cfg, money, rng, average, period)
+    while volume < target && length(candidates) > 1 && guard > 0
+        count = length(candidates)
+        idx1 = rand_index(rng, count)
+        idx2 = rand_index(rng, count)
+        if idx1 == idx2
+            if idx2 == 1
+                idx2 += 1
+            elseif idx2 == count
+                idx2 -= 1
+            elseif rand_unit(rng) < 0.5
+                idx2 += 1
+            else
+                idx2 -= 1
+            end
+        end
+
+        i = candidates[idx1]
+        j = candidates[idx2]
+        rand_unit(rng) # legacy transfer-rate draw; the rate is fixed here
+        amount = _yardsale_at!(state, cfg, money, rng, average, period, i, j)
         volume += amount.value
+
+        if state.wealth[i] < threshold
+            filter!(x -> x != i, candidates)
+        end
+        if state.wealth[j] < threshold
+            filter!(x -> x != j, candidates)
+        end
         guard -= 1
     end
     return nothing
