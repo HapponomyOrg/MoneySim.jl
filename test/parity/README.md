@@ -7,6 +7,7 @@ Runs one stochastic yard-sale transaction through legacy `MoneySim` and
 julia --project=. test/parity/scripted_yardsale.jl
 julia --project=. test/parity/scripted_gdp.jl
 julia --project=. test/parity/common_rng_gdp.jl
+julia --project=. test/parity/common_rng_paper3.jl
 ```
 
 The legacy model now accepts an explicit `rng` for `atomic_yard_sale!`,
@@ -29,9 +30,13 @@ the same 100 target with the same final balances (3/3 checks).
 xorshift64 core generator. The GDP loop matches exactly (3/3 checks), proving
 common-random-number parity for that path.
 
+`common_rng_paper3.jl` runs full paper-3 `a1` under the same shared stream. It
+checks Gini within 1e-3, money within 0.2%, debt within 1e-6, and shares within
+0.5 pp (5/5).
+
 ## Remaining for full paper 3
 
 The transaction loop, GDP loop, tax-redistribution remainder, and rounded GDP
-target growth are aligned. With a shared xorshift stream, a full paper-3 `a1`
-run now matches Gini to ~7×10⁻⁵ (0.455700 vs 0.455628); the remaining 0.11%
-money-level gap is SUMSY rounding, not draw order.
+target growth are aligned. With a shared xorshift stream, full paper-3 `a1`
+matches Gini to ~7×10⁻⁵ (0.455700 vs 0.455628); the remaining 0.11% money-level
+gap is SUMSY/initial-distribution rounding, not draw order.
