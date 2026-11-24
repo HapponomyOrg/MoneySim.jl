@@ -75,6 +75,7 @@ Random.rand(rng::ScriptedLegacyRng, r::AbstractRange) = first(r)
     state = MC.SimState(2)
     state.wealth[1] = EC.money(100)
     state.wealth[2] = EC.money(200)
+    state.gdp_target = EC.money(100)
     core_rng = EC.Rng(script)
     MC.gdp_transactions_step!(
         state,
