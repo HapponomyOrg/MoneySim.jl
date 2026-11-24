@@ -3,16 +3,13 @@
 # Phase 4 adds the progressive income tax with optional target-revenue scaling
 # and monthly slice collection. The wealth levy remains the flat path.
 
-function _add_remainder!(state::SimState, amount::Money)
-    remaining = amount.value
-    remaining <= 0 && return
-    for i in eachindex(state.wealth)
-        is_alive(state, i) || continue
-        state.wealth[i] += Money(1)
-        remaining -= 1
-        remaining <= 0 && break
-    end
-    return
+function _add_remainder!(state::SimState, amount::Money,
+                         candidates::Vector{Int}, rng)
+    amount <= MONEY_ZERO && return nothing
+    isempty(candidates) && return nothing
+    index = rng === nothing ? 1 : rand_index(rng, length(candidates))
+    state.wealth[candidates[index]] += amount
+    return nothing
 end
 
 """
@@ -23,7 +20,8 @@ one actor; `FIRST_N` splits it among the first N alive actors; `EVERYONE`
 splits it equally among all alive actors.
 """
 function redistribute!(state::SimState, amount::Money,
-                       recipient::TaxRecipient.Kind, recipient_actor::Int)
+                       recipient::TaxRecipient.Kind, recipient_actor::Int;
+                       rng = nothing)
     amount <= MONEY_ZERO && return nothing
     recipient === TaxRecipient.DESTROY && return nothing
 
@@ -39,25 +37,29 @@ function redistribute!(state::SimState, amount::Money,
         targets = min(max(recipient_actor, 0), alive_count(state))
         targets <= 0 && return nothing
         share, remainder = split_amount(amount, targets)
+        candidates = Int[]
         seen = 0
         for i in eachindex(state.wealth)
             is_alive(state, i) || continue
             seen += 1
             seen > targets && break
             state.wealth[i] += share
+            push!(candidates, i)
         end
-        _add_remainder!(state, remainder)
+        _add_remainder!(state, remainder, candidates, rng)
         return nothing
     end
 
     targets = alive_count(state)
     targets <= 0 && return nothing
     share, remainder = split_amount(amount, targets)
+    candidates = Int[]
     for i in eachindex(state.wealth)
         is_alive(state, i) || continue
         state.wealth[i] += share
+        push!(candidates, i)
     end
-    _add_remainder!(state, remainder)
+    _add_remainder!(state, remainder, candidates, rng)
     return nothing
 end
 
@@ -150,7 +152,8 @@ end
 """
     tax_step_wealth!(state, cfg, period) -> Money
 """
-function tax_step_wealth!(state::SimState, cfg::TaxConfig, period::Int)
+function tax_step_wealth!(state::SimState, cfg::TaxConfig, period::Int;
+                          rng = nothing)
     (cfg.interval > 0 && cfg.rate > 0) || return MONEY_ZERO
     mod(period, cfg.interval) == 0 || return MONEY_ZERO
 
@@ -163,7 +166,8 @@ function tax_step_wealth!(state::SimState, cfg::TaxConfig, period::Int)
         collected += levy
     end
     state.tax_scale = 1.0
-    redistribute!(state, collected, cfg.recipient, cfg.recipient_actor)
+    redistribute!(state, collected, cfg.recipient, cfg.recipient_actor;
+                  rng = rng)
     return collected
 end
 
@@ -183,7 +187,8 @@ The assessed base is the window's accumulated market income. If
 [0.1%, 95%]) so the assessed total meets `target_revenue`; the recorded scale
 is the raw target/projected ratio.
 """
-function tax_step_income!(state::SimState, cfg::TaxConfig, period::Int)
+function tax_step_income!(state::SimState, cfg::TaxConfig, period::Int;
+                          rng = nothing)
     (cfg.interval > 0 && !isempty(cfg.bracket_rates)) || return MONEY_ZERO
 
     if mod(period - 1, cfg.interval) == 0
@@ -238,7 +243,8 @@ function tax_step_income!(state::SimState, cfg::TaxConfig, period::Int)
     end
     state.tax_slices -= 1
 
-    redistribute!(state, collected, cfg.recipient, cfg.recipient_actor)
+    redistribute!(state, collected, cfg.recipient, cfg.recipient_actor;
+                  rng = rng)
     return collected
 end
 
@@ -250,7 +256,8 @@ brackets and target scaling as the income tax. It is collected in slices and
 does not reduce the income base.
 """
 function tax_step_demurrage!(state::SimState, cfg::TaxConfig,
-                             money::MoneyConfig, period::Int)
+                             money::MoneyConfig, period::Int;
+                             rng = nothing)
     (cfg.interval > 0 && !isempty(cfg.bracket_rates)) || return MONEY_ZERO
 
     if mod(period - 1, cfg.interval) == 0
@@ -303,7 +310,8 @@ function tax_step_demurrage!(state::SimState, cfg::TaxConfig,
     end
     state.tax_slices -= 1
 
-    redistribute!(state, collected, cfg.recipient, cfg.recipient_actor)
+    redistribute!(state, collected, cfg.recipient, cfg.recipient_actor;
+                  rng = rng)
     return collected
 end
 
@@ -322,7 +330,7 @@ rate `r` charges `r / (1 + r)` of the eligible amount, mirroring
 recipients and, when `deduct_from_taxes` is set, reduces the next assessment.
 """
 function vat_step!(state::SimState, cfg::VatConfig, tax::TaxConfig,
-                   period::Int)
+                   period::Int; rng = nothing)
     (cfg.enabled && cfg.interval > 0) || return MONEY_ZERO
     mod(period, cfg.interval) == 0 || return MONEY_ZERO
 
@@ -346,7 +354,8 @@ function vat_step!(state::SimState, cfg::VatConfig, tax::TaxConfig,
         state.vat_eligible[i] = MONEY_ZERO
     end
 
-    redistribute!(state, collected, cfg.recipient, cfg.recipient_actor)
+    redistribute!(state, collected, cfg.recipient, cfg.recipient_actor;
+                  rng = rng)
     state.vat_collected = state.vat_collected + collected
     return collected
 end
@@ -355,20 +364,20 @@ end
     tax_step!(state, cfg, money, period) -> Money
 """
 function tax_step!(state::SimState, cfg::TaxConfig, money::MoneyConfig,
-                   period::Int)
+                   period::Int; rng = nothing)
     if cfg.kind === TaxKind.WEALTH
-        return tax_step_wealth!(state, cfg, period)
+        return tax_step_wealth!(state, cfg, period; rng = rng)
     elseif cfg.kind === TaxKind.INCOME
-        return tax_step_income!(state, cfg, period)
+        return tax_step_income!(state, cfg, period; rng = rng)
     elseif cfg.kind === TaxKind.DEMURRAGE
-        return tax_step_demurrage!(state, cfg, money, period)
+        return tax_step_demurrage!(state, cfg, money, period; rng = rng)
     end
     state.tax_scale = 1.0
     return MONEY_ZERO
 end
 
-tax_step!(state::SimState, cfg::TaxConfig, period::Int) =
-    tax_step!(state, cfg, MoneyConfig(), period)
+tax_step!(state::SimState, cfg::TaxConfig, period::Int; rng = nothing) =
+    tax_step!(state, cfg, MoneyConfig(), period; rng = rng)
 
 """
     government_step!(state, government, tax, collected)
@@ -377,14 +386,15 @@ Create the deficit when spending exceeds collected tax, add it to public debt,
 and distribute it to the tax recipients.
 """
 function government_step!(state::SimState, government::GovernmentConfig,
-                          tax::TaxConfig, collected::Money)
+                          tax::TaxConfig, collected::Money; rng = nothing)
     government.enabled || return nothing
     government.deficit_spending || return nothing
     government.expenses > collected || return nothing
 
     deficit = government.expenses - collected
     state.government_debt += deficit
-    redistribute!(state, deficit, tax.recipient, tax.recipient_actor)
+    redistribute!(state, deficit, tax.recipient, tax.recipient_actor;
+                  rng = rng)
     return nothing
 end
 

@@ -27,7 +27,7 @@ legacy's actual candidate-list order, because the legacy ABM is a `Dict`.
 
 ## Remaining for full paper 3
 
-The transaction and GDP loops are now aligned under a scripted RNG. Full
-paper-3 bit parity still needs the remaining stochastic paths aligned: random
-tax-redistribution remainders and any model adaptations that draw from the
-global RNG.
+The transaction loop, GDP loop, and tax-redistribution remainder are now
+aligned under a scripted RNG. Full paper-3 bit parity still needs model
+adaptations that draw from the global RNG, plus exact multi-period GDP target
+rounding.
