@@ -391,14 +391,15 @@ end
 function atomic_yard_sale!(model::ABM,
                             determine_direction::Function,
                             non_broke_actor_ids::Vector{Int64},
-                            avg_wealth::Real)
+                            avg_wealth::Real;
+                            rng = Random.default_rng())
     num_non_broke_actors = length(non_broke_actor_ids)
 
-    target_index_1 = rand(1:num_non_broke_actors)
+    target_index_1 = rand(rng, 1:num_non_broke_actors)
     target_id_1 = non_broke_actor_ids[target_index_1]
     target1 = model[target_id_1]
 
-    target_index_2 = rand(1:num_non_broke_actors)
+    target_index_2 = rand(rng, 1:num_non_broke_actors)
 
     # Make sure two different random agents are picked.
     if target_index_1 == target_index_2
@@ -407,18 +408,21 @@ function atomic_yard_sale!(model::ABM,
         elseif target_index_2 == num_non_broke_actors
             target_index_2 -= 1
         else
-            if rand() < 0.5
+            if rand(rng) < 0.5
                 target_index_2 += 1
             else
                 target_index_2 -= 1
             end
         end
-    end 
+    end
 
     target_id_2 = non_broke_actor_ids[target_index_2]
     target2 = model[target_id_2]
 
-    source, destination, amount = yard_sale_transfer(model, target1, target2, avg_wealth, determine_direction)
+    source, destination, amount = yard_sale_transfer(model, target1, target2,
+                                                      avg_wealth,
+                                                      determine_direction;
+                                                      rng = rng)
     
     if amount != 0
         # Temp
@@ -467,8 +471,9 @@ function yard_sale_transfer(model::ABM,
                             target1::AbstractActor,
                             target2::AbstractActor,
                             avg_wealth::Real,
-                            determine_direction::Function = coinflip)
-    transfer_rate = rand(model.wealth_transfer_range)
+                            determine_direction::Function = coinflip;
+                            rng = Random.default_rng())
+    transfer_rate = rand(rng, model.wealth_transfer_range)
     waa = model.waa
 
     if is_broke(model, target1) || is_broke(model, target2)
