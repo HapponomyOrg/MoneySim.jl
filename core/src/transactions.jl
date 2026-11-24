@@ -126,6 +126,48 @@ function yardsale_transfer!(state::SimState, cfg::TransactionConfig,
 end
 
 """
+    _atomic_yardsale!(state, cfg, money, rng, average_wealth, period,
+                      candidates, threshold) -> Money
+
+One transfer drawn from a prebuilt non-broke list, mirroring MoneySim's
+`atomic_yard_sale!`: two indices are drawn with the same duplicate adjustment,
+and actors that fall below the broke threshold are dropped from `candidates`
+when no minimum transfer is configured.
+"""
+function _atomic_yardsale!(state::SimState, cfg::TransactionConfig,
+                           money::MoneyConfig, rng::Rng,
+                           average_wealth::Float64, period::Int,
+                           candidates::Vector{Int}, threshold::Money)
+    count = length(candidates)
+    count > 1 || return MONEY_ZERO
+
+    idx1 = rand_index(rng, count)
+    idx2 = rand_index(rng, count)
+    if idx1 == idx2
+        if idx2 == 1
+            idx2 += 1
+        elseif idx2 == count
+            idx2 -= 1
+        elseif rand_unit(rng) < 0.5
+            idx2 += 1
+        else
+            idx2 -= 1
+        end
+    end
+
+    i = candidates[idx1]
+    j = candidates[idx2]
+    rand_unit(rng) # legacy transfer-rate draw; the rate is fixed here
+    amount = _yardsale_at!(state, cfg, money, rng, average_wealth, period, i, j)
+
+    if cfg.minimal_transfer == MONEY_ZERO
+        state.wealth[i] < threshold && filter!(x -> x != i, candidates)
+        state.wealth[j] < threshold && filter!(x -> x != j, candidates)
+    end
+    return amount
+end
+
+"""
     transactions_step!(state, cfg, rng)
 
 Run the configured number of yard-sale transfers for one simulation step.
@@ -134,8 +176,17 @@ function transactions_step!(state::SimState, cfg::TransactionConfig,
                             money::MoneyConfig, rng::Rng, period::Int)
     (cfg.enabled && cfg.transactions_per_step > 0) || return nothing
     average = mean_wealth(state)
+    threshold = _broke_threshold(cfg.transfer_rate)
+    candidates = _non_broke_candidates(state, threshold)
+
+    # Legacy stores the count as a single-valued range and draws from it, so a
+    # draw is made once per step to keep a shared random stream aligned.
+    rand_index(rng, 1)
+
     for _ in 1:cfg.transactions_per_step
-        yardsale_transfer!(state, cfg, money, rng, average, period)
+        length(candidates) > 1 || break
+        _atomic_yardsale!(state, cfg, money, rng, average, period,
+                          candidates, threshold)
     end
     return nothing
 end
@@ -160,33 +211,9 @@ function gdp_transactions_step!(state::SimState, cfg::TransactionConfig,
     volume = Int64(0)
     guard = n * 50
     while volume < target && length(candidates) > 1 && guard > 0
-        count = length(candidates)
-        idx1 = rand_index(rng, count)
-        idx2 = rand_index(rng, count)
-        if idx1 == idx2
-            if idx2 == 1
-                idx2 += 1
-            elseif idx2 == count
-                idx2 -= 1
-            elseif rand_unit(rng) < 0.5
-                idx2 += 1
-            else
-                idx2 -= 1
-            end
-        end
-
-        i = candidates[idx1]
-        j = candidates[idx2]
-        rand_unit(rng) # legacy transfer-rate draw; the rate is fixed here
-        amount = _yardsale_at!(state, cfg, money, rng, average, period, i, j)
+        amount = _atomic_yardsale!(state, cfg, money, rng, average, period,
+                                   candidates, threshold)
         volume += amount.value
-
-        if state.wealth[i] < threshold
-            filter!(x -> x != i, candidates)
-        end
-        if state.wealth[j] < threshold
-            filter!(x -> x != j, candidates)
-        end
         guard -= 1
     end
 

@@ -22,7 +22,8 @@ mutable struct CoreRng <: AbstractRNG
 end
 
 Random.rand(rng::CoreRng, ::Type{Float64}) = EC.rand_unit(rng.rng)
-Random.rand(rng::CoreRng, r::UnitRange{Int}) = EC.rand_index(rng.rng, length(r))
+Random.rand(rng::CoreRng, r::UnitRange{Int}) =
+    first(r) + EC.rand_index(rng.rng, length(r)) - 1
 Random.rand(rng::CoreRng, r::AbstractRange) = (EC.rand_unit(rng.rng); first(r))
 
 @testset "common RNG GDP parity" begin

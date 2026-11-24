@@ -7,6 +7,7 @@ Runs one stochastic yard-sale transaction through legacy `MoneySim` and
 julia --project=. test/parity/scripted_yardsale.jl
 julia --project=. test/parity/scripted_gdp.jl
 julia --project=. test/parity/common_rng_gdp.jl
+julia --project=. test/parity/common_rng_yardsale.jl
 julia --project=. test/parity/common_rng_paper3.jl
 ```
 
@@ -29,6 +30,14 @@ the same 100 target with the same final balances (3/3 checks).
 `common_rng_gdp.jl` drives legacy with a `CoreRng` adapter around the actual
 xorshift64 core generator. The GDP loop matches exactly (3/3 checks), proving
 common-random-number parity for that path.
+
+`common_rng_yardsale.jl` does the same for the plain (non-GDP) yard-sale loop
+over eight steps with four actors. The core builds the non-broke candidate list
+once per step, draws both indices from it with legacy's duplicate adjustment,
+consumes the transfer-rate draw, and drops broke actors after each transfer.
+All 40 checks (wealth vector and money stock, every step) match exactly. The
+step also consumes the draw legacy makes for its single-valued transaction
+range, so both streams stay in step.
 
 `common_rng_paper3.jl` runs full paper-3 `a1` under the same shared stream. It
 checks Gini within 5e-4, money within 1e-6, debt within 1e-6, and shares within
