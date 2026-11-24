@@ -31,12 +31,12 @@ xorshift64 core generator. The GDP loop matches exactly (3/3 checks), proving
 common-random-number parity for that path.
 
 `common_rng_paper3.jl` runs full paper-3 `a1` under the same shared stream. It
-checks Gini within 1e-3, money within 0.2%, debt within 1e-6, and shares within
-0.5 pp (5/5).
+checks Gini within 5e-4, money within 1e-6, debt within 1e-6, and shares within
+0.5 pp (5/5). Actual money gap is 0.018 on 57.68M; Gini gap is 3.1e-4.
 
 ## Remaining for full paper 3
 
 The transaction loop, GDP loop, tax-redistribution remainder, and rounded GDP
-target growth are aligned. With a shared xorshift stream, full paper-3 `a1`
-matches Gini to ~7×10⁻⁵ (0.455700 vs 0.455628); the remaining 0.11% money-level
-gap is SUMSY/initial-distribution rounding, not draw order.
+target growth are aligned. The country demurrage calibration is rounded to four
+decimals like legacy, so full paper-3 `a1` now matches money to 0.018 and Gini to
+3.1e-4 under the shared xorshift stream.

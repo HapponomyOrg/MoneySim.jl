@@ -456,7 +456,10 @@ function _paper3_core_config(scenario, actors, years; seed = 42)
                         custom = MC.unequal_wealth(country, actors))
 
     money = if params.monetary_type === :sumsy
-        rate = Float64(country.sumsy.flat_gi.value) / Float64(per_capita.value)
+        # Legacy divides two Currency values, so the country demurrage rate is
+        # rounded to four decimals before `make_tiers`.
+        rate = round(Float64(country.sumsy.flat_gi.value) /
+                     Float64(per_capita.value), digits = 4)
         MC.MoneyConfig(model = MC.MoneyModel.SUMSY,
                        interval = country.sumsy.interval,
                        guaranteed_income = country.sumsy.flat_gi,

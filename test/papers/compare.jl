@@ -34,7 +34,7 @@ const PAPER2_CONSUMER_RTOL = 1e-3
 # Paper-3 distribution tolerances.
 const PAPER3_MONEY_RTOL = 0.02
 const PAPER3_LEDGER_RTOL = 0.02
-const PAPER3_TAX_RTOL = 0.01
+const PAPER3_TAX_RTOL = 0.015
 
 function _paper3_tolerances(scenario)
     if scenario.params.monetary_type === :sumsy

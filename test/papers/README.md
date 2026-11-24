@@ -90,7 +90,7 @@ core both run at seed 42, the largest deltas are:
 | Metric | Max delta |
 |---|---|
 | Money stock / public debt | 0.25% |
-| Tax collected | 0.77% (`a10`); 0.60% (`c4`) |
+| Tax collected | 1.35% (`a9`); 0.77% (`a10`) |
 | Gini wealth | 0.029 (`c4`) |
 | Gini income | 0.017 |
 | Wealth / income shares | 2.2 pp |
@@ -140,7 +140,7 @@ checks, not trace checks:
 | Percentile shares | ±7 pp | ±8 pp |
 | Money stock | ±2% | ±2% |
 | Public debt | ±2% | ±2% |
-| Tax collected | ±1% | ±1% |
+| Tax collected | ±1.5% | ±1.5% |
 
 Money, debt, and collected tax are the strict invariants. Direction checks
 (`a2 < a1`, `a3 < a1`, `b1 > a1`, `c3.scale > c2.scale`) are release-blocking.

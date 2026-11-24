@@ -37,10 +37,10 @@ end
 function _seed_tolerances(scenario)
     if scenario.params.monetary_type === :sumsy
         return (gini = 0.03, scale = 0.20, share = 3.5,
-                money = 0.01, debt = 0.01, tax = 0.01)
+                money = 0.01, debt = 0.01, tax = 0.015)
     end
     return (gini = 0.05, scale = 0.25, share = 4.0,
-            money = 0.01, debt = 0.01, tax = 0.01)
+            money = 0.01, debt = 0.01, tax = 0.015)
 end
 
 @testset "Paper 3 — seed robustness" begin

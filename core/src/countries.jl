@@ -244,8 +244,10 @@ function country_config(country::CountryData;
         WealthConfig(WealthDistribution.EQUAL, per_capita, Money[])
     end
 
-    demurrage_rate = Float64(country.sumsy.flat_gi.value) /
-                     Float64(per_capita.value)
+    # Legacy divides two Currency values, rounding the country demurrage
+    # calibration to four decimals before building the tiers.
+    demurrage_rate = round(Float64(country.sumsy.flat_gi.value) /
+                           Float64(per_capita.value), digits = 4)
     money = MoneyConfig(model = MoneyModel.SUMSY,
                         guaranteed_income = country.sumsy.flat_gi,
                         demurrage = make_tiers(demurrage_rate),

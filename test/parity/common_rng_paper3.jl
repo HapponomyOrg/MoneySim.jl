@@ -33,8 +33,8 @@ include(joinpath(PAPER_DIR, "adapter.jl"))
     core = run_paper3(scenario; backend = :core, actors = 1_000,
                       years = 10, seed = 42)
 
-    @test isapprox(core.gini_wealth, legacy.gini_wealth; atol = 1e-3)
-    @test isapprox(core.money_stock, legacy.money_stock; rtol = 2e-3)
+    @test isapprox(core.gini_wealth, legacy.gini_wealth; atol = 5e-4)
+    @test isapprox(core.money_stock, legacy.money_stock; rtol = 1e-6)
     @test isapprox(core.public_debt, legacy.public_debt; rtol = 1e-6)
     @test isapprox(core.top10_share, legacy.top10_share; atol = 0.5)
     @test isapprox(core.bottom50_share, legacy.bottom50_share; atol = 0.5)
