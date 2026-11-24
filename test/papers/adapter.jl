@@ -138,7 +138,7 @@ function _paper1_core(scenario)
         interval = 1,
         guaranteed_income = EC.MONEY_ZERO,
         demurrage = EC.NO_DEM_TIERS,
-        interest_rate = EC.permyriad(rate),
+        interest_rate = EC.ppm(rate),
     )
     loan = MC.LoanCircuitConfig(
         enabled = true,
@@ -479,7 +479,7 @@ function _paper3_core_config(scenario, actors, years; seed = 42)
             kind = MC.TaxKind.DEMURRAGE,
             interval = tax_interval,
             brackets = [typemax(EC.Money)],
-            bracket_rates = [EC.permyriad(rate)],
+            bracket_rates = [EC.ppm(rate)],
             target_revenue = target * actors,
             scale_to_target = params.scale_tax,
             allow_negative = true,
@@ -491,7 +491,7 @@ function _paper3_core_config(scenario, actors, years; seed = 42)
             kind = MC.TaxKind.INCOME,
             interval = MONTH,
             brackets = [typemax(EC.Money)],
-            bracket_rates = [EC.permyriad(rate)],
+            bracket_rates = [EC.ppm(rate)],
             scale_to_target = false,
             notional = MC.unequal_income(country, actors; period = MONTH),
             allow_negative = true,
@@ -525,7 +525,7 @@ function _paper3_core_config(scenario, actors, years; seed = 42)
         enabled = true,
         per_capita = EC.Money(round(Int64,
             Float64(gdp_per_capita.value) * params.gdp_scaling)),
-        growth_permyriad = EC.permyriad(params.gdp_growth_per_year),
+        growth_ppm = EC.ppm(params.gdp_growth_per_year),
         interval = 1,
     )
 

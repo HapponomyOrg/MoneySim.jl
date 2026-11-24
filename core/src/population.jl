@@ -74,7 +74,7 @@ function population_step!(state::SimState, cfg::PopulationConfig,
 
     if cfg.aging_interval > 0 && mod(period, cfg.aging_interval) == 0 &&
        cfg.aging_rate > 0
-        threshold = Float64(cfg.aging_rate) / Float64(PERMYRIAD)
+        threshold = Float64(cfg.aging_rate) / Float64(RATE_SCALE)
         for i in eachindex(state.wealth)
             is_alive(state, i) || continue
             if state.age_type[i] == UInt8(0) && rand_unit(rng) < threshold
@@ -86,7 +86,7 @@ function population_step!(state::SimState, cfg::PopulationConfig,
     end
 
     if cfg.death_rate > 0
-        to_kill = div(n_alive * cfg.death_rate, PERMYRIAD)
+        to_kill = div(n_alive * cfg.death_rate, RATE_SCALE)
         while to_kill > 0
             target = _choose_death_target(state)
             target == 0 && break
@@ -100,7 +100,7 @@ function population_step!(state::SimState, cfg::PopulationConfig,
 
     if cfg.birth_rate > 0
         remaining = alive_count(state)
-        to_birth = div(remaining * cfg.birth_rate, PERMYRIAD)
+        to_birth = div(remaining * cfg.birth_rate, RATE_SCALE)
         if to_birth > 0
             old_n = state.n
             _grow_state!(state, old_n + to_birth)

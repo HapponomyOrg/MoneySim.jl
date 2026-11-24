@@ -2,7 +2,7 @@
 
 julia_version = "1.12.6"
 manifest_format = "2.0"
-project_hash = "318a6857deb2521e787ea37bc3588221963c8d58"
+project_hash = "1b89d48203db33cc5e60030d4ce6f610eabc4a86"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -437,7 +437,7 @@ version = "0.2.1"
 [[deps.EconoSimCore]]
 path = "../EconoSim.jl/core"
 uuid = "095a6474-748a-41c3-bb36-58d2416a9b56"
-version = "0.1.0"
+version = "0.2.0"
 
 [[deps.EpollShim_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1068,7 +1068,7 @@ version = "0.1.0"
 deps = ["EconoSimCore"]
 path = "core"
 uuid = "c7d7c389-da90-4480-8cc3-c1ba8ff99af1"
-version = "0.1.0"
+version = "0.2.0"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"

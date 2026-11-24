@@ -186,21 +186,21 @@ trajectory as the paper.
 """
 function _paper_pool_debit(pool::Money, payment::Money, remaining::Money,
                            rate::Int64)::Money
-    interest = Float64(remaining.value) / 10000.0 *
-               (Float64(rate) / 10000.0)
-    debit = Float64(payment.value) / 10000.0 + interest
-    value = Float64(pool.value) / 10000.0 - debit
-    return Money(_clamp_int64(value * 10000.0))
+    interest = Float64(remaining.value) / Float64(SCALE) *
+               (Float64(rate) / Float64(RATE_SCALE))
+    debit = Float64(payment.value) / Float64(SCALE) + interest
+    value = Float64(pool.value) / Float64(SCALE) - debit
+    return Money(_clamp_int64(value * Float64(SCALE)))
 end
 
 function _paper_loan(pool::Money, loan_rate::Int64)::Money
     pool <= MONEY_ZERO && return MONEY_ZERO
-    rate = Float64(loan_rate) / 10000.0
+    rate = Float64(loan_rate) / Float64(RATE_SCALE)
     rate >= 1.0 && return MONEY_ZERO
-    required = (Float64(pool.value) / 10000.0 / (1.0 - rate)) * rate
+    required = (Float64(pool.value) / Float64(SCALE) / (1.0 - rate)) * rate
     required = round(required, digits = 2)
     required <= 0.0 && return MONEY_ZERO
-    return Money(round(Int64, required * 10000.0))
+    return Money(round(Int64, required * Float64(SCALE)))
 end
 
 function _paper_installment(principal::Money, maturity::Int)
@@ -259,8 +259,8 @@ function _resync_pro_rata!(state::SimState, old_total::Money, new_total::Money)
     return nothing
 end
 
-@inline function _rate_percent(permyriad_rate::Int64)::Float64
-    return 100.0 * Float64(permyriad_rate) / Float64(PERMYRIAD)
+@inline function _rate_percent(ppm_rate::Int64)::Float64
+    return 100.0 * Float64(ppm_rate) / Float64(RATE_SCALE)
 end
 
 @inline function _clamp_int64(value::Float64)::Int64
@@ -374,7 +374,7 @@ function loan_circuit_step!(state::SimState, money::MoneyConfig,
 
     profit = loan.profit_rate
     if loan.random_mode === LoanRandomMode.LOAN_RATE
-        profit = round(Int64, growth_fraction * PERMYRIAD) + loan.relative_profit
+        profit = round(Int64, growth_fraction * RATE_SCALE) + loan.relative_profit
         loan.no_loss && (profit = max(profit, Int64(0)))
     end
 

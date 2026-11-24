@@ -97,7 +97,7 @@ function belgium()
         money(292_624_000_000 / 12),
         money(37_828_100_000 / 12),
         [money(10_190), money(15_200), money(26_830), money(46_440)],
-        Int64[0, 2_500, 4_000, 4_500, 5_000])
+        Int64[0, 250_000, 400_000, 450_000, 500_000])
 
     return CountryData(
         "belgium", 2023, money(674_000_000_000),
@@ -288,7 +288,7 @@ function country_config(country::CountryData;
                                                      population_total(country)))
 
     gdp = GdpConfig(enabled = true, per_capita = gdp_per_capita(country),
-                    growth_permyriad = permyriad(gdp_growth_per_year),
+                    growth_ppm = ppm(gdp_growth_per_year),
                     interval = 1)
 
     return SimConfig(periods = periods, seed = seed,

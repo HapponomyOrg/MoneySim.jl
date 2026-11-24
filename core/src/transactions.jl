@@ -124,8 +124,8 @@ function gdp_transactions_step!(state::SimState, cfg::TransactionConfig,
     n = alive_count(state)
     n > 0 || return nothing
 
-    if gdp.growth_permyriad != 0
-        state.gdp_factor *= 1.0 + Float64(gdp.growth_permyriad) / 120_000.0
+    if gdp.growth_ppm != 0
+        state.gdp_factor *= 1.0 + Float64(gdp.growth_ppm) / (12.0 * Float64(RATE_SCALE))
     end
 
     target = Int64(round(Float64(gdp.per_capita.value) * Float64(n) * state.gdp_factor))

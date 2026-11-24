@@ -1,7 +1,7 @@
 name = "MoneySimCore"
 uuid = "c7d7c389-da90-4480-8cc3-c1ba8ff99af1"
 authors = ["Happonomy"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 EconoSimCore = "095a6474-748a-41c3-bb36-58d2416a9b56"

@@ -87,7 +87,7 @@ using EconoSimCore
         cfg = TaxConfig(kind = TaxKind.INCOME, interval = 1,
                         recipient = TaxRecipient.DESTROY,
                         brackets = brackets,
-                        bracket_rates = Int64[1_000, 2_000, 3_000])
+                        bracket_rates = Int64[100_000, 200_000, 300_000])
 
         collected = tax_step_income!(state, cfg, 1)
         @test collected == money(1_300)
@@ -105,7 +105,7 @@ using EconoSimCore
         cfg = TaxConfig(kind = TaxKind.INCOME, interval = 1,
                         recipient = TaxRecipient.DESTROY,
                         brackets = brackets,
-                        bracket_rates = Int64[1_000, 2_000, 3_000],
+                        bracket_rates = Int64[100_000, 200_000, 300_000],
                         target_revenue = money(650),
                         scale_to_target = true)
         collected = tax_step_income!(state, cfg, 1)
@@ -120,7 +120,7 @@ using EconoSimCore
         cfg = TaxConfig(kind = TaxKind.INCOME, interval = 1,
                         recipient = TaxRecipient.DESTROY,
                         brackets = brackets,
-                        bracket_rates = Int64[1_000, 2_000, 3_000],
+                        bracket_rates = Int64[100_000, 200_000, 300_000],
                         target_revenue = money(1_950),
                         scale_to_target = true)
         collected = tax_step_income!(state, cfg, 1)
@@ -350,7 +350,7 @@ using EconoSimCore
         state.wealth .= money(1_000)
         state.debt[2] = money(1_000)
         money_cfg = MoneyConfig(model = MoneyModel.DEBT_BASED, interval = 1,
-                                interest_rate = permyriad(0.01))
+                                interest_rate = ppm(0.01))
         bank = BankConfig(enabled = true, actor_index = 1)
         bank_step!(state, money_cfg, bank)
         @test state.wealth[1] == money(1_010)
@@ -376,7 +376,7 @@ using EconoSimCore
             wealth = WealthConfig(distribution = WealthDistribution.EQUAL,
                                   equal_amount = money(1_000)),
             money = MoneyConfig(model = MoneyModel.LOAN_CIRCUIT, interval = 1,
-                                interest_rate = permyriad(0.10)),
+                                interest_rate = ppm(0.10)),
             transactions = TransactionConfig(enabled = false),
             loan_circuit = LoanCircuitConfig(enabled = true,
                                              profit_rate = 0.05,
@@ -399,7 +399,7 @@ using EconoSimCore
                 wealth = WealthConfig(distribution = WealthDistribution.EQUAL,
                                       equal_amount = money(100)),
                 money = MoneyConfig(model = MoneyModel.LOAN_CIRCUIT, interval = 1,
-                                    interest_rate = permyriad(0.15)),
+                                    interest_rate = ppm(0.15)),
                 transactions = TransactionConfig(enabled = true,
                                                  transactions_per_step = 2_000,
                                                  transfer_rate = 0.2,
@@ -428,7 +428,7 @@ using EconoSimCore
         @test gdp_per_capita(be) == div(be.government.gdp, 11_697_556)
 
         # The Belgian schedule starts with a 0% band up to 10,190.
-        @test be.government.tax_rates == Int64[0, 2_500, 4_000, 4_500, 5_000]
+        @test be.government.tax_rates == Int64[0, 250_000, 400_000, 450_000, 500_000]
         brackets = vcat(be.government.tax_brackets, [typemax(Money)])
         @test bracket_tax(money(10_190), brackets,
                           be.government.tax_rates) == MONEY_ZERO
@@ -507,7 +507,7 @@ using EconoSimCore
         cfg = TaxConfig(kind = TaxKind.DEMURRAGE, interval = 1,
                         recipient = TaxRecipient.DESTROY,
                         brackets = [money(1_000), money(5_000), typemax(Money)],
-                        bracket_rates = Int64[1_000, 2_000, 3_000])
+                        bracket_rates = Int64[100_000, 200_000, 300_000])
         collected = tax_step_demurrage!(state, cfg, MoneyConfig(), 1)
         @test collected == money(1_300)
         @test state.wealth == [money(900), money(1_700), money(4_100)]
@@ -519,7 +519,7 @@ using EconoSimCore
         flat = TaxConfig(kind = TaxKind.DEMURRAGE, interval = 1,
                          recipient = TaxRecipient.DESTROY,
                          brackets = [typemax(Money)],
-                         bracket_rates = Int64[permyriad(0.10)])
+                         bracket_rates = Int64[ppm(0.10)])
         collected = tax_step_demurrage!(state, flat, money_cfg, 1)
         @test collected == money(60)
         @test state.wealth == [money(950), money(590)]
@@ -561,7 +561,7 @@ using EconoSimCore
         income_tax = TaxConfig(kind = TaxKind.INCOME, interval = 1,
                                recipient = TaxRecipient.DESTROY,
                                brackets = [typemax(Money)],
-                               bracket_rates = Int64[permyriad(0.20)])
+                               bracket_rates = Int64[ppm(0.20)])
         state.income[1] = money(1_000)
         collected = tax_step_income!(state, income_tax, 1)
         @test isapprox(currency(collected), 109.0909; atol = 1e-3)
@@ -727,7 +727,7 @@ using EconoSimCore
             wealth = WealthConfig(distribution = WealthDistribution.EQUAL,
                                   equal_amount = money(10_000)),
             money = MoneyConfig(model = MoneyModel.LOAN_CIRCUIT, interval = 1,
-                                interest_rate = permyriad(0.05)),
+                                interest_rate = ppm(0.05)),
             transactions = TransactionConfig(enabled = true,
                                              transactions_per_step = 2_000,
                                              transfer_rate = 0.2),
@@ -749,7 +749,7 @@ using EconoSimCore
             wealth = WealthConfig(distribution = WealthDistribution.EQUAL,
                                   equal_amount = money(10_000)),
             money = MoneyConfig(model = MoneyModel.LOAN_CIRCUIT, interval = 1,
-                                interest_rate = permyriad(0.15)),
+                                interest_rate = ppm(0.15)),
             transactions = TransactionConfig(enabled = true,
                                              transactions_per_step = 2_000,
                                              transfer_rate = 0.2),

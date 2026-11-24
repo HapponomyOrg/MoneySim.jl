@@ -65,7 +65,7 @@ end
     bracket_tax(taxable, brackets, rates) -> Money
 
 Progressive marginal tax. `brackets[i]` is the cumulative upper bound of band
-`i`; the last band is unbounded. `rates[i]` is its permyriad rate.
+`i`; the last band is unbounded. `rates[i]` is its ppm rate.
 """
 function bracket_tax(taxable::Money, brackets::Vector{Money},
                      rates::Vector{Int64})::Money
@@ -137,10 +137,10 @@ function scale_brackets_exact(bases::Vector{Money}, brackets::Vector{Money},
     overall = round(Float64(target.value) / Float64(projected.value), digits = 2)
     applied = copy(rates)
     for i in 1:n
-        value = Float64(applied[i]) / Float64(PERMYRIAD)
+        value = Float64(applied[i]) / Float64(RATE_SCALE)
         if value > 0.001 && value < 0.95
             scaled = max(0.001, min(0.95, round(value * overall, digits = 2)))
-            applied[i] = round(Int64, scaled * PERMYRIAD)
+            applied[i] = round(Int64, scaled * RATE_SCALE)
         end
     end
 
@@ -326,7 +326,7 @@ function vat_step!(state::SimState, cfg::VatConfig, tax::TaxConfig,
     (cfg.enabled && cfg.interval > 0) || return MONEY_ZERO
     mod(period, cfg.interval) == 0 || return MONEY_ZERO
 
-    headline = Float64(cfg.rate) / Float64(PERMYRIAD)
+    headline = Float64(cfg.rate) / Float64(RATE_SCALE)
     scale = headline / (1.0 + headline)
 
     collected = MONEY_ZERO

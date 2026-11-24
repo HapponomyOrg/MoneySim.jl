@@ -91,7 +91,7 @@ end
 """
     TransactionConfig
 
-Yard-sale transaction settings. `transfer_rate` is permyriad.
+Yard-sale transaction settings. `transfer_rate` is in ppm.
 """
 struct TransactionConfig
     enabled::Bool
@@ -121,7 +121,7 @@ function TransactionConfig(; enabled::Bool = false,
                            price::Money = MONEY_ZERO,
                            suppliers_gi_eligible::Bool = false)
     return TransactionConfig(enabled, Int(transactions_per_step),
-                             permyriad(transfer_rate), minimal_transfer,
+                             ppm(transfer_rate), minimal_transfer,
                              Float64(wealth_advantage), allow_negative,
                              model, Int(suppliers), Int(consumers_per_supplier),
                              Int(demand), price, suppliers_gi_eligible)
@@ -158,7 +158,7 @@ function TaxConfig(; kind::TaxKind.Kind = TaxKind.NONE,
                    scale_to_target::Bool = false,
                    notional::Vector{Money} = Money[],
                    allow_negative::Bool = false)
-    return TaxConfig(kind, permyriad(rate), Int(interval), recipient,
+    return TaxConfig(kind, ppm(rate), Int(interval), recipient,
                      Int(recipient_actor), brackets, bracket_rates,
                      target_revenue, scale_to_target, notional, allow_negative)
 end
@@ -187,20 +187,20 @@ end
     GdpConfig
 
 GDP sets a per-step transaction-volume target. It is not money and is not
-booked as income. `growth_permyriad` is a yearly rate, compounded monthly.
+booked as income. `growth_ppm` is a yearly rate, compounded monthly.
 """
 struct GdpConfig
     enabled::Bool
     per_capita::Money
-    growth_permyriad::Int64
+    growth_ppm::Int64
     interval::Int
 end
 
 function GdpConfig(; enabled::Bool = false,
                    per_capita::Money = MONEY_ZERO,
-                   growth_permyriad::Integer = 0,
+                   growth_ppm::Integer = 0,
                    interval::Integer = 1)
-    return GdpConfig(enabled, per_capita, Int64(growth_permyriad), Int(interval))
+    return GdpConfig(enabled, per_capita, Int64(growth_ppm), Int(interval))
 end
 
 """
@@ -248,7 +248,7 @@ end
     VatConfig
 
 Value-added tax collected on accumulated income. `rate` is the headline rate
-in permyriad; the collected amount uses `rate / (1 + rate)`. When
+in ppm; the collected amount uses `rate / (1 + rate)`. When
 `deduct_from_taxes` is set, collected VAT reduces the next tax assessment.
 """
 struct VatConfig
@@ -266,7 +266,7 @@ function VatConfig(; enabled::Bool = false,
                    deduct_from_taxes::Bool = false,
                    recipient::TaxRecipient.Kind = TaxRecipient.EVERYONE,
                    recipient_actor::Integer = 0)
-    return VatConfig(enabled, permyriad(rate), Int(interval),
+    return VatConfig(enabled, ppm(rate), Int(interval),
                      deduct_from_taxes, recipient, Int(recipient_actor))
 end
 
@@ -290,7 +290,7 @@ function BankConfig(; enabled::Bool = false,
                     repayment_rate::Real = 0.0,
                     lending_amount::Money = MONEY_ZERO,
                     lending_targets::Integer = 0)
-    return BankConfig(enabled, Int(actor_index), permyriad(repayment_rate),
+    return BankConfig(enabled, Int(actor_index), ppm(repayment_rate),
                       lending_amount, Int(lending_targets))
 end
 
@@ -326,10 +326,10 @@ function LoanCircuitConfig(; enabled::Bool = false,
                            max_maturity::Integer = 1,
                            relative_profit::Real = 0.0,
                            no_loss::Bool = true)
-    return LoanCircuitConfig(enabled, permyriad(profit_rate), Int(maturity),
-                             Int32(mode), random_mode, permyriad(min_value),
-                             permyriad(max_value), Int(min_maturity),
-                             Int(max_maturity), permyriad(relative_profit),
+    return LoanCircuitConfig(enabled, ppm(profit_rate), Int(maturity),
+                             Int32(mode), random_mode, ppm(min_value),
+                             ppm(max_value), Int(min_maturity),
+                             Int(max_maturity), ppm(relative_profit),
                              no_loss)
 end
 
@@ -385,8 +385,8 @@ function PopulationConfig(; count::Integer = 100,
                           typed_gi::Bool = false,
                           age_shares::Vector{Int64} = Int64[])
     return PopulationConfig(Int(count), gi_eligible,
-                            permyriad(birth_rate), permyriad(death_rate),
-                            Int(aging_interval), permyriad(aging_rate),
+                            ppm(birth_rate), ppm(death_rate),
+                            Int(aging_interval), ppm(aging_rate),
                             birth_wealth, gi_child, gi_adult, gi_elder, typed_gi,
                             age_shares)
 end
