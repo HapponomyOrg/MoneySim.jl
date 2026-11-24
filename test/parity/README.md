@@ -32,8 +32,10 @@ common-random-number parity for that path.
 
 `common_rng_paper3.jl` runs full paper-3 `a1` under the same shared stream. It
 checks Gini within 5e-4, money within 1e-6, debt within 1e-6, and shares within
-0.5 pp (5/5). Initial wealth vectors now match exactly; the final money gap is
-0.0195 on 57.68M and the Gini gap is 3.1e-4.
+0.5 pp (5/5). It then runs all 17 paper-3 scenarios under the same stream, with
+Gini within 0.03, money/debt within 1%, and tax within 1.5% (66/66). Across all
+scenarios the largest common-RNG deltas are Gini 0.0235 (`c5`), money 0.506%
+(`c1`), and tax 1.345% (`a9`).
 
 ## Remaining for full paper 3
 
