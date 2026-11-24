@@ -407,6 +407,7 @@ end
 
 function distribute_amount!(model::ABM, amount_to_distribute::Real, share_symbol::Symbol)
     tax_recipients = model.tax_recipients
+    rng = _model_rng(model)
 
     if !isempty(tax_recipients)
         share = Currency(amount_to_distribute / length(tax_recipients))
@@ -419,7 +420,7 @@ function distribute_amount!(model::ABM, amount_to_distribute::Real, share_symbol
         extra = amount_to_distribute - share * length(tax_recipients)
 
         if extra != 0
-            actor = tax_recipients[rand(1:length(tax_recipients))]
+            actor = tax_recipients[rand(rng, 1:length(tax_recipients))]
             book_asset!(get_balance(actor), SUMSY_DEP, extra)
             setproperty!(actor, share_symbol, getproperty(actor, share_symbol) + extra)
         end

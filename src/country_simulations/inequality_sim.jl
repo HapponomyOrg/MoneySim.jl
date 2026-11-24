@@ -165,6 +165,7 @@ function country_simulation_setup(country::Country;
                             data_collection_interval::Int = YEAR,
                             lock_random_generator::Bool = true,
                             random_seed::Union{Nothing, Integer} = nothing,
+                            rng = nothing,
                             num_actors::Int,
                             monetary_type::MonetaryType = M_FIXED,
                             allow_negative_accounts::Bool = true,
@@ -188,7 +189,8 @@ function country_simulation_setup(country::Country;
     # Simulation parameters
     sim_params = SimParams(sim_length,
                            lock_random_generator = lock_random_generator,
-                           random_seed = random_seed)
+                           random_seed = random_seed,
+                           rng = rng)
 
     # Model
     if monetary_type == M_FIXED

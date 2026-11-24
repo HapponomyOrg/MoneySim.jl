@@ -386,7 +386,7 @@ function _parse_tax_scale(value)
     return parse(Float64, strip(matches[end][1]))
 end
 
-function _paper3_legacy(scenario, actors, years; seed = nothing)
+function _paper3_legacy(scenario, actors, years; seed = nothing, rng = nothing)
     params = scenario.params
     money_type = params.monetary_type === :sumsy ? M_SUMSY : M_FIXED
     tax_type = params.taxes === :income ? T_INCOME_TAX :
@@ -418,6 +418,7 @@ function _paper3_legacy(scenario, actors, years; seed = nothing)
         deduct_vat_from_taxes = params.deduct_vat,
         vat_interval = MONTH,
         random_seed = seed,
+        rng = rng,
     )
     data === nothing && error("legacy country simulation returned nothing")
 

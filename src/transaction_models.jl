@@ -8,6 +8,7 @@ using Random
 # End temp code
 
 _model_rng(model::ABM) = hasproperty(model, :rng) ? model.rng : Random.default_rng()
+agents_by_id(model::ABM) = sort!(collect(allagents(model)); by = a -> a.id)
 
 function adjusted_asset_value!(actor::AbstractBalanceActor)
     balance = get_balance(actor)
@@ -283,7 +284,7 @@ end
 function get_non_broke_actor_ids(model::ABM)
     non_broke_actor_ids = Vector{Int}()
 
-    for actor in allagents(model)
+    for actor in agents_by_id(model)
         if !is_broke(model, actor)
             append!(non_broke_actor_ids, actor.id)
 
