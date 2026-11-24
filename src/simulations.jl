@@ -9,6 +9,8 @@ using DataFrames
         * lock_random_generator::Bool - Lock the random number generator to a fixed seed, thereby producing reproducible results.
         * random_seed::Union{Nothing, Int} - Explicit seed. When set, it takes
           precedence over the default locked seed; useful for seed sweeps.
+        * rng - Optional RNG object for stochastic model paths. Defaults to
+          `Random.default_rng()`.
 
     General simulation parameters.
 """
@@ -16,11 +18,13 @@ struct SimParams
     sim_length::Int
     lock_random_generator::Bool
     random_seed::Union{Nothing, Int}
+    rng::Any
     SimParams(sim_length::Int;
               lock_random_generator::Bool = true,
-              random_seed::Union{Nothing, Integer} = nothing) =
+              random_seed::Union{Nothing, Integer} = nothing,
+              rng = nothing) =
         new(sim_length, lock_random_generator,
-            random_seed === nothing ? nothing : Int(random_seed))
+            random_seed === nothing ? nothing : Int(random_seed), rng)
 end
 
 # General simulation
@@ -41,6 +45,8 @@ function initialize_simulation!(model::ABM;
     properties = abmproperties(model)
     properties[:last_transaction] = 0
     properties[:termination_flag] = false
+    properties[:rng] = sim_params.rng === nothing ? Random.default_rng() :
+                        sim_params.rng
 
     initialize_population_model!(model, population_params)
     

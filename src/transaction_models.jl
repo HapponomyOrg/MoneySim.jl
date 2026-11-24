@@ -7,6 +7,8 @@ using Random
 #  using CSV
 # End temp code
 
+_model_rng(model::ABM) = hasproperty(model, :rng) ? model.rng : Random.default_rng()
+
 function adjusted_asset_value!(actor::AbstractBalanceActor)
     balance = get_balance(actor)
 
@@ -305,12 +307,13 @@ function yard_sale!(model::ABM,
         adjust_income!(model)
     end
 
-    transactions = rand(model.transaction_range)
+    rng = _model_rng(model)
+    transactions = rand(rng, model.transaction_range)
     non_broke_actor_ids = get_non_broke_actor_ids(model)
 
     for _ in 1:transactions
         if length(non_broke_actor_ids) > 1
-            atomic_yard_sale!(model, determine_direction, non_broke_actor_ids, avg_wealth)
+            atomic_yard_sale!(model, determine_direction, non_broke_actor_ids, avg_wealth; rng = rng)
         else
             break
         end
@@ -355,10 +358,11 @@ function gdp_yard_sale!(model::ABM,
     max_transaction = model.data_max_transaction
     model.max_gdp += model.min_gdp_per_cycle
     max_gdp = model.max_gdp
+    rng = _model_rng(model)
     non_broke_actor_ids = get_non_broke_actor_ids(model)
 
     while gdp < max_gdp && length(non_broke_actor_ids) > 1
-        _, _, amount = atomic_yard_sale!(model, determine_direction, non_broke_actor_ids, avg_wealth)
+        _, _, amount = atomic_yard_sale!(model, determine_direction, non_broke_actor_ids, avg_wealth; rng = rng)
 
         if amount != 0
             transactions += 1
@@ -489,7 +493,10 @@ function yard_sale_transfer(model::ABM,
     amount = max(min(min_balance, model.minimal_wealth_transfer),
             Currency(min_balance * transfer_rate))
 
-    source, destination = determine_direction(target1, av1, target2, av2, waa, avg_wealth)
+    direction = determine_direction === coinflip ?
+        (a, av1, b, av2, w, avg) -> coinflip(a, av1, b, av2, w, avg, rng) :
+        determine_direction
+    source, destination = direction(target1, av1, target2, av2, waa, avg_wealth)
 
     if amount > 0 && amount > asset_value(get_balance(source), SUMSY_DEP)
         value = asset_value(get_balance(source), SUMSY_DEP)
@@ -511,12 +518,13 @@ function coinflip(target_1::AbstractActor,
                     target_2::AbstractActor,
                     asset_value_2::Currency,
                     waa::Number,
-                    avg_wealth::Number)
+                    avg_wealth::Number,
+                    rng = Random.default_rng())
     raw_bias = waa * (asset_value_1 - asset_value_2) / avg_wealth
     bias = clamp(raw_bias, -1.0, 1.0)
     prob_1_wins = (1.0 + bias) / 2.0
 
-    if rand() < prob_1_wins
+    if rand(rng) < prob_1_wins
         source = target_2
         destination = target_1
     else
