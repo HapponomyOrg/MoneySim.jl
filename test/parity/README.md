@@ -53,3 +53,25 @@ target growth are aligned. The country demurrage calibration is rounded to four
 decimals like legacy, and the initial wealth vectors match exactly. Full
 paper-3 `a1` now matches money to 0.0195 and Gini to 3.1e-4 under the shared
 xorshift stream; the remaining gap is transaction-amount rounding.
+
+## Draw-order coverage
+
+Every random draw in the legacy paths that the papers and country simulations
+use now has a counterpart in the core:
+
+| Legacy draw | Core draw |
+|---|---|
+| `rand(rng, transaction_range)` | one `rand_index(rng, 1)` per step |
+| `rand(rng, 1:num_non_broke)` ×2 + duplicate adjustment | `_atomic_yardsale!` |
+| `rand(rng, wealth_transfer_range)` | `rand_unit` (rate is fixed in core) |
+| `rand(rng)` in `coinflip` | `rand_unit` in `_yardsale_at!` |
+| `rand(rng, 1:length(tax_recipients))` | `_add_remainder!` |
+| GDP target growth and period bookkeeping | `gdp_transactions_step!` |
+
+Out of scope because the core has no corresponding stochastic step:
+`wealth_weighted_direction` (unused; country sims use `coinflip`),
+`run_consumer_supplier_simulation`'s sampled price/demand helpers (the core
+consumer–supplier step is deterministic), and `adjust_population!` in
+`model_adaptations.jl` (unused; the papers configure a fixed population).
+Demographic aging in `population_step!` consumes its own draws and is not part
+of the common-stream comparison.
