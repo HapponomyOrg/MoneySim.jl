@@ -1,4 +1,3 @@
-using Todo
 
 function one_time_money_injection!(model::ABM)
     if get_step(model) == 1

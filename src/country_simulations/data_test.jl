@@ -1,4 +1,4 @@
-function set_country_data_test()
+function country_data_test()
     income_tax_brackets = [(0.1, 0.25), (15200, 0.4), (26830, 0.45), (46440, 0.5)]
     # Source https://financien.belgium.be/nl/particulieren/belastingaangifte/belastingtarieven-inkomen/belastingtarieven#q1
 
@@ -91,14 +91,13 @@ function set_country_data_test()
     # Average of year 2023
     # Source: https://tradingeconomics.com/belgium/money-supply-m3
 
-    country_data = CountryData(TEST,
-                                2023,
-                                m3,
-                                population_data,
-                                civilian_data,
-                                government_data,
-                                sumsy_data)
-    set_country_data(country_data)
+    return CountryData(TEST,
+                        2023,
+                        m3,
+                        population_data,
+                        civilian_data,
+                        government_data,
+                        sumsy_data)
 end
 
-set_country_data_test()
+const TEST_DATA = country_data_test()

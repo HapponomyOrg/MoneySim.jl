@@ -12,7 +12,9 @@ const MONTH = 1
 const YEAR = 12
 
 struct PopulationData
-    population_dict::Dict{Symbol, Int}
+    min18::Int
+    age18to64::Int
+    age65plus::Int
     adjust_pop_up::Symbol
     adjust_pop_down::Symbol
 end
@@ -22,14 +24,8 @@ function PopulationData(pop_min_18::Int,
                         pop_65_plus::Int,
                         adjust_pop_up::AgeGroup = POP_65_PLUS,
                         adjust_pop_down::AgeGroup = POP_MIN_18)
-    pop_dict = Dict{Symbol, Int}()
-    pop_dict[Symbol(POP_MIN_18)] = pop_min_18
-    pop_dict[Symbol(POP_18_TO_64)] = pop_18_to_64
-    pop_dict[Symbol(POP_65_PLUS)] = pop_65_plus
-
-    return PopulationData(pop_dict,
-                            Symbol(adjust_pop_up),
-                            Symbol(adjust_pop_down))
+    return PopulationData(pop_min_18, pop_18_to_64, pop_65_plus,
+                          Symbol(adjust_pop_up), Symbol(adjust_pop_down))
 end
 
 """
@@ -94,7 +90,12 @@ end
 struct SuMSyData{C <: FixedDecimal}
     flat_gi::C
     demurrage_free::C
-    sumsy_groups::Dict{Symbol, Tuple{C, C}}
+    gi_min18::C
+    dem_free_min18::C
+    gi_18to64::C
+    dem_free_18to64::C
+    gi_65plus::C
+    dem_free_65plus::C
     interval::Int
 end
 
@@ -107,12 +108,11 @@ function SuMSyData(flat_gi::Real,
                     gi_65_plus::Real = flat_gi,
                     dem_free_65_plus = demurrage_free,
                     interval::Int = MONTH)
-    sumsy_groups = Dict{Symbol, Tuple{Real, Real}}()
-    sumsy_groups[Symbol(POP_MIN_18)] = (gi_min_18, dem_free_min_18)
-    sumsy_groups[Symbol(POP_18_TO_64)] = (gi_18_to_64, dem_free_18_to_64)
-    sumsy_groups[Symbol(POP_65_PLUS)] = (gi_65_plus, dem_free_65_plus)
-
-    return SuMSyData{Currency}(flat_gi, demurrage_free, sumsy_groups, interval)
+    return SuMSyData{Currency}(Currency(flat_gi), Currency(demurrage_free),
+                                Currency(gi_min_18), Currency(dem_free_min_18),
+                                Currency(gi_18_to_64), Currency(dem_free_18_to_64),
+                                Currency(gi_65_plus), Currency(dem_free_65_plus),
+                                interval)
 end
 
 struct CountryData{C <: FixedDecimal}
@@ -138,14 +138,11 @@ struct CountryData{C <: FixedDecimal}
                                                         sumsy_data)
 end
 
-const COUNTRY_DATA = Dict{Country, CountryData}()
-
-function set_country_data(country_data::CountryData)
-    COUNTRY_DATA[country_data.country] = country_data
-end
-
 function get_country_data(country::Country)
-    return COUNTRY_DATA[country]
+    country == BE && return BELGIUM
+    country == NL && return NETHERLANDS
+    country == TEST && return TEST_DATA
+    throw(KeyError(country))
 end
 
 function get_m_per_capita(country::Country)
@@ -155,16 +152,15 @@ end
 # Population data
 
 function get_population(country::Country, population_group::PopulationGroup = nothing)
+    population = get_country_data(country).population_data
     if isnothing(population_group)
-        pop_total = 0
-
-        for population in values(get_country_data(country).population_data.population_dict)
-            pop_total += population
-        end
-
-        return pop_total
+        return population.min18 + population.age18to64 + population.age65plus
+    elseif population_group == POP_MIN_18
+        return population.min18
+    elseif population_group == POP_18_TO_64
+        return population.age18to64
     else
-        return get_country_data(country).population_data.population_dict[Symbol(population_group)]
+        return population.age65plus
     end
 end
 
@@ -297,24 +293,33 @@ function get_demurrage_free(country::Country)
 end
 
 function get_gi(country::Country, age_group::AgeGroup; period::Int = MONTH)
-    return get_country_data(country).sumsy_data.sumsy_groups[age_group][1] * period
+    data = get_country_data(country).sumsy_data
+    value = age_group == POP_MIN_18 ? data.gi_min18 :
+            age_group == POP_18_TO_64 ? data.gi_18to64 : data.gi_65plus
+    return value * period
 end
 
 function get_demurrage_free(country::Country, age_group::AgeGroup)
-    return get_country_data(country).sumsy_data.sumsy_groups[age_group][2]
+    data = get_country_data(country).sumsy_data
+    return age_group == POP_MIN_18 ? data.dem_free_min18 :
+           age_group == POP_18_TO_64 ? data.dem_free_18to64 : data.dem_free_65plus
 end
 
 function get_sumsy_groups(country::Country; period::Int = MONTH)
-    sumsy_groups = get_country_data(country).sumsy_data.sumsy_groups
-    scaled_sumsy_groups = Dict{Symbol, Tuple{Real, Real}}()
-
-    for age_symbol in keys(sumsy_groups)
-        value = sumsy_groups[age_symbol]
-        scaled_sumsy_groups[age_symbol] = (value[1] * period, value[2])
-    end
-
-    return scaled_sumsy_groups
+    data = get_country_data(country).sumsy_data
+    return Dict{Symbol, Tuple{Real, Real}}(
+        Symbol(POP_MIN_18) => (data.gi_min18 * period, data.dem_free_min18),
+        Symbol(POP_18_TO_64) => (data.gi_18to64 * period, data.dem_free_18to64),
+        Symbol(POP_65_PLUS) => (data.gi_65plus * period, data.dem_free_65plus),
+    )
 end
+
+get_gi_min_18(country::Country, period::Int = MONTH) =
+    get_country_data(country).sumsy_data.gi_min18 * period
+get_gi_18_to_64(country::Country, period::Int = MONTH) =
+    get_country_data(country).sumsy_data.gi_18to64 * period
+get_gi_65_plus(country::Country, period::Int = MONTH) =
+    get_country_data(country).sumsy_data.gi_65plus * period
 
 function calculate_demurrage(country::Country, flat_gi::Bool = true, period = MONTH)
     if flat_gi

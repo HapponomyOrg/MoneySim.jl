@@ -28,7 +28,7 @@ const M3_NL = Currency(1129000000000)
 # 25519813.6295
 # 166896294.6405
 
-function set_country_data_nl()
+function country_data_nl()
     income_tax_brackets = [(0, 0)]
     # Source: 
 
@@ -121,14 +121,13 @@ function set_country_data_nl()
     # Average of year 2023
     # Source https://tradingeconomics.com/netherlands/money-supply-m3
 
-    country_data = CountryData(NL,
-                                2023,
-                                m3,
-                                population_data,
-                                civilian_data,
-                                government_data,
-                                sumsy_data)
-    set_country_data(country_data)
+    return CountryData(NL,
+                        2023,
+                        m3,
+                        population_data,
+                        civilian_data,
+                        government_data,
+                        sumsy_data)
 end
 
-set_country_data_nl()
+const NETHERLANDS = country_data_nl()

@@ -7,14 +7,24 @@ using DataFrames
     struct SimParams
         * sim_length::Int - The number of iterations of the simulation.
         * lock_random_generator::Bool - Lock the random number generator to a fixed seed, thereby producing reproducible results.
+        * random_seed::Union{Nothing, Int} - Explicit seed. When set, it takes
+          precedence over the default locked seed; useful for seed sweeps.
+        * rng - Optional RNG object for stochastic model paths. Defaults to
+          `Random.default_rng()`.
 
     General simulation parameters.
 """
 struct SimParams
     sim_length::Int
     lock_random_generator::Bool
+    random_seed::Union{Nothing, Int}
+    rng::Any
     SimParams(sim_length::Int;
-              lock_random_generator::Bool = true) = new(sim_length, lock_random_generator)
+              lock_random_generator::Bool = true,
+              random_seed::Union{Nothing, Integer} = nothing,
+              rng = nothing) =
+        new(sim_length, lock_random_generator,
+            random_seed === nothing ? nothing : Int(random_seed), rng)
 end
 
 # General simulation
@@ -30,11 +40,13 @@ function initialize_simulation!(model::ABM;
                                 model_initialisations::Vector{<: Function} = Vector{Function}(),
                                 actor_initialisations::Vector{<: Function} = Vector{Function}(),
                                 model_adaptations::Vector{<: Function} = Vector{Function}())
-    set_random_seed!(sim_params.lock_random_generator)
+    set_random_seed!(sim_params.lock_random_generator, sim_params.random_seed)
 
     properties = abmproperties(model)
     properties[:last_transaction] = 0
     properties[:termination_flag] = false
+    properties[:rng] = sim_params.rng === nothing ? Random.default_rng() :
+                        sim_params.rng
 
     initialize_population_model!(model, population_params)
     
@@ -310,8 +322,9 @@ function run_sumsy_simulation(sumsy::SuMSy;
                                 termination_handler::Union{TerminationHandler, Nothing} = nothing,
                                 model_initialisations::Vector{<: Function} = Vector{Function}(),
                                 actor_initialisations::Vector{<: Function} = Vector{Function}(),
-                                model_adaptation::Union{Function, Nothing} = nothing)
-    sim_params = SimParams(sim_length * period_length)
+                                model_adaptation::Union{Function, Nothing} = nothing,
+                                rng = nothing)
+    sim_params = SimParams(sim_length * period_length; rng = rng)
 
     initial_wealth = telo(sumsy)
 
@@ -508,8 +521,11 @@ end
 
 # Utility functions
 
-function set_random_seed!(lock_random_generator::Bool)
-    if lock_random_generator
+function set_random_seed!(lock_random_generator::Bool,
+                         random_seed::Union{Nothing, Int} = nothing)
+    if random_seed !== nothing
+        Random.seed!(random_seed)
+    elseif lock_random_generator
         Random.seed!(35646516187576568)
     else
         Random.seed!(Integer(round(time())))

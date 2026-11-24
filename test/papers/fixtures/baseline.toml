@@ -1,0 +1,381 @@
+[meta]
+captured_at = "2026-11-24T18:25:02.985"
+format = 1
+julia_version = "1.12.6"
+money_sim_sha = "cf2eb7fb9ab17b46436aadd12836bef5908f6a81"
+paper3_actors = 1000
+paper3_years = 10
+
+[paper1.baseline_g0_p0]
+debt_ratio_pct = 100.0
+finite = true
+growth_ratio_pct = 0.0
+length = 100
+
+[paper1.chart_parameter]
+debt_ratio_pct = 120.2532
+finite = true
+growth_ratio_pct = 4.75
+length = 500
+
+[paper1.growth_only_g005_p0]
+debt_ratio_pct = 100.0
+finite = true
+growth_ratio_pct = 5.0
+length = 100
+
+[paper1.loan_rate_collapse_lr0149_m20]
+debt_ratio_pct = 1736.4784
+finite = true
+growth_ratio_pct = -69.67
+length = 476
+
+[paper1.loan_rate_collapse_m20]
+debt_ratio_pct = 1528.106
+finite = true
+growth_ratio_pct = -66.68
+length = 193
+
+[paper1.loan_rate_stable]
+debt_ratio_pct = 120.2482
+finite = true
+growth_ratio_pct = 4.75
+length = 500
+
+[paper1.loan_rate_stable_m30]
+debt_ratio_pct = 108.0245
+finite = true
+growth_ratio_pct = 10.77
+length = 500
+
+[paper1.maturity_independence]
+debt_ratio_pct = 124.4858
+finite = true
+growth_ratio_pct = 5.0
+length = 100
+
+[paper1.p_equals_g]
+debt_ratio_pct = 576.1905
+finite = true
+growth_ratio_pct = 5.0
+length = 100
+
+[paper1.p_greater_than_g]
+debt_ratio_pct = 20858.9058
+finite = true
+growth_ratio_pct = 5.0
+length = 100
+
+[paper1.p_less_than_g_long]
+debt_ratio_pct = 125.0
+finite = true
+growth_ratio_pct = 5.0
+length = 500
+
+[paper1.p_less_than_g_short]
+debt_ratio_pct = 124.4858
+finite = true
+growth_ratio_pct = 5.0
+length = 100
+
+[paper1.random_growth_negative_relative_p]
+finite = true
+length = 500
+
+[paper1.random_growth_positive_relative_p]
+finite = true
+length = 500
+
+[paper1.random_growth_zero_relative_p]
+finite = true
+length = 500
+
+[paper2.a1]
+max_money_stock = 2.00000000028e7
+min_money_stock = 1.99999999982e7
+money_stock = 1.9999999999e7
+
+[paper2.a2]
+max_money_stock = 2.00000000045e7
+min_money_stock = 1.99999999993e7
+money_stock = 2.0000000004e7
+
+[paper2.b1]
+max_money_stock = 2.00000000144e7
+min_money_stock = 1.99999999868e7
+money_stock = 2.00000000116e7
+
+[paper2.b2]
+max_money_stock = 2.00000000045e7
+min_money_stock = 1.99999999993e7
+money_stock = 2.0000000004e7
+
+[paper2.d1]
+max_money_stock = 2.00000000185e7
+min_money_stock = 1.99999999788e7
+money_stock = 2.00000000073e7
+
+[paper2.e1]
+max_money_stock = 2.24939135289e7
+min_money_stock = 2.07810117869e7
+money_stock = 2.07879424492e7
+
+[paper2.e2]
+max_money_stock = 1.24290561918e7
+min_money_stock = 5.3533481752e6
+money_stock = 5.9143586987e6
+
+[paper2.e3]
+max_money_stock = 1.31249997e7
+min_money_stock = 1.25125e7
+money_stock = 1.31249997e7
+
+[paper2.e4]
+max_money_stock = 1.31249997e7
+min_money_stock = 1.25125e7
+money_stock = 1.31249997e7
+
+[paper2.e5]
+max_money_stock = 1.24761812338e7
+min_money_stock = 5.2637215174e6
+money_stock = 5.6520680215e6
+
+[paper2.s1]
+max_money_stock = 3.97999999995e7
+min_money_stock = 2.00106518702e7
+money_stock = 2.00106518702e7
+
+[paper2.s2]
+max_money_stock = 2.99946740656e7
+min_money_stock = 2.01000000002e7
+money_stock = 2.99946740656e7
+
+[paper2.s3]
+max_money_stock = 1.99946740658e7
+min_money_stock = 1.01000000001e7
+money_stock = 1.99946740658e7
+
+[paper2.s4]
+max_money_stock = 1.99000000002e7
+min_money_stock = 1.00463836784e7
+money_stock = 1.0047241559e7
+
+[paper2_consumer_supplier.r1.case1]
+supplier_balance = 742354.4167
+
+[paper2_consumer_supplier.r1.case2]
+supplier_balance = 1.4847088323e6
+
+[paper2_consumer_supplier.r1.case3]
+supplier_balance = 1.781650598e6
+
+[paper2_consumer_supplier.r2.case1]
+supplier_balance = 392749.8963
+
+[paper2_consumer_supplier.r2.case2]
+supplier_balance = 595499.999
+
+[paper2_consumer_supplier.r2.case3]
+supplier_balance = 652599.999
+
+[paper3.a1]
+bottom50_share = 19.4737
+gini_income = 0.3595
+gini_wealth = 0.4508
+income_bottom50_share = 24.8257
+income_top10_share = 24.6084
+money_stock = 5.76817958891e7
+public_debt = 5.25743155e7
+tax_collected = 0.0
+top10_share = 32.3644
+
+[paper3.a10]
+bottom50_share = 15.7818
+gini_income = 0.4505
+gini_wealth = 0.534
+income_bottom50_share = 19.7681
+income_top10_share = 32.8327
+money_stock = 5.76821695994e7
+public_debt = 5.25743155e7
+tax_collected = 2.61582075824e7
+tax_scale = 1.0
+top10_share = 42.1977
+
+[paper3.a2]
+bottom50_share = 31.095
+gini_income = 0.3085
+gini_wealth = 0.2681
+income_bottom50_share = 28.0189
+income_top10_share = 21.3786
+money_stock = 5.76822033905e7
+public_debt = 5.25743155e7
+tax_collected = 2.61643331656e7
+tax_scale = 1.0
+top10_share = 20.3156
+
+[paper3.a3]
+bottom50_share = 27.5113
+gini_income = 0.3131
+gini_wealth = 0.3185
+income_bottom50_share = 27.876
+income_top10_share = 21.9026
+money_stock = 5.7681536873e7
+public_debt = 5.25743155e7
+tax_collected = 2.6151955862e7
+tax_scale = 1.48
+top10_share = 22.2365
+
+[paper3.a4]
+bottom50_share = 31.3826
+gini_income = 0.3146
+gini_wealth = 0.2633
+income_bottom50_share = 27.6871
+income_top10_share = 21.4225
+money_stock = 5.76822033926e7
+public_debt = 5.25743155e7
+tax_collected = 2.616433316e7
+tax_scale = 1.0
+top10_share = 20.1343
+
+[paper3.a5]
+bottom50_share = 30.2946
+gini_income = 0.2963
+gini_wealth = 0.279
+income_bottom50_share = 29.137
+income_top10_share = 21.2272
+money_stock = 5.76822033896e7
+public_debt = 5.25743155e7
+tax_collected = 2.6164333163e7
+tax_scale = 1.0
+top10_share = 21.0464
+
+[paper3.a6]
+bottom50_share = 29.4798
+gini_income = 0.3084
+gini_wealth = 0.2873
+income_bottom50_share = 28.3483
+income_top10_share = 21.7984
+money_stock = 5.76822117987e7
+public_debt = 5.25743155e7
+tax_collected = 2.28277834377e7
+tax_scale = 1.0
+top10_share = 20.8797
+
+[paper3.a7]
+bottom50_share = 30.5839
+gini_income = 0.306
+gini_wealth = 0.2736
+income_bottom50_share = 28.4181
+income_top10_share = 21.8081
+money_stock = 5.76822160525e7
+public_debt = 5.25743155e7
+tax_collected = 2.61643396587e7
+tax_scale = 1.0
+top10_share = 20.5315
+
+[paper3.a8]
+bottom50_share = 26.2607
+gini_income = 0.32
+gini_wealth = 0.3387
+income_bottom50_share = 27.4009
+income_top10_share = 22.3606
+money_stock = 5.76815558185e7
+public_debt = 5.25743155e7
+tax_collected = 2.50824736347e7
+tax_scale = 1.26
+top10_share = 23.9116
+
+[paper3.a9]
+bottom50_share = 13.9627
+gini_income = 0.4556
+gini_wealth = 0.5695
+income_bottom50_share = 19.4875
+income_top10_share = 33.2867
+money_stock = 5.76723791942e7
+public_debt = 5.25743155e7
+tax_collected = 2.49227929402e7
+tax_scale = 1.38
+top10_share = 45.8665
+
+[paper3.b1]
+bottom50_share = -0.1668
+gini_income = nan
+gini_wealth = 1.0023
+income_bottom50_share = 0.0
+income_top10_share = 0.0
+money_stock = 5.76188734716e7
+public_debt = 5.25743155e7
+tax_collected = 0.0
+top10_share = 100.1668
+
+[paper3.c1]
+bottom50_share = 24.5905
+gini_income = 0.3756
+gini_wealth = 0.3833
+income_bottom50_share = 23.506
+income_top10_share = 25.12
+money_stock = 9.84982099697e7
+public_debt = 9.34536519981e7
+tax_collected = 2.20789790659e7
+tax_scale = 1.4
+top10_share = 29.6149
+
+[paper3.c2]
+bottom50_share = 19.47
+gini_income = 0.3353
+gini_wealth = 0.467
+income_bottom50_share = 26.2038
+income_top10_share = 23.0998
+money_stock = 5.76188734716e7
+public_debt = 5.25743155e7
+tax_collected = 2.61717364171e7
+tax_scale = 1.47
+top10_share = 35.2052
+
+[paper3.c3]
+bottom50_share = 20.0018
+gini_income = 0.3602
+gini_wealth = 0.4611
+income_bottom50_share = 24.9091
+income_top10_share = 25.1668
+money_stock = 5.76188734716e7
+public_debt = 5.25743155e7
+tax_collected = 2.6090847503e7
+tax_scale = 1.65
+top10_share = 35.191
+
+[paper3.c4]
+bottom50_share = 16.8816
+gini_income = 0.3553
+gini_wealth = 0.5073
+income_bottom50_share = 24.6896
+income_top10_share = 23.8168
+money_stock = 5.76188734716e7
+public_debt = 5.25743155e7
+tax_collected = 2.61844371266e7
+tax_scale = 1.31
+top10_share = 37.8164
+
+[paper3.c5]
+bottom50_share = 3.4013
+gini_income = 0.5063
+gini_wealth = 0.8504
+income_bottom50_share = 18.2498
+income_top10_share = 41.9237
+money_stock = 5.76188734716e7
+public_debt = 5.25743155e7
+tax_collected = 2.60033586306e7
+tax_scale = 1.43
+top10_share = 81.0283
+
+[paper3.u1]
+bottom50_share = 16.2073
+gini_income = 0.3027
+gini_wealth = 0.5671
+income_bottom50_share = 29.0305
+income_top10_share = 22.7012
+money_stock = 5.76188734716e7
+public_debt = 5.25743155e7
+tax_collected = 2.50331160039e7
+tax_scale = 1.0
+top10_share = 49.6238
