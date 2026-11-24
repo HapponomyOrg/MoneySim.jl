@@ -164,7 +164,18 @@ function _paper1_core(scenario)
         transactions = MC.TransactionConfig(enabled = false),
         loan_circuit = loan,
     )
-    result = MC.run_simulation(cfg)
+    result = if scenario.kind === :random_g || scenario.kind === :random_lr
+        # These paper runs intentionally exceed the scaled-Int64 range; the
+        # published treatment is saturation, not a crash.
+        EC.set_overflow_mode!(EC.OVERFLOW_SATURATE)
+        try
+            MC.run_simulation(cfg)
+        finally
+            EC.set_overflow_mode!(EC.OVERFLOW_ERROR)
+        end
+    else
+        MC.run_simulation(cfg)
+    end
 
     finite = all(isfinite, result.total) &&
              all(isfinite, result.growth_ratio) &&

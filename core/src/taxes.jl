@@ -347,7 +347,7 @@ function vat_step!(state::SimState, cfg::VatConfig, tax::TaxConfig,
     end
 
     redistribute!(state, collected, cfg.recipient, cfg.recipient_actor)
-    state.vat_collected = saturating_add(state.vat_collected, collected)
+    state.vat_collected = state.vat_collected + collected
     return collected
 end
 

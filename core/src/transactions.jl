@@ -81,14 +81,14 @@ function yardsale_transfer!(state::SimState, cfg::TransactionConfig,
 
     if rand_unit(rng) < probability_first
         if cfg.allow_negative || state.wealth[j] >= moved
-            state.wealth[i] = saturating_add(state.wealth[i], moved)
+            state.wealth[i] = state.wealth[i] + moved
             state.step_income[i] += moved
             state.wealth[j] -= moved
             state.step_expenses[j] += moved
         end
     else
         if cfg.allow_negative || state.wealth[i] >= moved
-            state.wealth[j] = saturating_add(state.wealth[j], moved)
+            state.wealth[j] = state.wealth[j] + moved
             state.step_income[j] += moved
             state.wealth[i] -= moved
             state.step_expenses[i] += moved
@@ -174,7 +174,7 @@ function consumer_supplier_step!(state::SimState, cfg::TransactionConfig,
 
         state.wealth[i] -= amount
         state.step_expenses[i] += amount
-        state.wealth[supplier] = saturating_add(state.wealth[supplier], amount)
+        state.wealth[supplier] = state.wealth[supplier] + amount
         state.step_income[supplier] += amount
     end
     return nothing

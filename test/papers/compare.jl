@@ -51,29 +51,29 @@ const CORE_PAPER3 = Dict{Symbol,Paper3Result}()
     for scenario in PAPER1_SCENARIOS
         before = _baseline_record("paper1", scenario.name)
         before === nothing && continue
+        if scenario.name === :loan_rate_stable_m30
+            # The paper trajectory reaches ~10^26 currency; scaled Int64
+            # saturates long before cycle 500. Ratios are checked for the
+            # representable scenarios; this one is documented as limited.
+            @test_skip "m30 stable exceeds scaled Int64"
+            continue
+        end
         after = run_paper1(scenario; backend = :core)
         CORE_PAPER1[scenario.name] = after
 
         @testset "$(scenario.name)" begin
-            if scenario.name === :loan_rate_stable_m30
-                # The paper trajectory reaches ~10^26 currency; scaled Int64
-                # saturates long before cycle 500. Ratios are checked for the
-                # representable scenarios; this one is documented as limited.
-                @test_skip "m30 stable exceeds scaled Int64"
-            else
-                @test after.length == Int(before["length"])
-                if haskey(before, "debt_ratio_pct")
-                    @test isapprox(after.debt_ratio_pct,
-                                   Float64(before["debt_ratio_pct"]);
-                                   atol = PAPER1_RATIO_ATOL)
-                end
-                if haskey(before, "growth_ratio_pct")
-                    @test isapprox(after.growth_ratio_pct,
-                                   Float64(before["growth_ratio_pct"]);
-                                   atol = PAPER1_RATIO_ATOL)
-                end
-                @test after.finite
+            @test after.length == Int(before["length"])
+            if haskey(before, "debt_ratio_pct")
+                @test isapprox(after.debt_ratio_pct,
+                               Float64(before["debt_ratio_pct"]);
+                               atol = PAPER1_RATIO_ATOL)
             end
+            if haskey(before, "growth_ratio_pct")
+                @test isapprox(after.growth_ratio_pct,
+                               Float64(before["growth_ratio_pct"]);
+                               atol = PAPER1_RATIO_ATOL)
+            end
+            @test after.finite
         end
     end
 end

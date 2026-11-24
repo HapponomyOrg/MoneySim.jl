@@ -304,8 +304,8 @@ function loan_circuit_step!(state::SimState, money::MoneyConfig,
             for i in eachindex(state.wealth)
                 (is_alive(state, i) && state.debt[i] > MONEY_ZERO) || continue
                 converted = apply_rate(state.debt[i], profit)
-                state.bank_reserve = saturating_add(state.bank_reserve, converted)
-                state.debt[i] = saturating_add(state.debt[i], converted)
+                state.bank_reserve = state.bank_reserve + converted
+                state.debt[i] = state.debt[i] + converted
             end
         end
 
@@ -313,9 +313,9 @@ function loan_circuit_step!(state::SimState, money::MoneyConfig,
             for i in eachindex(state.wealth)
                 is_alive(state, i) || continue
                 created = apply_rate(state.wealth[i], growth)
-                state.wealth[i] = saturating_add(state.wealth[i], created)
-                state.debt[i] = saturating_add(state.debt[i], created)
-                created_total = saturating_add(created_total, created)
+                state.wealth[i] = state.wealth[i] + created
+                state.debt[i] = state.debt[i] + created
+                created_total = created_total + created
             end
         end
 
@@ -379,7 +379,7 @@ function loan_circuit_step!(state::SimState, money::MoneyConfig,
     end
 
     if new_loan > MONEY_ZERO
-        pool = saturating_add(pool, new_loan)
+        pool = pool + new_loan
         push!(state.loan_book_principal, new_loan)
         push!(state.loan_book_cycles, max(new_maturity, 1))
         push!(state.loan_book_rate, profit)
@@ -389,7 +389,7 @@ function loan_circuit_step!(state::SimState, money::MoneyConfig,
 
     book_debt = MONEY_ZERO
     for principal in state.loan_book_principal
-        book_debt = saturating_add(book_debt, principal)
+        book_debt = book_debt + principal
     end
     state.bank_reserve = book_debt - pool
 

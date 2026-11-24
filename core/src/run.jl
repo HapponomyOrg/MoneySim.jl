@@ -72,7 +72,7 @@ function run_simulation!(cfg::SimConfig, state::SimState, results::ResultBuffers
         collected = tax_step!(state, cfg.tax, cfg.money, period)
         vat_step!(state, cfg.vat, cfg.tax, period)
         government_step!(state, cfg.government, cfg.tax, collected)
-        state.tax_accum = saturating_add(state.tax_accum, collected)
+        state.tax_accum = state.tax_accum + collected
 
         transactions_step!(state, cfg.transactions, cfg.gdp, cfg.money, rng, period)
         adaptations_step!(state, cfg.adaptations, cfg.money, period)

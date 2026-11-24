@@ -720,6 +720,7 @@ using EconoSimCore
     end
 
     @testset "paper 1 — random loan circuit" begin
+        set_overflow_mode!(OVERFLOW_SATURATE)
         growth = SimConfig(
             periods = 500,
             seed = 7,
@@ -763,5 +764,6 @@ using EconoSimCore
         @test 0 < result.periods <= 500
         @test all(isfinite, result.total)
         @test all(isfinite, result.loan_debt)
+        set_overflow_mode!(OVERFLOW_ERROR)
     end
 end
