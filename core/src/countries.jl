@@ -110,9 +110,11 @@ function belgium()
 end
 
 function _adjust_percentiles(low, mid, high)
-    mid = div(10 * mid - low, 9)
-    high = div(100 * high - 9 * mid - low, 90)
-    return low, mid, high
+    adjusted_mid = Money(round(Int64,
+        (10 * mid.value - low.value) / 9.0))
+    adjusted_high = Money(round(Int64,
+        (100 * high.value - 9 * adjusted_mid.value - low.value) / 90.0))
+    return low, adjusted_mid, adjusted_high
 end
 
 """
@@ -162,11 +164,25 @@ function _distribute_country(data::CountryInequality, actors::Int,
         return values
     end
 
-    top_0_1, top_1, top_10 = _adjust_percentiles(data.top_0_1, data.top_1,
-                                                 data.top_10)
-    bottom_0_1, bottom_1, bottom_10 = _adjust_percentiles(data.bottom_0_1,
-                                                          data.bottom_1,
-                                                          data.bottom_10)
+    # Legacy scales the raw percentiles to per-capita first, then applies the
+    # overlap adjustment twice (setup + distribution). Mirror that order.
+    average = money(0)
+    average += Money(round(Int64, Float64(data.top_10.value) * 0.1))
+    average += Money(round(Int64, Float64(data.high_middle_40.value) * 0.4))
+    average += Money(round(Int64, Float64(data.low_middle_40.value) * 0.4))
+    average += Money(round(Int64, Float64(data.bottom_10.value) * 0.1))
+    scale = average == MONEY_ZERO ? 0.0 :
+        Float64(per_capita.value) / Float64(average.value)
+    scaled_value(value::Money) =
+        Money(round(Int64, Float64(value.value) * scale))
+
+    top_0_1, top_1, top_10 = _adjust_percentiles(scaled_value(data.top_0_1),
+                                                 scaled_value(data.top_1),
+                                                 scaled_value(data.top_10))
+    bottom_0_1, bottom_1, bottom_10 =
+        _adjust_percentiles(scaled_value(data.bottom_0_1),
+                            scaled_value(data.bottom_1),
+                            scaled_value(data.bottom_10))
 
     n0_1 = max(1, round(Int, actors * 0.001))
     n1 = max(1, round(Int, actors * 0.01))
@@ -177,18 +193,18 @@ function _distribute_country(data::CountryInequality, actors::Int,
     n999 = max(1, round(Int, actors * 0.999))
 
     edges = (0, n0_1, n1, n10, n50, n90, n99, n999, actors)
-    groups = (bottom_0_1, bottom_1, bottom_10, data.low_middle_40,
-              data.high_middle_40, top_10, top_1, top_0_1)
+    groups = (bottom_0_1, bottom_1, bottom_10,
+              scaled_value(data.low_middle_40),
+              scaled_value(data.high_middle_40), top_10, top_1, top_0_1)
 
     values = Vector{Money}(undef, actors)
     for group in 1:8
-        value = scaled(groups[group])
+        value = groups[group]
         for index in (edges[group] + 1):edges[group + 1]
             values[index] = value
         end
     end
 
-    _rescale_total!(values, target)
     return values
 end
 

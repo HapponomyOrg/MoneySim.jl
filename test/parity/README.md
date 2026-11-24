@@ -32,11 +32,13 @@ common-random-number parity for that path.
 
 `common_rng_paper3.jl` runs full paper-3 `a1` under the same shared stream. It
 checks Gini within 5e-4, money within 1e-6, debt within 1e-6, and shares within
-0.5 pp (5/5). Actual money gap is 0.018 on 57.68M; Gini gap is 3.1e-4.
+0.5 pp (5/5). Initial wealth vectors now match exactly; the final money gap is
+0.0195 on 57.68M and the Gini gap is 3.1e-4.
 
 ## Remaining for full paper 3
 
 The transaction loop, GDP loop, tax-redistribution remainder, and rounded GDP
 target growth are aligned. The country demurrage calibration is rounded to four
-decimals like legacy, so full paper-3 `a1` now matches money to 0.018 and Gini to
-3.1e-4 under the shared xorshift stream.
+decimals like legacy, and the initial wealth vectors match exactly. Full
+paper-3 `a1` now matches money to 0.0195 and Gini to 3.1e-4 under the shared
+xorshift stream; the remaining gap is transaction-amount rounding.
