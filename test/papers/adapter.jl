@@ -260,9 +260,10 @@ function _pin_concentrated_wealth!(model)
     isempty(ids) && return nothing
 
     holder = 0
-    held = CUR_0
+    held = EconoSim.CUR_0
     for id in ids
-        value = MoneySim.asset_value(MoneySim.get_balance(model[id]), SUMSY_DEP)
+        value = MoneySim.asset_value(MoneySim.get_balance(model[id]),
+                                     EconoSim.SUMSY_DEP)
         if value > 0
             holder = id
             held = value
@@ -270,8 +271,10 @@ function _pin_concentrated_wealth!(model)
     end
     holder == 0 && return nothing
 
-    MoneySim.book_asset!(MoneySim.get_balance(model[holder]), SUMSY_DEP, -held)
-    MoneySim.book_asset!(MoneySim.get_balance(model[ids[1]]), SUMSY_DEP, held)
+    MoneySim.book_asset!(MoneySim.get_balance(model[holder]),
+                         EconoSim.SUMSY_DEP, -held)
+    MoneySim.book_asset!(MoneySim.get_balance(model[ids[1]]),
+                         EconoSim.SUMSY_DEP, held)
     return nothing
 end
 
